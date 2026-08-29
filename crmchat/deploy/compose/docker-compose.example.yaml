@@ -1,0 +1,56 @@
+# 部署服务器编排模板（参考 jetlinks 部署约定）：
+#   复制到部署机 /opt/crm-chat/compose/docker-compose.<env>.yaml，
+#   配套同目录 .env.<env>（模板见 .env.example）。
+# Jenkins 部署阶段执行：
+#   REGISTRY=<registry> TAG=<tag> docker compose -f docker-compose.<env>.yaml --env-file .env.<env> up -d --no-deps crm-chat
+# 首次部署后需初始化数据库：浏览器访问 http://<host>:<APP_PORT>/install 走安装向导，
+# 或手动导入 public/install/crmeb.sql 后按 .example.env 说明补齐配置。
+services:
+  crm-chat:
+    image: ${REGISTRY}/crm-chat:${TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      - mysql
+      - redis
+    ports:
+      - "${APP_PORT:-20108}:20108"
+    environment:
+      APP_DEBUG: "${APP_DEBUG:-false}"
+      APP_KEY: "${APP_KEY:?请在env文件中设置APP_KEY}"
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: "${DB_NAME:-crmchat}"
+      DB_USER: "${DB_USER:-crmchat}"
+      DB_PASSWORD: "${DB_PASSWORD:?请在env文件中设置DB_PASSWORD}"
+      DB_PREFIX: "${DB_PREFIX:-eb_}"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+    volumes:
+      - crmchat-uploads:/var/www/crmchat/public/uploads
+      - crmchat-runtime:/var/www/crmchat/runtime
+
+  mysql:
+    image: mysql:5.7
+    restart: unless-stopped
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?请在env文件中设置MYSQL_ROOT_PASSWORD}"
+      MYSQL_DATABASE: "${DB_NAME:-crmchat}"
+      MYSQL_USER: "${DB_USER:-crmchat}"
+      MYSQL_PASSWORD: "${DB_PASSWORD}"
+    volumes:
+      - crmchat-mysql:/var/lib/mysql
+
+  redis:
+    image: redis:6.2-alpine
+    restart: unless-stopped
+    command: ["sh", "-c", "redis-server ${REDIS_PASSWORD:+--requirepass $$REDIS_PASSWORD}"]
+    volumes:
+      - crmchat-redis:/data
+
+volumes:
+  crmchat-mysql:
+  crmchat-redis:
+  crmchat-uploads:
+  crmchat-runtime:
