@@ -131,6 +131,9 @@ class Service extends AuthController
         if (!$cateInfo) {
             return $this->fail('分类没有查到无法删除');
         }
+        if ($cateInfo->owner_id != $this->kefuId || $cateInfo->type != 1) {
+            return $this->fail('只能修改自己创建的分类');
+        }
         $cateInfo->name = $data['name'];
         $cateInfo->sort = $data['sort'];
 
@@ -152,6 +155,9 @@ class Service extends AuthController
         $cateInfo = $services->get($id);
         if (!$cateInfo) {
             return $this->fail('分类不存在');
+        }
+        if ($cateInfo->owner_id != $this->kefuId || $cateInfo->type != 1) {
+            return $this->fail('只能删除自己创建的分类');
         }
         if ($speechcraftServices->count(['cate_id' => $id])) {
             return $this->fail('请先删除分类下的话术');
@@ -241,6 +247,9 @@ class Service extends AuthController
         if (!$speechcraft->kefu_id) {
             return $this->fail('公共话术不能修改');
         }
+        if ($speechcraft->kefu_id != $this->kefuId) {
+            return $this->fail('只能修改自己创建的话术');
+        }
         $speechcraft->title = $data['title'];
         if ($data['cate_id']) {
             $speechcraft->cate_id = $data['cate_id'];
@@ -265,6 +274,9 @@ class Service extends AuthController
         $speechcraft = $services->get($id);
         if (!$speechcraft) {
             return $this->fail('话术没有被查到');
+        }
+        if ($speechcraft->kefu_id != $this->kefuId) {
+            return $this->fail('只能删除自己创建的话术');
         }
         if ($speechcraft->delete()) {
             return $this->success('删除成功');
@@ -377,6 +389,10 @@ class Service extends AuthController
         }
 
         if ($id) {
+            $where = ['id' => $id, 'user_id' => $this->kefuInfo['user_id'], 'appid' => $this->kefuInfo['appid']];
+            if (!$services->getCount($where)) {
+                return $this->fail('自动回复不存在或无权操作');
+            }
             $services->update(['id' => $id], $data);
         } else {
             $data['user_id'] = $this->kefuInfo['user_id'];
@@ -398,8 +414,12 @@ class Service extends AuthController
         if (!$id) {
             return $this->fail('缺少参数');
         }
+        $where = ['id' => $id, 'user_id' => $this->kefuInfo['user_id'], 'appid' => $this->kefuInfo['appid']];
+        if (!$services->getCount($where)) {
+            return $this->fail('自动回复不存在或无权操作');
+        }
 
-        if ($services->delete($id)) {
+        if ($services->delete($where)) {
             return $this->success('删除成功');
         } else {
             return $this->fail('删除失败');

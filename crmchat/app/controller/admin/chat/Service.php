@@ -82,6 +82,9 @@ class Service extends AuthController
             ['welcome_words', ''],
             ['status', 1],
         ]);
+        if (!$data['appid']) {
+            return $this->fail('请选择客服所属应用');
+        }
         if ($data['avatar'] == '') {
             return $this->fail('请选择客服头像');
         }
@@ -100,10 +103,10 @@ class Service extends AuthController
         if (!preg_match('/^[0-9a-z_$]{6,20}$/i', $data['password'])) {
             return $this->fail('密码必须为数字或者字母的组合6-20位');
         }
-        if ($this->services->count(['phone' => $data['phone']])) {
+        if ($this->services->count(['phone' => $data['phone'], 'appid' => $data['appid']])) {
             return $this->fail('该手机号的客服已存在!');
         }
-        if ($this->services->count(['account' => $data['account']])) {
+        if ($this->services->count(['account' => $data['account'], 'appid' => $data['appid']])) {
             return $this->fail('该客服账号已存在!');
         }
         $data['add_time'] = time();
@@ -181,8 +184,13 @@ class Service extends AuthController
         if (!check_phone($data['phone'])) {
             return $this->fail('请输入正确的手机号');
         }
-        if ($customer['phone'] != $data['phone'] && $this->services->count(['phone' => $data['phone']])) {
+        $targetAppid = $data['appid'] ?: $customer['appid'];
+        $appidChanged = $targetAppid != $customer['appid'];
+        if (($customer['phone'] != $data['phone'] || $appidChanged) && $this->services->count(['phone' => $data['phone'], 'appid' => $targetAppid])) {
             return $this->fail('该手机号的客服已存在!');
+        }
+        if ($data['account'] && ($customer['account'] != $data['account'] || $appidChanged) && $this->services->count(['account' => $data['account'], 'appid' => $targetAppid])) {
+            return $this->fail('该客服账号已存在!');
         }
         if ($data['password']) {
             if (!preg_match('/^[0-9a-z_$]{6,16}$/i', $data['password'])) {
@@ -309,6 +317,6 @@ class Service extends AuthController
         if (!$serviceInfo->status) {
             return $this->fail('客服帐号已被禁用');
         }
-        return $this->success($services->authLogin($serviceInfo->account));
+        return $this->success($services->loginByKefuInfo($serviceInfo));
     }
 }
