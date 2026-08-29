@@ -19,8 +19,6 @@ def REGISTRY      = '10.242.98.181:9093/crmchat'
 def REGISTRY_HOST = '10.242.98.181:9093'
 // jenkins 用户对 /opt 无写权限，部署目录放在其主目录下（shell 内解析 $HOME）
 def DEPLOY_DIR    = '$HOME/crm-chat/compose'
-// 各环境宿主机映射端口（容器内固定 20108）
-def APP_PORT      = [dev: '20118', test: '20128']
 
 pipeline {
     agent any
@@ -116,10 +114,11 @@ pipeline {
         stage('部署验证') {
             when { expression { params.ENV in ['dev', 'test'] } }
             steps {
-                // 同机部署直接探活本机端口；数据库未初始化时返回400/404也视为进程存活
+                // Jenkins自身运行在容器内，127.0.0.1探不到宿主映射端口，改在应用容器内自检；
+                // 任意HTTP应答（含302安装页重定向、数据库未初始化的4xx）均视为进程存活
                 retry(10) {
                     sleep 10
-                    sh "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:${APP_PORT[params.ENV]}/api/admin/login/info | grep -E '200|400|404'"
+                    sh "docker exec ${SERVICE_NAME}-${params.ENV}-${SERVICE_NAME}-1 php -r 'exit(@file_get_contents(\"http://127.0.0.1:20108/api/admin/login/info\") === false && empty(\$http_response_header) ? 1 : 0);'"
                 }
             }
         }
