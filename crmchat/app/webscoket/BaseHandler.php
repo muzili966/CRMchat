@@ -111,10 +111,11 @@ abstract class BaseHandler
             return $response->message('err_tip', ['msg' => '不能和自己聊天']);
         }
 
-        /** @var ChatUserServices $chatUserServices */
-        $chatUserServices = app()->make(ChatUserServices::class);
-        //接收人必须在当前租户内，跨租户消息直接拒绝（查询已被租户Scope约束）
-        if (!$chatUserServices->getCount(['id' => $to_user_id])) {
+        /** @var ChatUserServices $userService */
+        $userService = app()->make(ChatUserServices::class);
+        //接收人必须在当前租户内（查询被租户Scope约束），顺带取回后续要用的在线状态
+        $toUserOnlineValue = $userService->value(['id' => $to_user_id], 'online');
+        if (is_null($toUserOnlineValue)) {
             return $response->message('err_tip', ['msg' => '用户不存在']);
         }
 
@@ -158,8 +159,6 @@ abstract class BaseHandler
         $data['_add_time'] = $data['add_time'];
         $data['add_time'] = strtotime($data['add_time']);
 
-        /** @var ChatUserServices $userService */
-        $userService = app()->make(ChatUserServices::class);
         $_userInfo = $userService->getUserInfo($data['user_id'], ['nickname', 'avatar', 'version', 'is_tourist', 'online']);
         $isTourist = $_userInfo['is_tourist'];
         $data['nickname'] = $_userInfo['nickname'] ?? '';
@@ -200,26 +199,22 @@ abstract class BaseHandler
             $isBackstage = !!$kefuInfo['is_backstage'];
         }
 
-        //开启自动回复
+        //开启自动回复（Timer回调运行在新协程，wrap携带当前租户上下文）
         if ($auto_reply) {
             $app = app();
-            //Timer回调运行在新协程，需携带租户上下文
-            $tenantId = (int)(\crmeb\services\tenant\TenantContext::get() ?: 0);
-            Timer::after(100, function () use ($app, $services, $appId, $to_user_id, $other, $msn_type, $userId, $msn, $response, $tenantId) {
-                \crmeb\services\tenant\TenantContext::runAs($tenantId, function () use ($app, $services, $appId, $to_user_id, $userId, $msn, $msn_type, $other, $response) {
-                    $data = $services->autoReply($app, $appId, $to_user_id, $userId, $msn, $msn_type, $other);
-                    if ($data) {
-                        //给当前用户自动回复
-                        $toUserFd = $this->manager->getUserIdByFds($userId);
-                        $this->manager->pushing($toUserFd, $response->message('reply', $data)->getData());
-                        //给对方回复消息
-                        $toUserFd = $this->manager->getUserIdByFds($to_user_id);
-                        $this->manager->pushing($toUserFd, $response->message('chat', $data)->getData());
-                    }
-                });
-            });
+            Timer::after(100, \crmeb\services\tenant\TenantContext::wrap(function () use ($app, $services, $appId, $to_user_id, $other, $msn_type, $userId, $msn, $response) {
+                $data = $services->autoReply($app, $appId, $to_user_id, $userId, $msn, $msn_type, $other);
+                if ($data) {
+                    //给当前用户自动回复
+                    $toUserFd = $this->manager->getUserIdByFds($userId);
+                    $this->manager->pushing($toUserFd, $response->message('reply', $data)->getData());
+                    //给对方回复消息
+                    $toUserFd = $this->manager->getUserIdByFds($to_user_id);
+                    $this->manager->pushing($toUserFd, $response->message('chat', $data)->getData());
+                }
+            }));
         }
-        $toUserOnline = !!$userService->value(['id' => $to_user_id], 'online');
+        $toUserOnline = !!$toUserOnlineValue;
         //是否在线
         if ($online && $toUserOnline) {
             $this->manager->pushing($toUserFd, $response->message('reply', $data)->getData());

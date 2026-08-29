@@ -50,7 +50,10 @@ class BaseJobs implements JobInterface
                     $this->runJob($action, $job, $infoData, $errorCount);
                 });
             } else {
-                $this->runJob($action, $job, $infoData, $errorCount);
+                //升级窗口期的旧格式消息无租户字段，按改造前的无隔离语义执行，避免被异常吞掉后丢弃
+                TenantContext::withoutTenant(function () use ($action, $job, $infoData, $errorCount) {
+                    $this->runJob($action, $job, $infoData, $errorCount);
+                });
             }
         } catch (\Throwable $e) {
             Log::error('队列任务执行失败：' . get_class($this) . '，原因：' . $e->getMessage());

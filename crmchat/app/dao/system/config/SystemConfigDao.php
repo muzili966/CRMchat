@@ -67,31 +67,6 @@ class SystemConfigDao extends BaseDao
     }
 
     /**
-     * 获取租户覆盖行
-     * @param string $configName
-     * @param int $tenantId
-     * @return \think\Model|null
-     * @throws \think\db\exception\DataNotFoundException
-     * @throws \think\db\exception\DbException
-     * @throws \think\db\exception\ModelNotFoundException
-     */
-    public function getTenantRow(string $configName, int $tenantId)
-    {
-        return $this->getModel()->where('menu_name', $configName)->where('tenant_id', $tenantId)->find();
-    }
-
-    /**
-     * 更新平台默认层的配置值
-     * @param string $configName
-     * @param string $value json编码后的值
-     * @return mixed
-     */
-    public function updatePlatformValue(string $configName, string $value)
-    {
-        return $this->getModel()->where('menu_name', $configName)->where('tenant_id', 0)->update(['value' => $value]);
-    }
-
-    /**
      * 获取配置列表分页
      * @param array $where
      * @param int $page

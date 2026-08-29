@@ -42,6 +42,11 @@ class SystemAdmin extends BaseModel
     const TENANT_ADMIN_LEVEL = 1;
 
     /**
+     * 正常状态
+     */
+    const STATUS_NORMAL = 1;
+
+    /**
      * 数据表主键
      * @var string
      */
@@ -69,6 +74,16 @@ class SystemAdmin extends BaseModel
     public static function getRolesAttr($value)
     {
         return explode(',', $value);
+    }
+
+    /**
+     * 是否平台管理员；admin_type缺失时按租户管理员处理（默认最小权限）
+     * @param array|\ArrayAccess $adminInfo
+     * @return bool
+     */
+    public static function isPlatformAdmin($adminInfo): bool
+    {
+        return ($adminInfo['admin_type'] ?? self::TYPE_TENANT) == self::TYPE_PLATFORM;
     }
 
     /**

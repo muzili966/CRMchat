@@ -86,8 +86,7 @@ abstract class AuthController
      */
     protected function withPlatformScope(\Closure $fn)
     {
-        $adminType = $this->adminInfo['admin_type'] ?? SystemAdmin::TYPE_TENANT;
-        if ($adminType == SystemAdmin::TYPE_PLATFORM && !TenantContext::get()) {
+        if (SystemAdmin::isPlatformAdmin($this->adminInfo) && !TenantContext::get()) {
             return TenantContext::withoutTenant($fn);
         }
         return $fn();

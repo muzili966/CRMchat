@@ -27,6 +27,11 @@ use crmeb\exceptions\TenantContextException;
 class TenantContext
 {
     /**
+     * 平台（无租户）上下文标识
+     */
+    const PLATFORM_TENANT = 0;
+
+    /**
      * 协程上下文中的租户ID键名
      */
     const CONTEXT_TENANT_KEY = '__tenant_id';
@@ -74,6 +79,32 @@ class TenantContext
             return isset($context[self::CONTEXT_TENANT_KEY]) ? $context[self::CONTEXT_TENANT_KEY] : null;
         }
         return self::$fallbackTenantId;
+    }
+
+    /**
+     * 当前租户ID归一化访问器：未初始化视为平台(0)
+     * 适用于key构建、目录前缀等非数据隔离场景；数据访问请用must()
+     * @return int
+     */
+    public static function id(): int
+    {
+        return (int)(self::get() ?: self::PLATFORM_TENANT);
+    }
+
+    /**
+     * 包装闭包使其携带当前租户上下文执行，
+     * 用于Timer/协程等脱离当前协程上下文的异步回调边界
+     * @param \Closure $fn
+     * @return \Closure
+     */
+    public static function wrap(\Closure $fn): \Closure
+    {
+        $tenantId = self::id();
+        return function (...$args) use ($tenantId, $fn) {
+            return self::runAs($tenantId, function () use ($fn, $args) {
+                return $fn(...$args);
+            });
+        };
     }
 
     /**

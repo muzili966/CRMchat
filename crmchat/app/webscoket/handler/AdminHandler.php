@@ -17,7 +17,6 @@ use app\services\system\admin\AdminAuthServices;
 use app\webscoket\BaseHandler;
 use app\webscoket\Response;
 use crmeb\exceptions\AuthException;
-use crmeb\services\tenant\TenantContext;
 use Psr\SimpleCache\InvalidArgumentException;
 use think\response\Json;
 
@@ -44,10 +43,8 @@ class AdminHandler extends BaseHandler
         try {
             /** @var AdminAuthServices $adminAuthService */
             $adminAuthService = app()->make(AdminAuthServices::class);
-            //token寻址发生在租户上下文建立之前，需逃逸执行
-            $authInfo = TenantContext::withoutTenant(function () use ($adminAuthService, $token) {
-                return $adminAuthService->parseToken($token);
-            });
+            //parseToken内部完成token寻址逃逸、租户可用性校验与上下文建立
+            $authInfo = $adminAuthService->parseToken($token);
         } catch (AuthException $e) {
             return $response->fail($e->getMessage());
         }
@@ -55,8 +52,6 @@ class AdminHandler extends BaseHandler
         if (!$authInfo || !isset($authInfo['id'])) {
             return $response->fail('授权失败!');
         }
-
-        TenantContext::set((int)($authInfo['tenant_id'] ?? 0));
 
         return $response->success(['uid' => $authInfo['id']]);
     }

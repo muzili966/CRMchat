@@ -72,7 +72,7 @@ class SystemAdminServices extends BaseServices
             throw new AdminException('账号或密码错误，请重新输入');
         }
         //租户管理员登录时校验租户可用性（禁用/到期拦截）
-        if (($adminInfo->admin_type ?? SystemAdmin::TYPE_TENANT) == SystemAdmin::TYPE_TENANT) {
+        if (!SystemAdmin::isPlatformAdmin($adminInfo)) {
             /** @var TenantServices $tenantServices */
             $tenantServices = app()->make(TenantServices::class);
             $tenantServices->checkUsable((int)($adminInfo->tenant_id ?? 0));
@@ -100,25 +100,28 @@ class SystemAdminServices extends BaseServices
     public function login(string $account, string $password, string $type)
     {
         $adminInfo = $this->verifyLogin($account, $password);
-        $tokenInfo = $this->createToken($adminInfo->id, $type, (int)($adminInfo->tenant_id ?? 0));
-        /** @var SystemMenusServices $services */
-        $services = app()->make(SystemMenusServices::class);
-        [$menus, $uniqueAuth] = $services->getMenusList($adminInfo->roles, (int)$adminInfo['level']);
-        return [
-            'token'             => $tokenInfo['token'],
-            'expires_time'      => $tokenInfo['params']['exp'],
-            'menus'             => $menus,
-            'unique_auth'       => $uniqueAuth,
-            'user_info'         => [
-                'id'       => $adminInfo->getData('id'),
-                'account'  => $adminInfo->getData('account'),
-                'head_pic' => $adminInfo->getData('head_pic'),
-            ],
-            'logo'              => sys_config('site_logo'),
-            'logo_square'       => sys_config('site_logo_square'),
-            'version'           => get_crmeb_version(),
-            'newOrderAudioLink' => get_file_link(sys_config('new_order_audio_link', ''))
-        ];
+        //登录路由无租户上下文，菜单/角色/品牌配置读取需在管理员所属租户上下文中执行
+        return TenantContext::runAs((int)($adminInfo->tenant_id ?? 0), function () use ($adminInfo, $type) {
+            $tokenInfo = $this->createToken($adminInfo->id, $type, (int)($adminInfo->tenant_id ?? 0));
+            /** @var SystemMenusServices $services */
+            $services = app()->make(SystemMenusServices::class);
+            [$menus, $uniqueAuth] = $services->getMenusList($adminInfo->roles, (int)$adminInfo['level']);
+            return [
+                'token'             => $tokenInfo['token'],
+                'expires_time'      => $tokenInfo['params']['exp'],
+                'menus'             => $menus,
+                'unique_auth'       => $uniqueAuth,
+                'user_info'         => [
+                    'id'       => $adminInfo->getData('id'),
+                    'account'  => $adminInfo->getData('account'),
+                    'head_pic' => $adminInfo->getData('head_pic'),
+                ],
+                'logo'              => sys_config('site_logo'),
+                'logo_square'       => sys_config('site_logo_square'),
+                'version'           => get_crmeb_version(),
+                'newOrderAudioLink' => get_file_link(sys_config('new_order_audio_link', ''))
+            ];
+        });
     }
 
     /**
@@ -223,6 +226,9 @@ class SystemAdminServices extends BaseServices
         $data['pwd']      = $this->passwordHash($data['pwd']);
         $data['add_time'] = time();
         $data['roles']    = implode(',', $data['roles']);
+        //归属跟随创建者视角：平台视角产出平台管理员，租户视角产出该租户管理员
+        $data['tenant_id']  = TenantContext::id();
+        $data['admin_type'] = $data['tenant_id'] > 0 ? SystemAdmin::TYPE_TENANT : SystemAdmin::TYPE_PLATFORM;
 
         return $this->transaction(function () use ($data) {
             if ($this->dao->save($data)) {

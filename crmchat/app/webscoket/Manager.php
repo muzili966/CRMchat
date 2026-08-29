@@ -142,8 +142,7 @@ class Manager extends Websocket
      */
     public static function wsKey(string $type, $uid = '', ?int $tenantId = null): string
     {
-        $tenantId = $tenantId ?? (int)(TenantContext::get() ?: 0);
-        return '_ws_' . $tenantId . '_' . $type . $uid;
+        return '_ws_' . ($tenantId ?? TenantContext::id()) . '_' . $type . $uid;
     }
 
     /**

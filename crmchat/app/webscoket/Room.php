@@ -101,7 +101,7 @@ class Room
             'fd'         => $key,
             'is_open'    => 1,
             'appid'      => $appid,
-            'tenant_id'  => (int)(TenantContext::get() ?: 0),
+            'tenant_id'  => TenantContext::id(),
             'type'       => $this->type ?: 'user',
             'user_id'    => $userId,
             'to_user_id' => $toUserId,

@@ -11,7 +11,6 @@
 
 namespace app\http\middleware\admin;
 
-use app\models\system\admin\SystemAdmin;
 use app\Request;
 use app\services\system\admin\SystemRoleServices;
 use crmeb\exceptions\AuthException;
@@ -31,8 +30,8 @@ class AdminCkeckRoleMiddleware implements MiddlewareInterface
         if (!$request->adminId() || !$request->adminInfo())
             throw new AuthException(ApiErrorCode::ERR_ADMINID_VOID);
 
-        $adminType = $request->adminInfo()['admin_type'] ?? SystemAdmin::TYPE_TENANT;
-        if ($adminType != SystemAdmin::TYPE_PLATFORM) {
+        //权限粒度沿用level体系（0=免角色校验），admin_type仅决定租户数据边界
+        if ($request->adminInfo()['level']) {
             /** @var SystemRoleServices $systemRoleService */
             $systemRoleService = app()->make(SystemRoleServices::class);
             $systemRoleService->verifiAuth($request);

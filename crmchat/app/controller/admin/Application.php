@@ -13,6 +13,7 @@ namespace app\controller\admin;
 
 
 use app\services\ApplicationServices;
+use crmeb\services\tenant\TenantContext;
 use crmeb\utils\Encrypter;
 use FormBuilder\Exception\FormBuilderException;
 use think\db\exception\DataNotFoundException;
@@ -72,28 +73,30 @@ class Application extends AuthController
      */
     public function reset($id)
     {
-        $appInfo = $this->services->get($id);
-        if (!$appInfo) {
-            return $this->fail('应用不存在');
-        }
-        $rand               = rand(1000, 9999);
-        $time               = time();
-        $data['rand']       = $rand;
-        $data['timestamp']  = $time;
-        $data['app_secret'] = md5($appInfo->appid . $time . $rand);
-        /** @var Encrypter $encrypter */
-        $encrypter = app()->make(Encrypter::class);
+        return $this->withPlatformScope(function () use ($id) {
+            $appInfo = $this->services->get($id);
+            if (!$appInfo) {
+                return $this->fail('应用不存在');
+            }
+            $rand               = rand(1000, 9999);
+            $time               = time();
+            $data['rand']       = $rand;
+            $data['timestamp']  = $time;
+            $data['app_secret'] = md5($appInfo->appid . $time . $rand);
+            /** @var Encrypter $encrypter */
+            $encrypter = app()->make(Encrypter::class);
 
-        $data['token']     = $encrypter->encrypt(json_encode([
-            'appid'      => $appInfo->appid,
-            'app_secret' => $data['app_secret'],
-            'rand'       => $rand,
-            'timestamp'  => $time,
-        ]));
-        $data['token_md5'] = md5($data['token']);
-        $this->services->update($id, $data);
+            $data['token']     = $encrypter->encrypt(json_encode([
+                'appid'      => $appInfo->appid,
+                'app_secret' => $data['app_secret'],
+                'rand'       => $rand,
+                'timestamp'  => $time,
+            ]));
+            $data['token_md5'] = md5($data['token']);
+            $this->services->update($id, $data);
 
-        return $this->success($data);
+            return $this->success($data);
+        });
     }
 
     /**
@@ -108,6 +111,10 @@ class Application extends AuthController
             ['introduce', ''],
             [['tenant_id', 'd'], 0],
         ]);
+        //租户管理员创建的应用固定归属自身租户，忽略传入值
+        if (TenantContext::id()) {
+            $data['tenant_id'] = TenantContext::id();
+        }
         if (!$data['tenant_id']) {
             return $this->fail('请选择应用所属租户');
         }
@@ -164,7 +171,9 @@ class Application extends AuthController
             return $this->fail('缺少参数');
         }
 
-        return $this->success($this->services->getUpdateForm((int)$id));
+        return $this->success($this->withPlatformScope(function () use ($id) {
+            return $this->services->getUpdateForm((int)$id);
+        }));
     }
 
     /**
@@ -187,15 +196,23 @@ class Application extends AuthController
         if (!$data['name']) {
             return $this->fail('请填写应用名称');
         }
-        if ($data['tenant_id']) {
+        //仅平台超管可调整应用归属租户
+        if (TenantContext::id()) {
+            unset($data['tenant_id']);
+        } elseif ($data['tenant_id']) {
             /** @var \app\services\TenantServices $tenantServices */
             $tenantServices = app()->make(\app\services\TenantServices::class);
             $tenantServices->checkUsable((int)$data['tenant_id']);
         } else {
             unset($data['tenant_id']);
         }
-        $this->services->update($id, $data);
-        return $this->success('保存成功');
+        return $this->withPlatformScope(function () use ($id, $data) {
+            if (!$this->services->get($id)) {
+                return $this->fail('应用不存在');
+            }
+            $this->services->update($id, $data);
+            return $this->success('保存成功');
+        });
     }
 
     /**
@@ -208,8 +225,13 @@ class Application extends AuthController
         if (!$id) {
             return $this->fail('缺少参数');
         }
-        $this->services->update($id, ['is_delete' => 1]);
-        return $this->success('删除成功');
+        return $this->withPlatformScope(function () use ($id) {
+            if (!$this->services->get($id)) {
+                return $this->fail('应用不存在');
+            }
+            $this->services->update($id, ['is_delete' => 1]);
+            return $this->success('删除成功');
+        });
     }
 
 

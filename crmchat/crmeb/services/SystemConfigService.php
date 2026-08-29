@@ -63,7 +63,7 @@ class SystemConfigService
      */
     public static function get(string $key, $default = '', bool $isCaChe = false)
     {
-        $tenantId = self::currentTenantId();
+        $tenantId = TenantContext::id();
         $callable = function () use ($key, $tenantId) {
             /** @var SystemConfigServices $service */
             $service = app()->make(SystemConfigServices::class);
@@ -81,15 +81,6 @@ class SystemConfigService
     }
 
     /**
-     * 当前租户上下文（未初始化按平台默认层读取）
-     * @return int
-     */
-    protected static function currentTenantId(): int
-    {
-        return (int)(TenantContext::get() ?: 0);
-    }
-
-    /**
      * 获取多个配置
      * @param array $keys 示例 [['appid','1'],'appkey']
      * @param bool $isCaChe 是否获取缓存配置
@@ -97,7 +88,7 @@ class SystemConfigService
      */
     public static function more(array $keys, bool $isCaChe = false)
     {
-        $tenantId = self::currentTenantId();
+        $tenantId = TenantContext::id();
         $callable = function () use ($keys, $tenantId) {
             /** @var SystemConfigServices $service */
             $service = app()->make(SystemConfigServices::class);

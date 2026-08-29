@@ -13,7 +13,6 @@ namespace app\services;
 
 
 use app\dao\ApplicationDao;
-use app\dao\system\admin\SystemAdminDao;
 use app\dao\TenantDao;
 use app\models\system\admin\SystemAdmin;
 use app\models\Tenant;
@@ -185,45 +184,49 @@ class TenantServices extends BaseServices
     }
 
     /**
-     * 为租户创建管理员
+     * 为租户创建管理员：在目标租户上下文中复用统一的管理员创建流程
      * @param array $data
      * @return bool
      */
     public function createTenantAdmin(array $data)
     {
-        $tenantInfo = $this->dao->get((int)$data['tenant_id']);
-        if (!$tenantInfo || $tenantInfo->is_delete) {
-            throw new AdminException('租户不存在');
-        }
+        $tenantId = (int)$data['tenant_id'];
+        $this->mustExists($tenantId);
         if (!$data['account'] || !$data['pwd']) {
             throw new AdminException('请填写管理员账号和密码');
         }
-        if ($data['pwd'] != $data['conf_pwd']) {
-            throw new AdminException('两次输入的密码不相同');
-        }
-        /** @var SystemAdminDao $adminDao */
-        $adminDao = app()->make(SystemAdminDao::class);
-        //管理员账号全局唯一（统一入口按账号定位租户），需跨租户检查
-        $accountExists = TenantContext::withoutTenant(function () use ($adminDao, $data) {
-            return $adminDao->count(['account' => $data['account'], 'is_del' => 0]);
+        $roles = array_map('intval', $data['roles'] ?? []);
+        /** @var \app\services\system\admin\SystemAdminServices $adminServices */
+        $adminServices = app()->make(\app\services\system\admin\SystemAdminServices::class);
+        return TenantContext::runAs($tenantId, function () use ($adminServices, $data, $roles) {
+            $this->checkTenantRoles($roles);
+            return $adminServices->create([
+                'account' => $data['account'],
+                'pwd' => $data['pwd'],
+                'conf_pwd' => $data['conf_pwd'],
+                'real_name' => $data['real_name'] ?: $data['account'],
+                'roles' => $roles,
+                'level' => $roles ? SystemAdmin::TENANT_ADMIN_LEVEL : 0,
+                'status' => SystemAdmin::STATUS_NORMAL,
+            ]);
         });
-        if ($accountExists) {
-            throw new AdminException('管理员账号已存在');
+    }
+
+    /**
+     * 校验角色归属当前租户，禁止引用其他租户的角色
+     * @param array $roles
+     * @return void
+     */
+    protected function checkTenantRoles(array $roles)
+    {
+        if (!$roles) {
+            return;
         }
-        $adminData = [
-            'account' => $data['account'],
-            'pwd' => $this->passwordHash($data['pwd']),
-            'real_name' => $data['real_name'] ?: $data['account'],
-            'roles' => implode(',', $data['roles'] ?? []),
-            'level' => SystemAdmin::TENANT_ADMIN_LEVEL,
-            'status' => 1,
-            'add_time' => time(),
-            'tenant_id' => (int)$data['tenant_id'],
-            'admin_type' => SystemAdmin::TYPE_TENANT,
-        ];
-        if (!$adminDao->save($adminData)) {
-            throw new AdminException('创建租户管理员失败');
+        /** @var \app\services\system\admin\SystemRoleServices $roleServices */
+        $roleServices = app()->make(\app\services\system\admin\SystemRoleServices::class);
+        $validCount = count($roleServices->getColumn([['id', 'IN', $roles]], 'id'));
+        if ($validCount != count($roles)) {
+            throw new AdminException('所选角色不属于该租户');
         }
-        return true;
     }
 }

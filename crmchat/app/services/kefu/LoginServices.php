@@ -112,7 +112,7 @@ class LoginServices extends BaseServices
         }
         /** @var TenantServices $tenantServices */
         $tenantServices = app()->make(TenantServices::class);
-        $tenantServices->checkUsableByAppid((string)$kefuInfo->appid);
+        $tenantServices->checkUsable((int)($kefuInfo->tenant_id ?? 0));
         //登录先于租户上下文建立，状态落库需逃逸执行
         return TenantContext::withoutTenant(function () use ($kefuInfo, $isApp, $clientId) {
             return $this->doLoginByKefuInfo($kefuInfo, $isApp, $clientId);
@@ -128,9 +128,7 @@ class LoginServices extends BaseServices
      */
     protected function doLoginByKefuInfo($kefuInfo, int $isApp, ?string $clientId)
     {
-        /** @var TenantServices $tenantServices */
-        $tenantServices = app()->make(TenantServices::class);
-        $token = $this->createToken($kefuInfo->id, 'kefu', $tenantServices->tenantIdByAppid((string)$kefuInfo->appid));
+        $token = $this->createToken($kefuInfo->id, 'kefu', (int)($kefuInfo->tenant_id ?? 0));
         $kefuInfo->ip = request()->ip();
         $kefuInfo->status = 1;
         if (!$kefuInfo->is_app) {
@@ -183,8 +181,10 @@ class LoginServices extends BaseServices
             throw new AuthException(ApiErrorCode::ERR_LOGIN_INVALID, $code);
         }
 
-        //获取管理员信息
-        $adminInfo = $this->dao->get($id);
+        //获取管理员信息（token寻址先于租户上下文建立，逃逸执行）
+        $adminInfo = TenantContext::withoutTenant(function () use ($id) {
+            return $this->dao->get($id);
+        });
         if (!$adminInfo || !$adminInfo->id) {
             throw new AuthException(ApiErrorCode::ERR_LOGIN_STATUS, $code);
         }
@@ -193,6 +193,13 @@ class LoginServices extends BaseServices
         if (\crmeb\services\tenant\TenantScope::tokenTenantMismatch($tokenTenantId, (int)($adminInfo->tenant_id ?? 0))) {
             throw new AuthException(ApiErrorCode::ERR_LOGIN_STATUS, $code);
         }
+
+        //解析即建立租户上下文；每请求校验租户可用性，禁用/到期即时生效
+        $tenantId = (int)($adminInfo->tenant_id ?? 0);
+        /** @var TenantServices $tenantServices */
+        $tenantServices = app()->make(TenantServices::class);
+        $tenantServices->checkUsable($tenantId);
+        TenantContext::set($tenantId);
 
         $adminInfo->type = $type;
 

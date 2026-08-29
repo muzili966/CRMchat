@@ -41,8 +41,7 @@ class Tenant extends AuthController
      */
     protected function checkPlatformAdmin()
     {
-        $adminType = $this->adminInfo['admin_type'] ?? SystemAdmin::TYPE_TENANT;
-        if ($adminType != SystemAdmin::TYPE_PLATFORM) {
+        if (!SystemAdmin::isPlatformAdmin($this->adminInfo)) {
             throw new \crmeb\exceptions\AdminException('仅平台管理员可以管理租户');
         }
     }
@@ -110,7 +109,7 @@ class Tenant extends AuthController
             return $this->fail('参数错误');
         }
         $this->services->setStatus((int)$id, (int)$status);
-        return $this->success($status == 0 ? '租户已禁用' : '租户已启用');
+        return $this->success($status == \app\models\Tenant::STATUS_DISABLE ? '租户已禁用' : '租户已启用');
     }
 
     /**

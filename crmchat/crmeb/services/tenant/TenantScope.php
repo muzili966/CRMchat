@@ -56,7 +56,7 @@ class TenantScope
      */
     public static function uploadDir(string $dir): string
     {
-        $tenantId = (int)(TenantContext::get() ?: 0);
+        $tenantId = TenantContext::id();
         if ($tenantId > 0) {
             return 'tenant/' . $tenantId . '/' . ltrim($dir, '/');
         }

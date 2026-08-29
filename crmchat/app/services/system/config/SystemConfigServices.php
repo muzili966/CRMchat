@@ -13,6 +13,7 @@ namespace app\services\system\config;
 
 
 use app\dao\system\config\SystemConfigDao;
+use app\models\system\config\SystemConfig;
 use app\services\agent\AgentManageServices;
 use crmeb\basic\BaseServices;
 use crmeb\exceptions\AdminException;
@@ -266,6 +267,24 @@ class SystemConfigServices extends BaseServices
     }
 
     /**
+     * 查询租户覆盖层：白名单交集过滤后返回 menu_name => 原始json值 映射
+     * @param array $names
+     * @param int $tenantId
+     * @return array
+     */
+    protected function tenantOverrideMap(array $names, int $tenantId): array
+    {
+        if ($tenantId <= 0) {
+            return [];
+        }
+        $overridable = array_values(array_intersect($names, SystemConfigService::TENANT_OVERRIDABLE));
+        if (!$overridable) {
+            return [];
+        }
+        return $this->dao->getTenantValueMap($overridable, $tenantId);
+    }
+
+    /**
      * 租户视角读取配置：白名单内租户覆盖优先，miss回落平台默认
      * @param string $configName
      * @param int $tenantId
@@ -274,11 +293,9 @@ class SystemConfigServices extends BaseServices
      */
     public function getTenantConfigValue(string $configName, int $tenantId, $default = null)
     {
-        if ($tenantId > 0 && in_array($configName, SystemConfigService::TENANT_OVERRIDABLE)) {
-            $tenantValue = $this->dao->getTenantValueMap([$configName], $tenantId);
-            if (isset($tenantValue[$configName])) {
-                return json_decode($tenantValue[$configName], true);
-            }
+        $override = $this->tenantOverrideMap([$configName], $tenantId);
+        if (isset($override[$configName])) {
+            return json_decode($override[$configName], true);
         }
         return $this->getConfigValue($configName, $default);
     }
@@ -292,28 +309,21 @@ class SystemConfigServices extends BaseServices
     public function getTenantConfigAll(array $configName, int $tenantId)
     {
         $all = $this->getConfigAll($configName);
-        if ($tenantId <= 0) {
-            return $all;
-        }
         $names = $configName ?: SystemConfigService::TENANT_OVERRIDABLE;
-        $overridable = array_values(array_intersect($names, SystemConfigService::TENANT_OVERRIDABLE));
-        if (!$overridable) {
-            return $all;
-        }
-        foreach ($this->dao->getTenantValueMap($overridable, $tenantId) as $key => $value) {
+        foreach ($this->tenantOverrideMap($names, $tenantId) as $key => $value) {
             $all[$key] = json_decode($value, true);
         }
         return $all;
     }
 
     /**
-     * 保存基础配置：平台管理员写平台默认层；租户管理员仅可写白名单覆盖层
+     * 保存基础配置：平台视角写平台默认层；租户视角仅可写白名单覆盖层
      * @param array $post
      * @return void
      */
     public function saveConfigValues(array $post)
     {
-        $tenantId = (int)(TenantContext::get() ?: 0);
+        $tenantId = TenantContext::id();
         foreach ($post as $key => $value) {
             $configOne = $this->getOne(['menu_name' => $key, 'tenant_id' => 0]);
             if (!$configOne) {
@@ -324,27 +334,25 @@ class SystemConfigServices extends BaseServices
             if ($tenantId > 0) {
                 $this->saveTenantValue((string)$key, $value, $tenantId);
             } else {
-                $this->dao->updatePlatformValue((string)$key, json_encode($value));
+                $this->dao->update(['menu_name' => $key, 'tenant_id' => 0], ['value' => json_encode($value)]);
             }
         }
     }
 
     /**
-     * 配置表单展示时叠加当前租户的覆盖值
+     * 配置表单展示时叠加当前租户的覆盖值（保持原始json形态与平台行一致）
      * @param array $list 平台配置定义列表
      * @return array
      */
     protected function overlayTenantValues(array $list)
     {
-        $tenantId = (int)(TenantContext::get() ?: 0);
-        if ($tenantId <= 0 || !$list) {
+        if (!$list) {
             return $list;
         }
-        $names = array_values(array_intersect(array_column($list, 'menu_name'), SystemConfigService::TENANT_OVERRIDABLE));
-        if (!$names) {
+        $tenantValues = $this->tenantOverrideMap(array_column($list, 'menu_name'), TenantContext::id());
+        if (!$tenantValues) {
             return $list;
         }
-        $tenantValues = $this->dao->getTenantValueMap($names, $tenantId);
         foreach ($list as &$item) {
             if (isset($tenantValues[$item['menu_name']])) {
                 $item['value'] = $tenantValues[$item['menu_name']];
@@ -365,7 +373,7 @@ class SystemConfigServices extends BaseServices
         if (!in_array($key, SystemConfigService::TENANT_OVERRIDABLE)) {
             return;
         }
-        $row = $this->dao->getTenantRow($key, $tenantId);
+        $row = $this->getOne(['menu_name' => $key, 'tenant_id' => $tenantId]);
         if ($row) {
             $row->value = json_encode($value);
             $row->save();
@@ -375,7 +383,7 @@ class SystemConfigServices extends BaseServices
             'menu_name' => $key,
             'value' => json_encode($value),
             'tenant_id' => $tenantId,
-            'status' => 0,
+            'status' => SystemConfig::STATUS_HIDDEN,
         ]);
     }
 

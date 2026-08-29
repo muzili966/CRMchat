@@ -16,11 +16,9 @@ use app\services\chat\ChatServiceRecordServices;
 use app\services\chat\ChatServiceServices;
 use app\services\chat\ChatUserServices;
 use app\services\kefu\LoginServices;
-use app\services\TenantServices;
 use app\webscoket\BaseHandler;
 use app\webscoket\Response;
 use crmeb\exceptions\AuthException;
-use crmeb\services\tenant\TenantContext;
 use Psr\SimpleCache\InvalidArgumentException;
 use think\db\exception\DataNotFoundException;
 use think\db\exception\DbException;
@@ -52,17 +50,11 @@ class KefuHandler extends BaseHandler
         try {
             /** @var LoginServices $services */
             $services = app()->make(LoginServices::class);
-            //token寻址发生在租户上下文建立之前，需逃逸执行
-            $kefuInfo = TenantContext::withoutTenant(function () use ($services, $token) {
-                return $services->parseToken($token);
-            });
+            //parseToken内部完成token寻址逃逸、租户可用性校验与上下文建立
+            $kefuInfo = $services->parseToken($token);
         } catch (AuthException $e) {
             return $response->fail($e->getMessage());
         }
-
-        /** @var TenantServices $tenantServices */
-        $tenantServices = app()->make(TenantServices::class);
-        TenantContext::set($tenantServices->tenantIdByAppid((string)$kefuInfo['appid']));
 
         /** @var ChatUserServices $userService */
         $userService = app()->make(ChatUserServices::class);

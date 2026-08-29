@@ -25,6 +25,11 @@ class SystemConfig extends BaseModel
     use ModelTrait;
 
     /**
+     * 隐藏状态（租户覆盖影子行使用，不参与平台配置结构展示）
+     */
+    const STATUS_HIDDEN = 0;
+
+    /**
      * 数据表主键
      * @var string
      */
