@@ -49,6 +49,10 @@ class JwtAuth
         $time = time();
         $exp = strtotime('+ 30day');
 
+        //租户声明写入jti，防止token跨租户复用
+        $tenantId = (int)($params['tenant_id'] ?? 0);
+        unset($params['tenant_id']);
+
         $params += [
             'iss' => $host,
             'aud' => $host,
@@ -56,7 +60,7 @@ class JwtAuth
             'nbf' => $time,
             'exp' => $exp,
         ];
-        $params['jti'] = compact('id', 'type');
+        $params['jti'] = ['id' => $id, 'type' => $type, 'tenant_id' => $tenantId];
         $token = JWT::encode($params, Env::get('app_key', $this->app_key));
 
         return compact('token', 'params');
@@ -65,14 +69,14 @@ class JwtAuth
     /**
      * 解析token
      * @param string $jwt
-     * @return array
+     * @return array [id, type, tenant_id|null] 旧token无租户声明时第三项为null
      */
     public function parseToken(string $jwt): array
     {
         $this->token = $jwt;
         list($headb64, $bodyb64, $cryptob64) = explode('.', $this->token);
         $payload = JWT::jsonDecode(JWT::urlsafeB64Decode($bodyb64));
-        return [$payload->jti->id, $payload->jti->type];
+        return [$payload->jti->id, $payload->jti->type, $payload->jti->tenant_id ?? null];
     }
 
     /**

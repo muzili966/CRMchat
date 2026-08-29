@@ -53,7 +53,7 @@ class AdminAuthServices extends BaseServices
         /** @var JwtAuth $jwtAuth */
         $jwtAuth = app()->make(JwtAuth::class);
         //设置解析token
-        [$id, $type] = $jwtAuth->parseToken($token);
+        [$id, $type, $tokenTenantId] = $jwtAuth->parseToken($token);
 
         //验证token
         try {
@@ -70,6 +70,11 @@ class AdminAuthServices extends BaseServices
         $adminInfo = $this->dao->get($id);
         if (!$adminInfo || !$adminInfo->id) {
             $this->authFailAfter($id, $type);
+            throw new AuthException(ApiErrorCode::ERR_LOGIN_STATUS);
+        }
+
+        //token租户声明与账号当前归属二次比对，防止跨租户复用（旧token无声明时兼容放行）
+        if (\crmeb\services\tenant\TenantScope::tokenTenantMismatch($tokenTenantId, (int)($adminInfo->tenant_id ?? 0))) {
             throw new AuthException(ApiErrorCode::ERR_LOGIN_STATUS);
         }
 

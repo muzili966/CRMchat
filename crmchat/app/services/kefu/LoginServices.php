@@ -128,7 +128,9 @@ class LoginServices extends BaseServices
      */
     protected function doLoginByKefuInfo($kefuInfo, int $isApp, ?string $clientId)
     {
-        $token = $this->createToken($kefuInfo->id, 'kefu');
+        /** @var TenantServices $tenantServices */
+        $tenantServices = app()->make(TenantServices::class);
+        $token = $this->createToken($kefuInfo->id, 'kefu', $tenantServices->tenantIdByAppid((string)$kefuInfo->appid));
         $kefuInfo->ip = request()->ip();
         $kefuInfo->status = 1;
         if (!$kefuInfo->is_app) {
@@ -170,7 +172,7 @@ class LoginServices extends BaseServices
         /** @var JwtAuth $jwtAuth */
         $jwtAuth = app()->make(JwtAuth::class);
         //设置解析token
-        [$id, $type] = $jwtAuth->parseToken($token);
+        [$id, $type, $tokenTenantId] = $jwtAuth->parseToken($token);
 
         //验证token
         try {
@@ -184,6 +186,11 @@ class LoginServices extends BaseServices
         //获取管理员信息
         $adminInfo = $this->dao->get($id);
         if (!$adminInfo || !$adminInfo->id) {
+            throw new AuthException(ApiErrorCode::ERR_LOGIN_STATUS, $code);
+        }
+
+        //token租户声明与客服当前归属二次比对，防止跨租户复用（旧token无声明时兼容放行）
+        if (\crmeb\services\tenant\TenantScope::tokenTenantMismatch($tokenTenantId, (int)($adminInfo->tenant_id ?? 0))) {
             throw new AuthException(ApiErrorCode::ERR_LOGIN_STATUS, $code);
         }
 

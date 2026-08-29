@@ -38,6 +38,18 @@ class TenantScope
     }
 
     /**
+     * token租户声明与账号当前归属是否不一致
+     * 旧token无租户声明（null）时兼容放行
+     * @param mixed $claim token中的租户声明
+     * @param int $actual 账号当前归属租户
+     * @return bool true=不一致，应拒绝
+     */
+    public static function tokenTenantMismatch($claim, int $actual): bool
+    {
+        return !is_null($claim) && (int)$claim !== $actual;
+    }
+
+    /**
      * 附件上传目录按租户分目录，平台上下文保持原目录
      * @param string $dir
      * @return string

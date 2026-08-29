@@ -107,3 +107,9 @@ UPDATE `eb_category` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
 UPDATE `eb_system_role` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
 UPDATE `eb_system_attachment` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
 UPDATE `eb_system_attachment_category` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
+
+-- 2026/08/29 多租户改造·阶段五（可选DDL，需DBA预检后手动执行）
+-- 客服账号租户内唯一索引。应用层已在租户上下文内做唯一性校验，此索引为数据库级兜底。
+-- 预检1（结果须为空）：SELECT tenant_id, account, COUNT(*) AS c FROM eb_chat_service WHERE account <> '' GROUP BY tenant_id, account HAVING c > 1;
+-- 预检2（存在空账号行时不可加此索引）：SELECT COUNT(*) FROM eb_chat_service WHERE account = '';
+-- 预检通过后执行：ALTER TABLE `eb_chat_service` ADD UNIQUE KEY `uk_tenant_account` (`tenant_id`, `account`);
