@@ -71,6 +71,12 @@ class TenantServices extends BaseServices
         if ($this->dao->getCount(['name' => $data['name'], 'is_delete' => 0])) {
             throw new AdminException('租户名称已存在');
         }
+        //未指定套餐时默认绑定价格最低的在售套餐（通常为免费版）
+        if (empty($data['plan_id'])) {
+            /** @var TenantPlanServices $planServices */
+            $planServices = app()->make(TenantPlanServices::class);
+            $data['plan_id'] = $planServices->getDefaultPlanId();
+        }
         $data['status'] = Tenant::STATUS_NORMAL;
         $data['create_time'] = time();
         $data['update_time'] = time();

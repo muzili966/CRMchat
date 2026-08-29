@@ -338,6 +338,34 @@ Route::group('api', function () {
             Route::put('tenant/set_status/:id/:status', 'system.Tenant/set_status')->option(['real_name' => '启用禁用租户']);
             //创建租户管理员
             Route::post('tenant/admin', 'system.Tenant/createAdmin')->option(['real_name' => '创建租户管理员']);
+            //套餐列表
+            Route::get('tenant/plan', 'system.TenantPlan/index')->option(['real_name' => '套餐列表']);
+            //在售套餐下拉
+            Route::get('tenant/plan/all', 'system.TenantPlan/all')->option(['real_name' => '在售套餐下拉']);
+            //创建套餐
+            Route::post('tenant/plan', 'system.TenantPlan/save')->option(['real_name' => '创建套餐']);
+            //修改套餐
+            Route::put('tenant/plan/:id', 'system.TenantPlan/update')->option(['real_name' => '修改套餐']);
+            //上架停售套餐
+            Route::put('tenant/plan/set_status/:id/:status', 'system.TenantPlan/set_status')->option(['real_name' => '上架停售套餐']);
+            //删除套餐
+            Route::delete('tenant/plan/:id', 'system.TenantPlan/delete')->option(['real_name' => '删除套餐']);
+            //开通续费套餐
+            Route::post('tenant/subscribe', 'system.Tenant/subscribe')->option(['real_name' => '开通续费套餐']);
+            //订购对账列表
+            Route::get('tenant/orders', 'system.TenantPlanOrder/index')->option(['real_name' => '订购对账列表']);
+            //对账CSV导出
+            Route::get('tenant/orders/export', 'system.TenantPlanOrder/export')->option(['real_name' => '对账导出']);
+            //发票列表
+            Route::get('tenant/invoice', 'system.TenantInvoice/index')->option(['real_name' => '发票列表']);
+            //申请开票
+            Route::post('tenant/invoice', 'system.TenantInvoice/apply')->option(['real_name' => '申请开票']);
+            //开具驳回发票
+            Route::put('tenant/invoice/audit/:id', 'system.TenantInvoice/audit')->option(['real_name' => '开具驳回发票']);
+            //租户通知列表
+            Route::get('tenant/notice', 'system.TenantNotice/index')->option(['real_name' => '租户通知列表']);
+            //租户通知已读
+            Route::put('tenant/notice/read/:id', 'system.TenantNotice/read')->option(['real_name' => '租户通知已读']);
             //管理员资源路由
             Route::resource('admin', 'system.Admin')->option([
                 'real_name' => [

@@ -113,3 +113,86 @@ UPDATE `eb_system_attachment_category` SET `tenant_id` = 1 WHERE `tenant_id` = 0
 -- 预检1（结果须为空）：SELECT tenant_id, account, COUNT(*) AS c FROM eb_chat_service WHERE account <> '' GROUP BY tenant_id, account HAVING c > 1;
 -- 预检2（存在空账号行时不可加此索引）：SELECT COUNT(*) FROM eb_chat_service WHERE account = '';
 -- 预检通过后执行：ALTER TABLE `eb_chat_service` ADD UNIQUE KEY `uk_tenant_account` (`tenant_id`, `account`);
+
+-- 2026/08/29 多租户改造·阶段六：套餐计费体系
+CREATE TABLE IF NOT EXISTS `eb_tenant_plan` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) NOT NULL DEFAULT '' COMMENT '套餐名称',
+  `price` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '月价格(元)',
+  `app_limit` int(10) NOT NULL DEFAULT '0' COMMENT '接入应用数上限,0=不限',
+  `seat_limit` int(10) NOT NULL DEFAULT '0' COMMENT '客服坐席数上限,0=不限',
+  `daily_msg_limit` int(10) NOT NULL DEFAULT '0' COMMENT '每日消息条数上限,0=不限',
+  `storage_limit_mb` int(10) NOT NULL DEFAULT '0' COMMENT '附件存储上限(MB),0=不限',
+  `record_keep_days` int(10) NOT NULL DEFAULT '0' COMMENT '聊天记录保留天数,0=永久',
+  `auto_reply` tinyint(1) NOT NULL DEFAULT '0' COMMENT '关键词自动回复',
+  `brand_custom` tinyint(1) NOT NULL DEFAULT '0' COMMENT '品牌自定义(站点名/LOGO/头像)',
+  `data_export` tinyint(1) NOT NULL DEFAULT '0' COMMENT '数据导出',
+  `app_push` tinyint(1) NOT NULL DEFAULT '0' COMMENT 'APP离线推送',
+  `sort` int(10) NOT NULL DEFAULT '0' COMMENT '排序',
+  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '0=停售,1=在售',
+  `is_delete` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否删除',
+  `create_time` int(10) NOT NULL DEFAULT '0' COMMENT '创建时间',
+  `update_time` int(10) NOT NULL DEFAULT '0' COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='租户套餐表';
+
+INSERT INTO `eb_tenant_plan` (`id`, `name`, `price`, `app_limit`, `seat_limit`, `daily_msg_limit`, `storage_limit_mb`, `record_keep_days`, `auto_reply`, `brand_custom`, `data_export`, `app_push`, `sort`, `status`, `create_time`, `update_time`) VALUES
+(1, '免费版', 0.00, 1, 2, 500, 200, 7, 0, 0, 0, 0, 1, 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
+(2, '体验版', 500.00, 2, 5, 5000, 2048, 30, 1, 0, 0, 1, 2, 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
+(3, '标准版', 1000.00, 5, 20, 20000, 10240, 180, 1, 1, 1, 1, 3, 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
+(4, '旗舰版', 2000.00, 0, 100, 0, 51200, 0, 1, 1, 1, 1, 4, 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP());
+
+CREATE TABLE IF NOT EXISTS `eb_tenant_plan_order` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID',
+  `order_no` varchar(32) NOT NULL DEFAULT '' COMMENT '对账单号',
+  `plan_id` int(10) NOT NULL DEFAULT '0' COMMENT '套餐ID',
+  `plan_name` varchar(50) NOT NULL DEFAULT '' COMMENT '套餐名称快照',
+  `plan_snapshot` text COMMENT '套餐配额快照json',
+  `months` int(10) NOT NULL DEFAULT '1' COMMENT '订购月数',
+  `amount` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '金额(元)',
+  `pay_type` tinyint(1) NOT NULL DEFAULT '1' COMMENT '1=后台开通,2=线下转账',
+  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '1=已生效,2=已作废',
+  `expire_before` int(10) NOT NULL DEFAULT '0' COMMENT '订购前到期时间',
+  `expire_after` int(10) NOT NULL DEFAULT '0' COMMENT '订购后到期时间',
+  `admin_id` int(10) NOT NULL DEFAULT '0' COMMENT '操作管理员ID',
+  `remark` varchar(255) NOT NULL DEFAULT '' COMMENT '备注',
+  `create_time` int(10) NOT NULL DEFAULT '0' COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_tenant_id` (`tenant_id`),
+  KEY `idx_order_no` (`order_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='租户套餐订购对账表';
+
+CREATE TABLE IF NOT EXISTS `eb_tenant_invoice` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID',
+  `order_id` int(10) NOT NULL DEFAULT '0' COMMENT '关联订购单ID',
+  `order_no` varchar(32) NOT NULL DEFAULT '' COMMENT '关联对账单号',
+  `title` varchar(100) NOT NULL DEFAULT '' COMMENT '发票抬头',
+  `tax_no` varchar(50) NOT NULL DEFAULT '' COMMENT '税号',
+  `type` tinyint(1) NOT NULL DEFAULT '1' COMMENT '1=普票,2=专票',
+  `amount` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '开票金额(元)',
+  `email` varchar(100) NOT NULL DEFAULT '' COMMENT '接收邮箱',
+  `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0=待开具,1=已开具,2=已驳回',
+  `invoice_no` varchar(50) NOT NULL DEFAULT '' COMMENT '发票号码',
+  `remark` varchar(255) NOT NULL DEFAULT '' COMMENT '备注/驳回原因',
+  `create_time` int(10) NOT NULL DEFAULT '0' COMMENT '申请时间',
+  `update_time` int(10) NOT NULL DEFAULT '0' COMMENT '处理时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_tenant_id` (`tenant_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='租户发票记录表';
+
+CREATE TABLE IF NOT EXISTS `eb_tenant_notice` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID',
+  `type` varchar(20) NOT NULL DEFAULT '' COMMENT '通知类型expire_warn=即将到期,expired=已到期,renew=续费成功',
+  `content` varchar(255) NOT NULL DEFAULT '' COMMENT '通知内容',
+  `is_read` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否已读',
+  `create_time` int(10) NOT NULL DEFAULT '0' COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_tenant_id` (`tenant_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='租户通知表';
+
+ALTER TABLE `eb_tenant` ADD `plan_id` int(10) NOT NULL DEFAULT '0' COMMENT '当前套餐ID,0=未订购(不限制)' AFTER `plan`;
+-- 存量租户按旗舰版兜底，避免升级后被配额限制影响现网
+UPDATE `eb_tenant` SET `plan_id` = 4 WHERE `plan_id` = 0;

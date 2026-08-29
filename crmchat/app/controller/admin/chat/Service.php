@@ -116,6 +116,9 @@ class Service extends AuthController
         if (TenantContext::id() && $appTenantId != TenantContext::id()) {
             return $this->fail('所选应用不属于当前租户');
         }
+        /** @var \app\services\TenantPlanServices $planServices */
+        $planServices = app()->make(\app\services\TenantPlanServices::class);
+        $planServices->checkSeatQuota($appTenantId);
         //客服归属其应用所在租户：查重与落库均在应用租户上下文中执行
         return TenantContext::runAs($appTenantId, function () use ($data, $services) {
             if ($this->services->count(['phone' => $data['phone'], 'appid' => $data['appid']])) {

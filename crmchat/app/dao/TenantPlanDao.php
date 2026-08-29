@@ -12,15 +12,15 @@
 namespace app\dao;
 
 
-use app\models\Tenant;
+use app\models\TenantPlan;
 use crmeb\basic\BaseDao;
 
 /**
- * 租户dao
- * Class TenantDao
+ * 租户套餐dao
+ * Class TenantPlanDao
  * @package app\dao
  */
-class TenantDao extends BaseDao
+class TenantPlanDao extends BaseDao
 {
 
     /**
@@ -28,41 +28,34 @@ class TenantDao extends BaseDao
      */
     protected function setModel(): string
     {
-        return Tenant::class;
+        return TenantPlan::class;
     }
 
     /**
-     * 获取租户列表
+     * 套餐列表
      * @param array $where
-     * @param int $page
-     * @param int $limit
      * @return array
      * @throws \think\db\exception\DataNotFoundException
      * @throws \think\db\exception\DbException
      * @throws \think\db\exception\ModelNotFoundException
      */
-    public function getTenantList(array $where, int $page, int $limit)
+    public function getPlanList(array $where)
     {
-        return $this->search($where)->when($page && $limit, function ($query) use ($page, $limit) {
-            $query->page($page, $limit);
-        })->order('id DESC')->select()->toArray();
+        return $this->search($where)->order('sort ASC,id ASC')->select()->toArray();
     }
 
     /**
-     * 获取指定时间前到期（含已到期）的正常租户
-     * @param int $before
-     * @return array
+     * 价格最低的在售套餐（新租户默认套餐）
+     * @return \think\Model|null
      * @throws \think\db\exception\DataNotFoundException
      * @throws \think\db\exception\DbException
      * @throws \think\db\exception\ModelNotFoundException
      */
-    public function getExpiringList(int $before)
+    public function getDefaultPlan()
     {
-        return $this->getModel()->where('is_delete', 0)
-            ->where('status', \app\models\Tenant::STATUS_NORMAL)
-            ->where('expire_time', '>', 0)
-            ->where('expire_time', '<', $before)
-            ->field('id,name,expire_time')
-            ->select()->toArray();
+        return $this->getModel()->where('status', TenantPlan::STATUS_ON)
+            ->where('is_delete', 0)
+            ->order('price ASC,id ASC')
+            ->find();
     }
 }

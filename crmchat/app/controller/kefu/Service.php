@@ -310,7 +310,14 @@ class Service extends AuthController
     public function getServiceInfo()
     {
         $this->kefuInfo['site_name'] = sys_config('site_name');
-        $this->kefuInfo['config_export_open'] = sys_config('config_export_open');
+        /** @var \app\services\TenantPlanServices $planServices */
+        $planServices = app()->make(\app\services\TenantPlanServices::class);
+        //数据导出开关同时受平台配置与套餐功能约束
+        $exportOpen = sys_config('config_export_open');
+        if (!$planServices->hasFeature(\crmeb\services\tenant\TenantContext::id(), 'data_export')) {
+            $exportOpen = 0;
+        }
+        $this->kefuInfo['config_export_open'] = $exportOpen;
         $this->kefuInfo['user_ids'] = $this->services->getColumn(['appid' => $this->kefuInfo['appid']], 'user_id');
         return $this->success($this->kefuInfo->toArray());
     }
@@ -387,6 +394,9 @@ class Service extends AuthController
         if (!$data['content']) {
             return $this->fail('缺少回复内容');
         }
+        /** @var \app\services\TenantPlanServices $planServices */
+        $planServices = app()->make(\app\services\TenantPlanServices::class);
+        $planServices->assertFeature(\crmeb\services\tenant\TenantContext::id(), 'auto_reply', '当前套餐不支持自动回复，请联系管理员升级套餐');
 
         if ($id) {
             $where = ['id' => $id, 'user_id' => $this->kefuInfo['user_id'], 'appid' => $this->kefuInfo['appid']];
@@ -434,6 +444,11 @@ class Service extends AuthController
      */
     public function setAutoReply($value)
     {
+        if ($value) {
+            /** @var \app\services\TenantPlanServices $planServices */
+            $planServices = app()->make(\app\services\TenantPlanServices::class);
+            $planServices->assertFeature(\crmeb\services\tenant\TenantContext::id(), 'auto_reply', '当前套餐不支持自动回复，请联系管理员升级套餐');
+        }
         $this->services->update(['id' => $this->kefuId], ['auto_reply' => $value]);
         return $this->success('设置成功');
     }

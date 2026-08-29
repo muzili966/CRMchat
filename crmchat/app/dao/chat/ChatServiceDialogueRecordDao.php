@@ -120,6 +120,16 @@ class ChatServiceDialogueRecordDao extends BaseDao
     }
 
     /**
+     * 删除指定时间之前的聊天记录（套餐保留天数清理，受当前租户上下文约束）
+     * @param int $time
+     * @return mixed
+     */
+    public function deleteBeforeTime(int $time)
+    {
+        return $this->getModel()->where('add_time', '<', $time)->delete();
+    }
+
+    /**
      * 清楚上周的游客用户聊天记录
      * @return bool
      */

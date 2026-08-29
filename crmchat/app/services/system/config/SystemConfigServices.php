@@ -373,6 +373,9 @@ class SystemConfigServices extends BaseServices
         if (!in_array($key, SystemConfigService::TENANT_OVERRIDABLE)) {
             return;
         }
+        /** @var \app\services\TenantPlanServices $planServices */
+        $planServices = app()->make(\app\services\TenantPlanServices::class);
+        $planServices->assertFeature($tenantId, 'brand_custom', '当前套餐不支持品牌自定义，请升级套餐');
         $row = $this->getOne(['menu_name' => $key, 'tenant_id' => $tenantId]);
         if ($row) {
             $row->value = json_encode($value);

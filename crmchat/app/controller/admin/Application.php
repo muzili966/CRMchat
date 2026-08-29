@@ -121,6 +121,9 @@ class Application extends AuthController
         /** @var \app\services\TenantServices $tenantServices */
         $tenantServices = app()->make(\app\services\TenantServices::class);
         $tenantServices->checkUsable((int)$data['tenant_id']);
+        /** @var \app\services\TenantPlanServices $planServices */
+        $planServices = app()->make(\app\services\TenantPlanServices::class);
+        $planServices->checkAppQuota((int)$data['tenant_id']);
 
         $rand               = rand(1000, 9999);
         $time               = time();
