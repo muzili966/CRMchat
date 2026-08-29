@@ -95,6 +95,7 @@ return is_win() ? [] : [
                 ['name' => 'tourist', 'type' => Table::TYPE_INT],
                 ['name' => 'is_open', 'type' => Table::TYPE_INT],
                 ['name' => 'appid', 'size' => 1024, 'type' => Table::TYPE_STRING],
+                ['name' => 'tenant_id', 'type' => Table::TYPE_INT],
             ]
         ]
     ],

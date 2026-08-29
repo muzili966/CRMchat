@@ -12,6 +12,7 @@
 namespace app\webscoket;
 
 
+use crmeb\services\tenant\TenantContext;
 use Swoole\Table as SwooleTable;
 use think\swoole\Table;
 
@@ -53,10 +54,6 @@ class Room
 
     const TYPE_NAME = 'socket_user_type';
 
-    /**
-     * 在线客服fd集合的缓存key
-     */
-    const KEFU_ROOM_KEY = '_ws_kefu';
 
     /**
      * 设置缓存
@@ -104,6 +101,7 @@ class Room
             'fd'         => $key,
             'is_open'    => 1,
             'appid'      => $appid,
+            'tenant_id'  => TenantContext::id(),
             'type'       => $this->type ?: 'user',
             'user_id'    => $userId,
             'to_user_id' => $toUserId,
@@ -314,16 +312,16 @@ class Room
     }
 
     /**
-     * 获取客服所有用户
+     * 获取当前租户的所有在线客服fd
      * @return array
      */
     public function getKefuRoomAll()
     {
-        return $this->cache->sMembers(self::KEFU_ROOM_KEY);
+        return $this->cache->sMembers(Manager::wsKey('kefu')) ?: [];
     }
 
     /**
-     * 获取指定应用的在线客服fd，避免跨应用广播
+     * 获取指定应用的在线客服fd，避免跨应用广播（key已按租户隔离，此处再按应用过滤）
      * @param string $appid
      * @return array
      */
@@ -332,7 +330,7 @@ class Room
         if ($appid === '') {
             return [];
         }
-        $fds = $this->cache->sMembers(self::KEFU_ROOM_KEY) ?: [];
+        $fds = $this->getKefuRoomAll();
         return array_values(array_filter($fds, function ($fd) use ($appid) {
             return $this->get((string)$fd, 'appid') === $appid;
         }));

@@ -38,6 +38,7 @@ class KefuAuthTokenMiddleware implements MiddlewareInterface
         $token = trim(ltrim($request->header(Config::get('cookie.token_name', 'Authori-zation')), 'Bearer'));
         /** @var LoginServices $services */
         $services = app()->make(LoginServices::class);
+        //parseToken内部完成token寻址逃逸、租户可用性校验与上下文建立
         $kefuInfo = $services->parseToken($token);
 
         Request::macro('kefuId', function () use (&$kefuInfo) {

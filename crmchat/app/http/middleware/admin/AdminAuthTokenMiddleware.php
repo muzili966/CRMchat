@@ -12,9 +12,12 @@
 namespace app\http\middleware\admin;
 
 
+use app\models\system\admin\SystemAdmin;
 use app\Request;
 use app\services\system\admin\AdminAuthServices;
+use app\services\TenantServices;
 use crmeb\interfaces\MiddlewareInterface;
+use crmeb\services\tenant\TenantContext;
 use think\facade\Config;
 
 /**
@@ -31,7 +34,19 @@ class AdminAuthTokenMiddleware implements MiddlewareInterface
 
         /** @var AdminAuthServices $service */
         $service = app()->make(AdminAuthServices::class);
+        //parseToken内部完成token寻址逃逸、租户可用性校验与上下文建立
         $adminInfo = $service->parseToken($token);
+
+        //平台超管可携带query参数tenant_id切换租户视角；仅读query，避免与POST数据字段冲突
+        if (SystemAdmin::isPlatformAdmin($adminInfo)) {
+            $viewTenantId = (int)$request->get('tenant_id', 0);
+            if ($viewTenantId > 0) {
+                /** @var TenantServices $tenantServices */
+                $tenantServices = app()->make(TenantServices::class);
+                $tenantServices->mustExists($viewTenantId);
+                TenantContext::set($viewTenantId);
+            }
+        }
 
         Request::macro('isAdminLogin', function () use (&$adminInfo) {
             return !is_null($adminInfo);

@@ -37,6 +37,13 @@ class SystemGroupData extends BaseModel
     protected $name = 'system_group_data';
 
     /**
+     * 现存组合数据（登录页轮播/隐私协议）均为平台级，本期豁免租户隔离；
+     * 未来需要租户级组合数据时按配置分层模式扩展
+     * @var bool
+     */
+    protected $tenantScoped = false;
+
+    /**
      * 状态搜索器
      * @param $query
      * @param $value

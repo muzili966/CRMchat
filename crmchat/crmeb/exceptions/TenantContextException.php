@@ -8,41 +8,15 @@
 // +----------------------------------------------------------------------
 // | Author: CRMEB Team <admin@crmeb.com>
 // +----------------------------------------------------------------------
-namespace app\models\other;
 
-use crmeb\traits\ModelTrait;
-use crmeb\basic\BaseModel;
-use think\Model;
+namespace crmeb\exceptions;
+
 
 /**
- *  缓存Model
- * Class Cache
- * @package app\models\other
+ * 租户上下文异常：在未初始化租户上下文时访问受租户隔离约束的数据
+ * Class TenantContextException
+ * @package crmeb\exceptions
  */
-class Cache extends BaseModel
+class TenantContextException extends \RuntimeException
 {
-    use ModelTrait;
-
-    /**
-     * 模型名称
-     * @var string
-     */
-    protected $name = 'cache';
-
-    /**
-     * 键值缓存表为平台级数据，豁免租户隔离
-     * @var bool
-     */
-    protected $tenantScoped = false;
-
-    /**
-     * 缓存KEY搜索器
-     * @param Model $query
-     * @param $value
-     * @param $data
-     */
-    public function searchKeyAttr($query, $value, $data)
-    {
-        $query->where('key', $value);
-    }
 }

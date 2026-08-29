@@ -26,11 +26,39 @@ CREATE TABLE IF NOT EXISTS `eb_chat_complain` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='用户投诉';
 
 --
+-- 表的结构 `eb_tenant`
+--
+
+CREATE TABLE IF NOT EXISTS `eb_tenant` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL DEFAULT '' COMMENT '租户名称',
+  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态0=禁用,1=正常',
+  `plan` varchar(32) NOT NULL DEFAULT '' COMMENT '套餐标识(预留)',
+  `expire_time` int(10) NOT NULL DEFAULT '0' COMMENT '到期时间0=永久(预留)',
+  `domain` varchar(100) NOT NULL DEFAULT '' COMMENT '独立域名(预留)',
+  `remark` varchar(255) NOT NULL DEFAULT '' COMMENT '备注',
+  `is_delete` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否删除',
+  `create_time` int(10) NOT NULL DEFAULT '0' COMMENT '创建时间',
+  `update_time` int(10) NOT NULL DEFAULT '0' COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='租户表';
+
+--
+-- 转存表中的数据 `eb_tenant`
+--
+
+INSERT INTO `eb_tenant` (`id`, `name`, `status`, `create_time`, `update_time`) VALUES
+(1, '默认租户', 1, 1625735898, 1625735898);
+
+-- --------------------------------------------------------
+
+--
 -- 表的结构 `eb_application`
 --
 
 CREATE TABLE IF NOT EXISTS `eb_application` (
   `id` int(11) NOT NULL,
+  `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID',
   `name` varchar(100) NOT NULL DEFAULT '' COMMENT '应用名称',
   `appid` varchar(32) NOT NULL DEFAULT '' COMMENT '应用ID',
   `app_secret` varchar(255) NOT NULL DEFAULT '' COMMENT '应用KEY',
@@ -49,8 +77,8 @@ CREATE TABLE IF NOT EXISTS `eb_application` (
 -- 转存表中的数据 `eb_application`
 --
 
-INSERT INTO `eb_application` (`id`, `name`, `appid`, `app_secret`, `icon`, `introduce`, `timestamp`, `rand`, `token`, `token_md5`, `is_delete`, `create_time`, `update_time`) VALUES
-(3, '客服', '202116257358989495', 'da52ac13388dbbfe45f34315f580e31e', 'https://qiniu.crmeb.net/attach/2021/07/069e7202107011810578311.png', '', 1625735898, 9495, 'eyJpdiI6Im1oNThXdWZSY250QkhuTm4wdXJkeFE9PSIsInZhbHVlIjoiM2lDMEFNdERZYWlLZmJhRnBMVVE4NG1IbTIwRlBEU3MxajdVSEplUHNYWDlEbHdCdHJsUWFSY0pIRlpIMjN4NHhneXpGaXJ4ZzYxTDRSdVJWVWJVdWxWcndmaGNnRWd1L1l2NmJ3U0VQQ0V2Ry96ZmNLeDNKRWtjVVFLZkVSbzgzd21pWVlCcjAxaUhmNEpSUC9aUGkzMm1VR3I2ZCtUc2pLamcrNGpVL29RPSIsIm1hYyI6IjlmMWFhZDlhY2UxYjRjYzFhMTAwODE5MzJjNDM3MWMxNGJiZjJjZjhhZTI5ODc3OWMxMDZlODRiYjFkZTI3M2EifQ==','2f9eac61b216208cac9c1f0859070a8b',0, '2021-07-08 09:18:18', '2021-07-08 09:18:18');
+INSERT INTO `eb_application` (`id`, `tenant_id`, `name`, `appid`, `app_secret`, `icon`, `introduce`, `timestamp`, `rand`, `token`, `token_md5`, `is_delete`, `create_time`, `update_time`) VALUES
+(3, 1, '客服', '202116257358989495', 'da52ac13388dbbfe45f34315f580e31e', 'https://qiniu.crmeb.net/attach/2021/07/069e7202107011810578311.png', '', 1625735898, 9495, 'eyJpdiI6Im1oNThXdWZSY250QkhuTm4wdXJkeFE9PSIsInZhbHVlIjoiM2lDMEFNdERZYWlLZmJhRnBMVVE4NG1IbTIwRlBEU3MxajdVSEplUHNYWDlEbHdCdHJsUWFSY0pIRlpIMjN4NHhneXpGaXJ4ZzYxTDRSdVJWVWJVdWxWcndmaGNnRWd1L1l2NmJ3U0VQQ0V2Ry96ZmNLeDNKRWtjVVFLZkVSbzgzd21pWVlCcjAxaUhmNEpSUC9aUGkzMm1VR3I2ZCtUc2pLamcrNGpVL29RPSIsIm1hYyI6IjlmMWFhZDlhY2UxYjRjYzFhMTAwODE5MzJjNDM3MWMxNGJiZjJjZjhhZTI5ODc3OWMxMDZlODRiYjFkZTI3M2EifQ==','2f9eac61b216208cac9c1f0859070a8b',0, '2021-07-08 09:18:18', '2021-07-08 09:18:18');
 
 -- --------------------------------------------------------
 
@@ -289,6 +317,8 @@ CREATE TABLE IF NOT EXISTS `eb_chat_user_label_assist` (
 
 CREATE TABLE IF NOT EXISTS `eb_system_admin` (
   `id` int(11) NOT NULL,
+  `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID,0=平台',
+  `admin_type` tinyint(1) NOT NULL DEFAULT '2' COMMENT '管理员类型1=平台超管,2=租户管理员',
   `account` varchar(32) NOT NULL DEFAULT '' COMMENT '后台管理员账号',
   `head_pic` varchar(255) NOT NULL DEFAULT '' COMMENT '后台管理员头像',
   `pwd` varchar(100) NOT NULL DEFAULT '' COMMENT '后台管理员密码',
@@ -307,8 +337,8 @@ CREATE TABLE IF NOT EXISTS `eb_system_admin` (
 -- 转存表中的数据 `eb_system_admin`
 --
 
-INSERT INTO `eb_system_admin` (`id`, `account`, `head_pic`, `pwd`, `real_name`, `roles`, `last_ip`, `last_time`, `add_time`, `login_count`, `level`, `status`, `is_del`) VALUES
-(1, 'admin', '', '$2y$10$/BM3hGVZN2wq2gPXYIJZB.9YGwaTO/xM2NVz/k71dfWkmJpQCOGuS', '', '', '1.80.112.217', 1626775956, 0, 74, 0, 1, 0);
+INSERT INTO `eb_system_admin` (`id`, `tenant_id`, `admin_type`, `account`, `head_pic`, `pwd`, `real_name`, `roles`, `last_ip`, `last_time`, `add_time`, `login_count`, `level`, `status`, `is_del`) VALUES
+(1, 0, 1, 'admin', '', '$2y$10$/BM3hGVZN2wq2gPXYIJZB.9YGwaTO/xM2NVz/k71dfWkmJpQCOGuS', '', '', '1.80.112.217', 1626775956, 0, 74, 0, 1, 0);
 
 -- --------------------------------------------------------
 
@@ -1027,3 +1057,30 @@ ALTER TABLE `eb_system_role`
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+-- 多租户改造：业务表补充租户维度（与update.sql保持一致）
+ALTER TABLE `eb_chat_user` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_chat_service` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_chat_service_dialogue_record` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_chat_service_record` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_chat_service_feedback` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_chat_auto_reply` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_auxiliary` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_chat_service_speechcraft` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_chat_user_group` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_chat_user_label` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_chat_user_label_assist` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_chat_complain` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_category` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_system_role` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_system_attachment` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `att_id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_system_attachment_category` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_system_log` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID,0=平台' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_system_config` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID,0=平台默认' AFTER `id`, ADD INDEX `idx_tenant_menu` (`tenant_id`, `menu_name`);
+
+-- 初始数据归入默认租户；system_config/system_log 保留为平台层(0)
+UPDATE `eb_chat_user` t INNER JOIN `eb_application` a ON t.appid = a.appid SET t.tenant_id = a.tenant_id WHERE t.tenant_id = 0;
+UPDATE `eb_chat_service` t INNER JOIN `eb_application` a ON t.appid = a.appid SET t.tenant_id = a.tenant_id WHERE t.tenant_id = 0;
+UPDATE `eb_chat_user` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
+UPDATE `eb_chat_service` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
+UPDATE `eb_system_attachment` SET `tenant_id` = 1 WHERE `tenant_id` = 0;

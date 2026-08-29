@@ -27,6 +27,26 @@ class SystemAdmin extends BaseModel
     use JwtAuthModelTrait;
 
     /**
+     * 平台超级管理员
+     */
+    const TYPE_PLATFORM = 1;
+
+    /**
+     * 租户管理员
+     */
+    const TYPE_TENANT = 2;
+
+    /**
+     * 租户管理员默认级别（非0，走角色权限校验）
+     */
+    const TENANT_ADMIN_LEVEL = 1;
+
+    /**
+     * 正常状态
+     */
+    const STATUS_NORMAL = 1;
+
+    /**
      * 数据表主键
      * @var string
      */
@@ -38,6 +58,12 @@ class SystemAdmin extends BaseModel
      */
     protected $name = 'system_admin';
 
+    /**
+     * 受租户隔离约束
+     * @var bool
+     */
+    protected $tenantScoped = true;
+
     protected $insert = ['add_time'];
 
     /**
@@ -48,6 +74,16 @@ class SystemAdmin extends BaseModel
     public static function getRolesAttr($value)
     {
         return explode(',', $value);
+    }
+
+    /**
+     * 是否平台管理员；admin_type缺失时按租户管理员处理（默认最小权限）
+     * @param array|\ArrayAccess $adminInfo
+     * @return bool
+     */
+    public static function isPlatformAdmin($adminInfo): bool
+    {
+        return ($adminInfo['admin_type'] ?? self::TYPE_TENANT) == self::TYPE_PLATFORM;
     }
 
     /**
@@ -120,6 +156,30 @@ class SystemAdmin extends BaseModel
     {
         if ($value != '' && $value != null) {
             $query->where('status', $value);
+        }
+    }
+
+    /**
+     * 租户搜索器
+     * @param Model $query
+     * @param $value
+     */
+    public function searchTenantIdAttr($query, $value)
+    {
+        if ($value !== '') {
+            $query->where('tenant_id', $value);
+        }
+    }
+
+    /**
+     * 管理员类型搜索器
+     * @param Model $query
+     * @param $value
+     */
+    public function searchAdminTypeAttr($query, $value)
+    {
+        if ($value) {
+            $query->where('admin_type', $value);
         }
     }
 

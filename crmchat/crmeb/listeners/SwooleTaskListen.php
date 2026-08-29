@@ -45,15 +45,17 @@ class SwooleTaskListen implements ListenerInterface
         $server = app()->make(Server::class);
         $userId = is_array($data['user_id']) ? $data['user_id'] : [$data['user_id']];
         $except = $data['except'] ?? [];
+        //task进程没有投递方协程上下文，租户从任务数据中恢复
+        $tenantId = isset($data['tenant_id']) && !is_null($data['tenant_id']) ? (int)$data['tenant_id'] : null;
         if (!count($userId) && $data['type'] != 'user') {
-            $fds = Manager::userFd(0);
+            $fds = Manager::userFd(0, '', $tenantId);
             foreach ($fds as $fd) {
                 if (!in_array($fd, $except) && $server->isEstablished($fd))
                     $server->push((int)$fd, json_encode($data['data']));
             }
         } else {
             foreach ($userId as $id) {
-                $fds = Manager::userFd($data['type'], $id);
+                $fds = Manager::userFd($data['type'], $id, $tenantId);
                 foreach ($fds as $fd) {
                     if (!in_array($fd, $except) && $server->isEstablished($fd))
                         $server->push((int)$fd, json_encode($data['data']));

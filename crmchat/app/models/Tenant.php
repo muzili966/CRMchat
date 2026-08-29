@@ -9,20 +9,41 @@
 // | Author: CRMEB Team <admin@crmeb.com>
 // +----------------------------------------------------------------------
 
-namespace app\models\system\config;
+namespace app\models;
+
 
 use crmeb\basic\BaseModel;
 use crmeb\traits\ModelTrait;
 use think\Model;
 
 /**
- * 配置分类模型
- * Class SystemConfigTab
- * @package app\models\system\config
+ * 租户模型
+ * Class Tenant
+ * @package app\models
  */
-class SystemConfigTab extends BaseModel
+class Tenant extends BaseModel
 {
     use ModelTrait;
+
+    /**
+     * 禁用状态
+     */
+    const STATUS_DISABLE = 0;
+
+    /**
+     * 正常状态
+     */
+    const STATUS_NORMAL = 1;
+
+    /**
+     * 存量数据迁移归属的默认租户ID
+     */
+    const DEFAULT_TENANT_ID = 1;
+
+    /**
+     * 平台（无租户）上下文标识
+     */
+    const PLATFORM_TENANT_ID = 0;
 
     /**
      * 数据表主键
@@ -34,13 +55,25 @@ class SystemConfigTab extends BaseModel
      * 模型名称
      * @var string
      */
-    protected $name = 'system_config_tab';
+    protected $name = 'tenant';
 
     /**
-     * 配置分类结构平台统一，豁免租户隔离
+     * 租户本体为平台级数据，豁免租户隔离
      * @var bool
      */
     protected $tenantScoped = false;
+
+    /**
+     * 租户名称搜索器
+     * @param Model $query
+     * @param $value
+     */
+    public function searchNameLikeAttr($query, $value)
+    {
+        if ($value) {
+            $query->whereLike('name', '%' . $value . '%');
+        }
+    }
 
     /**
      * 状态搜索器
@@ -49,46 +82,18 @@ class SystemConfigTab extends BaseModel
      */
     public function searchStatusAttr($query, $value)
     {
-        if ($value != '') {
+        if ($value !== '') {
             $query->where('status', $value);
         }
     }
 
     /**
-     * pid搜索器
+     * 是否删除搜索器
      * @param Model $query
      * @param $value
      */
-    public function searchPidAttr($query, $value)
+    public function searchIsDeleteAttr($query, $value)
     {
-        if (is_array($value)) {
-            $query->whereIn('pid', $value);
-        } else {
-            $value && $query->where('pid', $value);
-        }
+        $query->where('is_delete', $value);
     }
-
-    /**
-     * 类型搜索器
-     * @param Model $query
-     * @param $value
-     */
-    public function searchTypeAttr($query, $value)
-    {
-        $query->where('status', 1);
-        if ($value > -1) {
-            $query->where(['type' => $value, 'pid' => 0]);
-        }
-    }
-
-    /**
-     * 分类名称搜索器
-     * @param Model $query
-     * @param $value
-     */
-    public function searchTitleAttr($query, $value)
-    {
-        $query->whereLike('title', '%' . $value . '%');
-    }
-
 }

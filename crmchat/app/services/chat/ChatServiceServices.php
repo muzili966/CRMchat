@@ -267,11 +267,11 @@ class ChatServiceServices extends BaseServices
         $serviceLogList = $logServices->getServiceChatList(['appid' => $appId, 'to_user_id' => $userId], $limit, $idTo);
         $result['serviceList'] = array_reverse($logServices->tidyChat($serviceLogList));
         try {
-            //欢迎语
+            //欢迎语（Timer回调运行在新协程，wrap携带当前租户上下文）
             $app = app();
-            Timer::after(1000, function () use ($app, $appId, $toUserId, $userId, $userInfo) {
+            Timer::after(1000, \crmeb\services\tenant\TenantContext::wrap(function () use ($app, $appId, $toUserId, $userId, $userInfo) {
                 $this->welcomeWords($app, $appId, $toUserId, $userId, $userInfo);
-            });
+            }));
         } catch (\Exception $e) {
             Log::error($e->getMessage());
         }

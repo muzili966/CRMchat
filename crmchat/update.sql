@@ -38,3 +38,78 @@ UPDATE `eb_chat_user` SET `online` = 1 WHERE `id` = (SELECT `user_id` FROM `eb_c
 
 -- 2021/10/21新增
 ALTER TABLE `eb_chat_service_record` ADD `delete_time` INT(10) NULL DEFAULT NULL COMMENT '删除字段' AFTER `update_time`;
+
+-- 2026/08/29 多租户改造·阶段一：租户实体与两级管理员
+CREATE TABLE IF NOT EXISTS `eb_tenant` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL DEFAULT '' COMMENT '租户名称',
+  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态0=禁用,1=正常',
+  `plan` varchar(32) NOT NULL DEFAULT '' COMMENT '套餐标识(预留)',
+  `expire_time` int(10) NOT NULL DEFAULT '0' COMMENT '到期时间0=永久(预留)',
+  `domain` varchar(100) NOT NULL DEFAULT '' COMMENT '独立域名(预留)',
+  `remark` varchar(255) NOT NULL DEFAULT '' COMMENT '备注',
+  `is_delete` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否删除',
+  `create_time` int(10) NOT NULL DEFAULT '0' COMMENT '创建时间',
+  `update_time` int(10) NOT NULL DEFAULT '0' COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='租户表';
+
+INSERT INTO `eb_tenant` (`id`, `name`, `status`, `create_time`, `update_time`) VALUES (1, '默认租户', 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP());
+
+ALTER TABLE `eb_application` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+UPDATE `eb_application` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
+
+ALTER TABLE `eb_system_admin` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID,0=平台' AFTER `id`, ADD `admin_type` tinyint(1) NOT NULL DEFAULT '2' COMMENT '管理员类型1=平台超管,2=租户管理员' AFTER `tenant_id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+UPDATE `eb_system_admin` SET `admin_type` = 1, `tenant_id` = 0 WHERE `level` = 0;
+UPDATE `eb_system_admin` SET `admin_type` = 2, `tenant_id` = 1 WHERE `level` <> 0;
+
+-- 2026/08/29 多租户改造·阶段三：业务表补充租户维度
+ALTER TABLE `eb_chat_user` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_chat_service` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_chat_service_dialogue_record` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_chat_service_record` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_chat_service_feedback` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_chat_auto_reply` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_auxiliary` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_chat_service_speechcraft` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_chat_user_group` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_chat_user_label` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_chat_user_label_assist` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_chat_complain` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_category` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_system_role` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_system_attachment` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `att_id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_system_attachment_category` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_system_log` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID,0=平台' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
+ALTER TABLE `eb_system_config` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID,0=平台默认' AFTER `id`, ADD INDEX `idx_tenant_menu` (`tenant_id`, `menu_name`);
+
+-- 存量数据回填：带appid的表按应用归属租户，无法匹配及无appid的表归入默认租户；system_config/system_log 历史数据保留为平台层(0)
+UPDATE `eb_chat_user` t INNER JOIN `eb_application` a ON t.appid = a.appid SET t.tenant_id = a.tenant_id WHERE t.tenant_id = 0;
+UPDATE `eb_chat_service` t INNER JOIN `eb_application` a ON t.appid = a.appid SET t.tenant_id = a.tenant_id WHERE t.tenant_id = 0;
+UPDATE `eb_chat_service_dialogue_record` t INNER JOIN `eb_application` a ON t.appid = a.appid SET t.tenant_id = a.tenant_id WHERE t.tenant_id = 0;
+UPDATE `eb_chat_service_record` t INNER JOIN `eb_application` a ON t.appid = a.appid SET t.tenant_id = a.tenant_id WHERE t.tenant_id = 0;
+UPDATE `eb_chat_service_feedback` t INNER JOIN `eb_application` a ON t.appid = a.appid SET t.tenant_id = a.tenant_id WHERE t.tenant_id = 0;
+UPDATE `eb_chat_auto_reply` t INNER JOIN `eb_application` a ON t.appid = a.appid SET t.tenant_id = a.tenant_id WHERE t.tenant_id = 0;
+UPDATE `eb_auxiliary` t INNER JOIN `eb_application` a ON t.appid = a.appid SET t.tenant_id = a.tenant_id WHERE t.tenant_id = 0;
+UPDATE `eb_chat_user` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
+UPDATE `eb_chat_service` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
+UPDATE `eb_chat_service_dialogue_record` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
+UPDATE `eb_chat_service_record` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
+UPDATE `eb_chat_service_feedback` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
+UPDATE `eb_chat_auto_reply` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
+UPDATE `eb_auxiliary` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
+UPDATE `eb_chat_service_speechcraft` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
+UPDATE `eb_chat_user_group` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
+UPDATE `eb_chat_user_label` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
+UPDATE `eb_chat_user_label_assist` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
+UPDATE `eb_chat_complain` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
+UPDATE `eb_category` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
+UPDATE `eb_system_role` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
+UPDATE `eb_system_attachment` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
+UPDATE `eb_system_attachment_category` SET `tenant_id` = 1 WHERE `tenant_id` = 0;
+
+-- 2026/08/29 多租户改造·阶段五（可选DDL，需DBA预检后手动执行）
+-- 客服账号租户内唯一索引。应用层已在租户上下文内做唯一性校验，此索引为数据库级兜底。
+-- 预检1（结果须为空）：SELECT tenant_id, account, COUNT(*) AS c FROM eb_chat_service WHERE account <> '' GROUP BY tenant_id, account HAVING c > 1;
+-- 预检2（存在空账号行时不可加此索引）：SELECT COUNT(*) FROM eb_chat_service WHERE account = '';
+-- 预检通过后执行：ALTER TABLE `eb_chat_service` ADD UNIQUE KEY `uk_tenant_account` (`tenant_id`, `account`);

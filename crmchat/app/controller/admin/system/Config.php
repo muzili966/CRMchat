@@ -116,7 +116,8 @@ class Config extends AuthController
             $this->services->valiDateRadioAndCheckbox($data);
         }
         $data['value'] = json_encode($data['value']);
-        $config = $this->services->getOne(['menu_name' => $data['menu_name']]);
+        //仅定位平台定义行，避免命中租户覆盖影子行
+        $config = $this->services->getOne(['menu_name' => $data['menu_name'], 'tenant_id' => 0]);
         if ($config) {
             $this->services->update($config['id'], $data, 'id');
         } else {
@@ -264,15 +265,10 @@ class Config extends AuthController
                 return $this->fail('提现最低金额只能为数字!');
             }
         }
-        foreach ($post as $k => $v) {
-            $config_one = $this->services->getOne(['menu_name' => $k]);
-            if ($config_one) {
-                $config_one['value'] = $v;
-                $this->services->valiDateValue($config_one);
-                $this->services->update($k, ['value' => json_encode($v)], 'menu_name');
-            }
-        }
-        if (isset($post['wss_open'])) {
+        //平台管理员写平台默认层；租户管理员仅可覆盖白名单配置
+        $this->services->saveConfigValues($post);
+        //SSL证书文件为平台级基础设施，仅平台视角允许写入
+        if (isset($post['wss_open']) && !\crmeb\services\tenant\TenantContext::id()) {
             $this->services->saveSslFilePath((int)$post['wss_open'], $post['wss_local_pk'] ?? '', $post['wss_local_cert'] ?? '');
         }
         \crmeb\services\SystemConfigService::clear();

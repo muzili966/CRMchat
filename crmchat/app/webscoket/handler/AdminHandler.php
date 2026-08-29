@@ -43,7 +43,8 @@ class AdminHandler extends BaseHandler
         try {
             /** @var AdminAuthServices $adminAuthService */
             $adminAuthService = app()->make(AdminAuthServices::class);
-            $authInfo         = $adminAuthService->parseToken($token);
+            //parseToken内部完成token寻址逃逸、租户可用性校验与上下文建立
+            $authInfo = $adminAuthService->parseToken($token);
         } catch (AuthException $e) {
             return $response->fail($e->getMessage());
         }

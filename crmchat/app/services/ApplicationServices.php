@@ -18,6 +18,7 @@ use crmeb\basic\BaseServices;
 use crmeb\exceptions\AdminException;
 use crmeb\exceptions\AuthException;
 use crmeb\services\CacheService;
+use crmeb\services\tenant\TenantContext;
 use crmeb\services\FormBuilder;
 use crmeb\utils\Arr;
 use crmeb\utils\Encrypter;
@@ -66,7 +67,11 @@ class ApplicationServices extends BaseServices
      */
     public function getFormRule(array $data = [])
     {
+        /** @var TenantServices $tenantServices */
+        $tenantServices = app()->make(TenantServices::class);
         return [
+            FormBuilder::select('tenant_id', '所属租户', (int)($data['tenant_id'] ?? 0))
+                ->setOptions(FormBuilder::setOptions($tenantServices->getTenantOptions()))->required(),
             FormBuilder::frameImage('icon', '应用图标', $this->url('admin/widget.images/index', ['fodder' => 'icon'], true), $data['value'])
                 ->icon('ios-image')->width('950px')->height('420px')->info($data['desc'])->col(13)->required(),
             FormBuilder::input('name', '应用名称', $data['name'] ?? '')->required(),
@@ -197,7 +202,10 @@ class ApplicationServices extends BaseServices
     public function parseToken(string $token, array $other = [])
     {
         if (strlen($token) === 32) {
-            $token = $this->dao->value(['token_md5' => $token], 'token');
+            //token寻址发生在租户上下文建立之前，需逃逸执行
+            $token = TenantContext::withoutTenant(function () use ($token) {
+                return $this->dao->value(['token_md5' => $token], 'token');
+            });
         }
         /** @var Encrypter $encrypter */
         $encrypter = app()->make(Encrypter::class);
@@ -218,7 +226,9 @@ class ApplicationServices extends BaseServices
             throw new AuthException('缺少应用ID');
         }
 
-        $appData = $this->dao->get(['appid' => $appInfo['appid'], 'is_delete' => 0]);
+        $appData = TenantContext::withoutTenant(function () use ($appInfo) {
+            return $this->dao->get(['appid' => $appInfo['appid'], 'is_delete' => 0]);
+        });
 
         if (!$appData) {
             throw new AuthException('应用不存在');
@@ -228,6 +238,13 @@ class ApplicationServices extends BaseServices
         if ($appSecret !== $appInfo['app_secret']) {
             throw new AuthException('错误的app_secret值');
         }
+        //应用所属租户禁用/到期时拒绝接入
+        /** @var TenantServices $tenantServices */
+        $tenantServices = app()->make(TenantServices::class);
+        $tenantServices->checkUsable((int)($appData['tenant_id'] ?? 0));
+        $appInfo['tenant_id'] = (int)($appData['tenant_id'] ?? 0);
+        //token解析即完成租户定位，为当前协程建立租户上下文（mobile请求与websocket连接共用此入口）
+        TenantContext::set($appInfo['tenant_id']);
         if ($other) {
             return ['user' => $this->createUser($appData['appid'], $other), 'appInfo' => $appInfo];
         } else {

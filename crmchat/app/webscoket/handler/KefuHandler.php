@@ -50,6 +50,7 @@ class KefuHandler extends BaseHandler
         try {
             /** @var LoginServices $services */
             $services = app()->make(LoginServices::class);
+            //parseToken内部完成token寻址逃逸、租户可用性校验与上下文建立
             $kefuInfo = $services->parseToken($token);
         } catch (AuthException $e) {
             return $response->fail($e->getMessage());

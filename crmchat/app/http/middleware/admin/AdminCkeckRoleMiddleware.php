@@ -30,6 +30,7 @@ class AdminCkeckRoleMiddleware implements MiddlewareInterface
         if (!$request->adminId() || !$request->adminInfo())
             throw new AuthException(ApiErrorCode::ERR_ADMINID_VOID);
 
+        //权限粒度沿用level体系（0=免角色校验），admin_type仅决定租户数据边界
         if ($request->adminInfo()['level']) {
             /** @var SystemRoleServices $systemRoleService */
             $systemRoleService = app()->make(SystemRoleServices::class);

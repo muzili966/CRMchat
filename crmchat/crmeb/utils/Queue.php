@@ -175,6 +175,8 @@ class Queue
         $jobData['do'] = $this->do;
         $jobData['errorCount'] = $this->errorCount;
         $jobData['log'] = $this->log;
+        //投递时捕获租户上下文，worker消费时恢复（队列进程没有HTTP请求上下文）
+        $jobData['tenant_id'] = \crmeb\services\tenant\TenantContext::get();
         if (!class_exists($this->job)) {
             throw new ValidateException('需要执行的队列类不存在');
         }

@@ -13,10 +13,14 @@ namespace app\services\system\admin;
 
 
 use app\dao\system\admin\AdminAuthDao;
+use app\models\system\admin\SystemAdmin;
+use app\services\TenantServices;
 use crmeb\basic\BaseServices;
 use app\services\other\CacheServices;
 use crmeb\exceptions\AuthException;
 use crmeb\services\CacheService;
+use crmeb\services\tenant\TenantContext;
+use crmeb\services\tenant\TenantScope;
 use crmeb\utils\ApiErrorCode;
 use crmeb\utils\JwtAuth;
 use Firebase\JWT\ExpiredException;
@@ -53,7 +57,7 @@ class AdminAuthServices extends BaseServices
         /** @var JwtAuth $jwtAuth */
         $jwtAuth = app()->make(JwtAuth::class);
         //设置解析token
-        [$id, $type] = $jwtAuth->parseToken($token);
+        [$id, $type, $tokenTenantId] = $jwtAuth->parseToken($token);
 
         //验证token
         try {
@@ -66,12 +70,28 @@ class AdminAuthServices extends BaseServices
             throw new AuthException(ApiErrorCode::ERR_LOGIN_INVALID);
         }
 
-        //获取管理员信息
-        $adminInfo = $this->dao->get($id);
+        //获取管理员信息（token寻址先于租户上下文建立，逃逸执行）
+        $adminInfo = TenantContext::withoutTenant(function () use ($id) {
+            return $this->dao->get($id);
+        });
         if (!$adminInfo || !$adminInfo->id) {
             $this->authFailAfter($id, $type);
             throw new AuthException(ApiErrorCode::ERR_LOGIN_STATUS);
         }
+
+        //token租户声明与账号当前归属二次比对，防止跨租户复用（旧token无声明时兼容放行）
+        if (TenantScope::tokenTenantMismatch($tokenTenantId, (int)($adminInfo->tenant_id ?? 0))) {
+            throw new AuthException(ApiErrorCode::ERR_LOGIN_STATUS);
+        }
+
+        //解析即建立租户上下文；租户管理员每请求校验租户可用性，禁用/到期即时生效
+        $tenantId = (int)($adminInfo->tenant_id ?? 0);
+        if (!SystemAdmin::isPlatformAdmin($adminInfo)) {
+            /** @var TenantServices $tenantServices */
+            $tenantServices = app()->make(TenantServices::class);
+            $tenantServices->checkUsable($tenantId);
+        }
+        TenantContext::set($tenantId);
 
         $adminInfo->type = $type;
         return $adminInfo->hidden(['pwd', 'is_del', 'status'])->toArray();

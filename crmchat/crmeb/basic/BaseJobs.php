@@ -12,6 +12,7 @@
 namespace crmeb\basic;
 
 use crmeb\interfaces\JobInterface;
+use crmeb\services\tenant\TenantContext;
 use think\facade\Log;
 use think\queue\Job;
 
@@ -43,8 +44,19 @@ class BaseJobs implements JobInterface
             $action = $data['do'] ?? 'doJob';//任务名
             $infoData = $data['data'] ?? [];//执行数据
             $errorCount = $data['errorCount'] ?? 0;//最大错误次数
-            $this->runJob($action, $job, $infoData, $errorCount);
+            $tenantId = $data['tenant_id'] ?? null;//投递时捕获的租户上下文
+            if (!is_null($tenantId)) {
+                TenantContext::runAs((int)$tenantId, function () use ($action, $job, $infoData, $errorCount) {
+                    $this->runJob($action, $job, $infoData, $errorCount);
+                });
+            } else {
+                //升级窗口期的旧格式消息无租户字段，按改造前的无隔离语义执行，避免被异常吞掉后丢弃
+                TenantContext::withoutTenant(function () use ($action, $job, $infoData, $errorCount) {
+                    $this->runJob($action, $job, $infoData, $errorCount);
+                });
+            }
         } catch (\Throwable $e) {
+            Log::error('队列任务执行失败：' . get_class($this) . '，原因：' . $e->getMessage());
             $job->delete();
         }
     }

@@ -35,4 +35,10 @@ class SystemFile extends BaseModel
      */
     protected $name = 'system_file';
 
+    /**
+     * 文件校验为平台级数据，豁免租户隔离
+     * @var bool
+     */
+    protected $tenantScoped = false;
+
 }

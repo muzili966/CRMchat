@@ -13,11 +13,14 @@ namespace app\services\system\config;
 
 
 use app\dao\system\config\SystemConfigDao;
+use app\models\system\config\SystemConfig;
 use app\services\agent\AgentManageServices;
 use crmeb\basic\BaseServices;
 use crmeb\exceptions\AdminException;
 use crmeb\services\FileService;
 use crmeb\services\FormBuilder;
+use crmeb\services\SystemConfigService;
+use crmeb\services\tenant\TenantContext;
 use think\exception\ValidateException;
 use think\facade\Log;
 
@@ -261,6 +264,127 @@ class SystemConfigServices extends BaseServices
         return array_map(function ($item) {
             return json_decode($item, true);
         }, $this->dao->getConfigAll($configName));
+    }
+
+    /**
+     * 查询租户覆盖层：白名单交集过滤后返回 menu_name => 原始json值 映射
+     * @param array $names
+     * @param int $tenantId
+     * @return array
+     */
+    protected function tenantOverrideMap(array $names, int $tenantId): array
+    {
+        if ($tenantId <= 0) {
+            return [];
+        }
+        $overridable = array_values(array_intersect($names, SystemConfigService::TENANT_OVERRIDABLE));
+        if (!$overridable) {
+            return [];
+        }
+        return $this->dao->getTenantValueMap($overridable, $tenantId);
+    }
+
+    /**
+     * 租户视角读取配置：白名单内租户覆盖优先，miss回落平台默认
+     * @param string $configName
+     * @param int $tenantId
+     * @param null $default
+     * @return mixed|null
+     */
+    public function getTenantConfigValue(string $configName, int $tenantId, $default = null)
+    {
+        $override = $this->tenantOverrideMap([$configName], $tenantId);
+        if (isset($override[$configName])) {
+            return json_decode($override[$configName], true);
+        }
+        return $this->getConfigValue($configName, $default);
+    }
+
+    /**
+     * 租户视角批量读取配置：平台默认值叠加租户覆盖层
+     * @param array $configName
+     * @param int $tenantId
+     * @return array
+     */
+    public function getTenantConfigAll(array $configName, int $tenantId)
+    {
+        $all = $this->getConfigAll($configName);
+        $names = $configName ?: SystemConfigService::TENANT_OVERRIDABLE;
+        foreach ($this->tenantOverrideMap($names, $tenantId) as $key => $value) {
+            $all[$key] = json_decode($value, true);
+        }
+        return $all;
+    }
+
+    /**
+     * 保存基础配置：平台视角写平台默认层；租户视角仅可写白名单覆盖层
+     * @param array $post
+     * @return void
+     */
+    public function saveConfigValues(array $post)
+    {
+        $tenantId = TenantContext::id();
+        foreach ($post as $key => $value) {
+            $configOne = $this->getOne(['menu_name' => $key, 'tenant_id' => 0]);
+            if (!$configOne) {
+                continue;
+            }
+            $configOne['value'] = $value;
+            $this->valiDateValue($configOne);
+            if ($tenantId > 0) {
+                $this->saveTenantValue((string)$key, $value, $tenantId);
+            } else {
+                $this->dao->update(['menu_name' => $key, 'tenant_id' => 0], ['value' => json_encode($value)]);
+            }
+        }
+    }
+
+    /**
+     * 配置表单展示时叠加当前租户的覆盖值（保持原始json形态与平台行一致）
+     * @param array $list 平台配置定义列表
+     * @return array
+     */
+    protected function overlayTenantValues(array $list)
+    {
+        if (!$list) {
+            return $list;
+        }
+        $tenantValues = $this->tenantOverrideMap(array_column($list, 'menu_name'), TenantContext::id());
+        if (!$tenantValues) {
+            return $list;
+        }
+        foreach ($list as &$item) {
+            if (isset($tenantValues[$item['menu_name']])) {
+                $item['value'] = $tenantValues[$item['menu_name']];
+            }
+        }
+        return $list;
+    }
+
+    /**
+     * 写入租户覆盖行（影子行仅承载值，config_tab_id=0且隐藏，不参与平台配置结构）
+     * @param string $key
+     * @param mixed $value
+     * @param int $tenantId
+     * @return void
+     */
+    protected function saveTenantValue(string $key, $value, int $tenantId)
+    {
+        if (!in_array($key, SystemConfigService::TENANT_OVERRIDABLE)) {
+            return;
+        }
+        $row = $this->getOne(['menu_name' => $key, 'tenant_id' => $tenantId]);
+        if ($row) {
+            $row->value = json_encode($value);
+            $row->save();
+            return;
+        }
+        $this->dao->save([
+            'menu_name' => $key,
+            'value' => json_encode($value),
+            'tenant_id' => $tenantId,
+            'status' => SystemConfig::STATUS_HIDDEN,
+        ]);
     }
 
     /**
@@ -783,7 +907,7 @@ class SystemConfigServices extends BaseServices
         /** @var SystemConfigTabServices $service */
         $service = app()->make(SystemConfigTabServices::class);
         $title = $service->value(['id' => $tabId], 'title');
-        $list = $this->dao->getConfigTabAllList($tabId);
+        $list = $this->overlayTenantValues($this->dao->getConfigTabAllList($tabId));
         $formbuider = $this->createForm($list);
         $name = 'setting';
         if ($url) {

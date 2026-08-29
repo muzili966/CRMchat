@@ -18,7 +18,9 @@ use app\services\chat\ChatServiceRecordServices;
 use app\services\chat\ChatServiceServices;
 use app\services\chat\ChatUserServices;
 use app\services\kefu\LoginServices;
+use app\services\TenantServices;
 use crmeb\services\CacheService;
+use crmeb\services\tenant\TenantContext;
 use FormBuilder\Exception\FormBuilderException;
 use think\db\exception\DataNotFoundException;
 use think\db\exception\DbException;
@@ -49,7 +51,9 @@ class Service extends AuthController
      */
     public function index()
     {
-        return $this->success($this->services->getServiceList([]));
+        return $this->success($this->withPlatformScope(function () {
+            return $this->services->getServiceList([]);
+        }));
     }
 
     /**
@@ -103,42 +107,54 @@ class Service extends AuthController
         if (!preg_match('/^[0-9a-z_$]{6,20}$/i', $data['password'])) {
             return $this->fail('密码必须为数字或者字母的组合6-20位');
         }
-        if ($this->services->count(['phone' => $data['phone'], 'appid' => $data['appid']])) {
-            return $this->fail('该手机号的客服已存在!');
+        /** @var TenantServices $tenantServices */
+        $tenantServices = app()->make(TenantServices::class);
+        $appTenantId = $tenantServices->tenantIdByAppid($data['appid']);
+        if (!$appTenantId) {
+            return $this->fail('所选应用不存在');
         }
-        if ($this->services->count(['account' => $data['account'], 'appid' => $data['appid']])) {
-            return $this->fail('该客服账号已存在!');
+        if (TenantContext::id() && $appTenantId != TenantContext::id()) {
+            return $this->fail('所选应用不属于当前租户');
         }
-        $data['add_time'] = time();
-        $data['password'] = password_hash($data['password'], PASSWORD_DEFAULT);
-
-        $res = $this->services->transaction(function () use ($data, $services) {
-            $res = $this->services->save($data);
-            if ($userInfo = $services->get(['phone' => $data['phone'], 'appid' => $data['appid']])) {
-                $userInfo->is_kefu = 1;
-                $userInfo->save();
-                $res->user_id = $userInfo->id;
-            } else {
-                $uid = $services->max(['appid' => $data['appid']]) + 1;
-                $userInfo = $services->save([
-                    'phone' => $data['phone'],
-                    'nickname' => $data['nickname'],
-                    'avatar' => $data['avatar'],
-                    'is_delete' => 0,
-                    'type' => 0,
-                    'uid' => $uid,
-                    'appid' => $data['appid'],
-                ]);
-                $res->user_id = $userInfo->id;
+        //客服归属其应用所在租户：查重与落库均在应用租户上下文中执行
+        return TenantContext::runAs($appTenantId, function () use ($data, $services) {
+            if ($this->services->count(['phone' => $data['phone'], 'appid' => $data['appid']])) {
+                return $this->fail('该手机号的客服已存在!');
             }
-            return $res->save();
-        });
+            if ($this->services->count(['account' => $data['account'], 'appid' => $data['appid']])) {
+                return $this->fail('该客服账号已存在!');
+            }
+            $data['add_time'] = time();
+            $data['password'] = password_hash($data['password'], PASSWORD_DEFAULT);
 
-        if ($res) {
-            return $this->success('客服添加成功');
-        } else {
-            return $this->fail('客服添加失败，请稍后再试');
-        }
+            $res = $this->services->transaction(function () use ($data, $services) {
+                $res = $this->services->save($data);
+                if ($userInfo = $services->get(['phone' => $data['phone'], 'appid' => $data['appid']])) {
+                    $userInfo->is_kefu = 1;
+                    $userInfo->save();
+                    $res->user_id = $userInfo->id;
+                } else {
+                    $uid = $services->max(['appid' => $data['appid']]) + 1;
+                    $userInfo = $services->save([
+                        'phone' => $data['phone'],
+                        'nickname' => $data['nickname'],
+                        'avatar' => $data['avatar'],
+                        'is_delete' => 0,
+                        'type' => 0,
+                        'uid' => $uid,
+                        'appid' => $data['appid'],
+                    ]);
+                    $res->user_id = $userInfo->id;
+                }
+                return $res->save();
+            });
+
+            if ($res) {
+                return $this->success('客服添加成功');
+            } else {
+                return $this->fail('客服添加失败，请稍后再试');
+            }
+        });
     }
 
     /**
@@ -149,7 +165,9 @@ class Service extends AuthController
      */
     public function edit($id)
     {
-        return $this->success($this->services->edit((int)$id));
+        return $this->success($this->withPlatformScope(function () use ($id) {
+            return $this->services->edit((int)$id);
+        }));
     }
 
     /**
@@ -174,52 +192,61 @@ class Service extends AuthController
             ['welcome_words', ''],
             ['true_password', ''],
         ]);
-        $customer = $this->services->get((int)$id);
-        if (!$customer) {
-            return $this->fail('数据不存在');
-        }
-        if ($data["nickname"] == '') {
-            return $this->fail("客服名称不能为空！");
-        }
-        if (!check_phone($data['phone'])) {
-            return $this->fail('请输入正确的手机号');
-        }
-        $targetAppid = $data['appid'] ?: $customer['appid'];
-        $appidChanged = $targetAppid != $customer['appid'];
-        if (($customer['phone'] != $data['phone'] || $appidChanged) && $this->services->count(['phone' => $data['phone'], 'appid' => $targetAppid])) {
-            return $this->fail('该手机号的客服已存在!');
-        }
-        if ($data['account'] && ($customer['account'] != $data['account'] || $appidChanged) && $this->services->count(['account' => $data['account'], 'appid' => $targetAppid])) {
-            return $this->fail('该客服账号已存在!');
-        }
-        if ($data['password']) {
-            if (!preg_match('/^[0-9a-z_$]{6,16}$/i', $data['password'])) {
-                return $this->fail('密码必须为数字或者字母的组合');
+        return $this->withPlatformScope(function () use ($services, $id, $data) {
+            $customer = $this->services->get((int)$id);
+            if (!$customer) {
+                return $this->fail('数据不存在');
             }
-            if (!$data['true_password']) {
-                return $this->fail('请输入确认密码');
+            if ($data["nickname"] == '') {
+                return $this->fail("客服名称不能为空！");
             }
-            if ($data['password'] != $data['true_password']) {
-                return $this->fail('两次输入的密码不正确');
+            if (!check_phone($data['phone'])) {
+                return $this->fail('请输入正确的手机号');
             }
-            $data['password'] = password_hash($data['password'], PASSWORD_DEFAULT);
-        } else {
-            unset($data['password']);
-        }
-        $this->services->update($id, $data);
+            $targetAppid = $data['appid'] ?: $customer['appid'];
+            $appidChanged = $targetAppid != $customer['appid'];
+            if ($appidChanged) {
+                /** @var TenantServices $tenantServices */
+                $tenantServices = app()->make(TenantServices::class);
+                if ($tenantServices->tenantIdByAppid($targetAppid) != (int)$customer['tenant_id']) {
+                    return $this->fail('不能将客服转移到其他租户的应用');
+                }
+            }
+            if (($customer['phone'] != $data['phone'] || $appidChanged) && $this->services->count(['phone' => $data['phone'], 'appid' => $targetAppid])) {
+                return $this->fail('该手机号的客服已存在!');
+            }
+            if ($data['account'] && ($customer['account'] != $data['account'] || $appidChanged) && $this->services->count(['account' => $data['account'], 'appid' => $targetAppid])) {
+                return $this->fail('该客服账号已存在!');
+            }
+            if ($data['password']) {
+                if (!preg_match('/^[0-9a-z_$]{6,16}$/i', $data['password'])) {
+                    return $this->fail('密码必须为数字或者字母的组合');
+                }
+                if (!$data['true_password']) {
+                    return $this->fail('请输入确认密码');
+                }
+                if ($data['password'] != $data['true_password']) {
+                    return $this->fail('两次输入的密码不正确');
+                }
+                $data['password'] = password_hash($data['password'], PASSWORD_DEFAULT);
+            } else {
+                unset($data['password']);
+            }
+            $this->services->update($id, $data);
 
-        $update = [];
-        if ($data['avatar'] != $customer->avatar) {
-            $update['avatar'] = $data['avatar'];
-        }
-        if ($data['nickname'] != $customer->nickname) {
-            $update['nickname'] = $data['nickname'];
-        }
-        if ($update) {
-            $services->update($customer['user_id'], $update);
-        }
+            $update = [];
+            if ($data['avatar'] != $customer->avatar) {
+                $update['avatar'] = $data['avatar'];
+            }
+            if ($data['nickname'] != $customer->nickname) {
+                $update['nickname'] = $data['nickname'];
+            }
+            if ($update) {
+                $services->update($customer['user_id'], $update);
+            }
 
-        return $this->success('修改成功!');
+            return $this->success('修改成功!');
+        });
     }
 
     /**
@@ -230,10 +257,12 @@ class Service extends AuthController
      */
     public function delete($id)
     {
-        if (!$this->services->delete($id))
-            return $this->fail('删除失败,请稍候再试!');
-        else
-            return $this->success('删除成功!');
+        return $this->withPlatformScope(function () use ($id) {
+            if (!$this->services->delete($id))
+                return $this->fail('删除失败,请稍候再试!');
+            else
+                return $this->success('删除成功!');
+        });
     }
 
     /**
@@ -245,10 +274,15 @@ class Service extends AuthController
     public function set_status($id, $status)
     {
         if ($status == '' || $id == 0) return $this->fail('参数错误');
-        $info = $this->services->get($id, ['status', 'user_id']);
-        $info->status = $status;
-        $info->save();
-        return $this->success($status == 0 ? '隐藏成功' : '显示成功');
+        return $this->withPlatformScope(function () use ($id, $status) {
+            $info = $this->services->get($id, ['status', 'user_id']);
+            if (!$info) {
+                return $this->fail('数据不存在');
+            }
+            $info->status = $status;
+            $info->save();
+            return $this->success($status == 0 ? '隐藏成功' : '显示成功');
+        });
     }
 
     /**
@@ -258,11 +292,13 @@ class Service extends AuthController
      */
     public function chat_user($id)
     {
-        $userId = $this->services->value(['id' => $id], 'user_id');
-        if (!$userId) {
-            return $this->fail('数据不存在!');
-        }
-        return $this->success($this->services->getChatUser((int)$userId));
+        return $this->withPlatformScope(function () use ($id) {
+            $userId = $this->services->value(['id' => $id], 'user_id');
+            if (!$userId) {
+                return $this->fail('数据不存在!');
+            }
+            return $this->success($this->services->getChatUser((int)$userId));
+        });
     }
 
 
@@ -307,16 +343,18 @@ class Service extends AuthController
      */
     public function keufLogin(LoginServices $services, $id)
     {
-        $serviceInfo = $services->get($id);
-        if (!$serviceInfo) {
-            return $this->fail('登录的客服不存在');
-        }
-        if (!$serviceInfo->account || !$serviceInfo->password) {
-            return $this->fail('请先填写客服账号和密码再尝试进入客服平台');
-        }
-        if (!$serviceInfo->status) {
-            return $this->fail('客服帐号已被禁用');
-        }
-        return $this->success($services->loginByKefuInfo($serviceInfo));
+        return $this->withPlatformScope(function () use ($services, $id) {
+            $serviceInfo = $services->get($id);
+            if (!$serviceInfo) {
+                return $this->fail('登录的客服不存在');
+            }
+            if (!$serviceInfo->account || !$serviceInfo->password) {
+                return $this->fail('请先填写客服账号和密码再尝试进入客服平台');
+            }
+            if (!$serviceInfo->status) {
+                return $this->fail('客服帐号已被禁用');
+            }
+            return $this->success($services->loginByKefuInfo($serviceInfo));
+        });
     }
 }

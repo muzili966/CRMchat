@@ -6,3 +6,4 @@
 /public/install/install.lock
 /.env
 /swoole.pid
+/.phpunit.result.cache

@@ -37,6 +37,12 @@ class SystemMenus extends BaseModel
     protected $name = 'system_menus';
 
     /**
+     * 菜单结构平台统一，豁免租户隔离
+     * @var bool
+     */
+    protected $tenantScoped = false;
+
+    /**
      * 参数修改器
      * @param $value
      * @return false|string

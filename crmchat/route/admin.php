@@ -328,6 +328,16 @@ Route::group('api', function () {
                     'delete' => '删除权限菜单接口'
                 ]
             ]);
+            //租户列表
+            Route::get('tenant', 'system.Tenant/index')->option(['real_name' => '租户列表']);
+            //创建租户
+            Route::post('tenant', 'system.Tenant/save')->option(['real_name' => '创建租户']);
+            //修改租户
+            Route::put('tenant/:id', 'system.Tenant/update')->option(['real_name' => '修改租户']);
+            //启用禁用租户
+            Route::put('tenant/set_status/:id/:status', 'system.Tenant/set_status')->option(['real_name' => '启用禁用租户']);
+            //创建租户管理员
+            Route::post('tenant/admin', 'system.Tenant/createAdmin')->option(['real_name' => '创建租户管理员']);
             //管理员资源路由
             Route::resource('admin', 'system.Admin')->option([
                 'real_name' => [

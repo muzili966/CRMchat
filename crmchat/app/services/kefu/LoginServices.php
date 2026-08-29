@@ -14,8 +14,10 @@ namespace app\services\kefu;
 
 use app\dao\chat\ChatServiceDao;
 use app\services\chat\ChatUserServices;
+use app\services\TenantServices;
 use crmeb\basic\BaseServices;
 use crmeb\exceptions\AuthException;
+use crmeb\services\tenant\TenantContext;
 use crmeb\services\CacheService;
 use crmeb\utils\ApiErrorCode;
 use crmeb\utils\JwtAuth;
@@ -53,7 +55,10 @@ class LoginServices extends BaseServices
      */
     public function authLogin(string $account, string $password = null, int $isApp = 0, string $clientId = null)
     {
-        $kefuInfo = $this->matchAccount($account, $password);
+        //登录先于租户上下文建立，按账号全局定位客服
+        $kefuInfo = TenantContext::withoutTenant(function () use ($account, $password) {
+            return $this->matchAccount($account, $password);
+        });
         return $this->loginByKefuInfo($kefuInfo, $isApp, $clientId);
     }
 
@@ -105,7 +110,25 @@ class LoginServices extends BaseServices
         if (!$kefuInfo->status) {
             throw new ValidateException('您已被禁止登录');
         }
-        $token = $this->createToken($kefuInfo->id, 'kefu');
+        /** @var TenantServices $tenantServices */
+        $tenantServices = app()->make(TenantServices::class);
+        $tenantServices->checkUsable((int)($kefuInfo->tenant_id ?? 0));
+        //登录先于租户上下文建立，状态落库需逃逸执行
+        return TenantContext::withoutTenant(function () use ($kefuInfo, $isApp, $clientId) {
+            return $this->doLoginByKefuInfo($kefuInfo, $isApp, $clientId);
+        });
+    }
+
+    /**
+     * 执行登录状态落库并签发token
+     * @param \think\Model $kefuInfo
+     * @param int $isApp
+     * @param string|null $clientId
+     * @return array
+     */
+    protected function doLoginByKefuInfo($kefuInfo, int $isApp, ?string $clientId)
+    {
+        $token = $this->createToken($kefuInfo->id, 'kefu', (int)($kefuInfo->tenant_id ?? 0));
         $kefuInfo->ip = request()->ip();
         $kefuInfo->status = 1;
         if (!$kefuInfo->is_app) {
@@ -147,7 +170,7 @@ class LoginServices extends BaseServices
         /** @var JwtAuth $jwtAuth */
         $jwtAuth = app()->make(JwtAuth::class);
         //设置解析token
-        [$id, $type] = $jwtAuth->parseToken($token);
+        [$id, $type, $tokenTenantId] = $jwtAuth->parseToken($token);
 
         //验证token
         try {
@@ -158,11 +181,25 @@ class LoginServices extends BaseServices
             throw new AuthException(ApiErrorCode::ERR_LOGIN_INVALID, $code);
         }
 
-        //获取管理员信息
-        $adminInfo = $this->dao->get($id);
+        //获取管理员信息（token寻址先于租户上下文建立，逃逸执行）
+        $adminInfo = TenantContext::withoutTenant(function () use ($id) {
+            return $this->dao->get($id);
+        });
         if (!$adminInfo || !$adminInfo->id) {
             throw new AuthException(ApiErrorCode::ERR_LOGIN_STATUS, $code);
         }
+
+        //token租户声明与客服当前归属二次比对，防止跨租户复用（旧token无声明时兼容放行）
+        if (\crmeb\services\tenant\TenantScope::tokenTenantMismatch($tokenTenantId, (int)($adminInfo->tenant_id ?? 0))) {
+            throw new AuthException(ApiErrorCode::ERR_LOGIN_STATUS, $code);
+        }
+
+        //解析即建立租户上下文；每请求校验租户可用性，禁用/到期即时生效
+        $tenantId = (int)($adminInfo->tenant_id ?? 0);
+        /** @var TenantServices $tenantServices */
+        $tenantServices = app()->make(TenantServices::class);
+        $tenantServices->checkUsable($tenantId);
+        TenantContext::set($tenantId);
 
         $adminInfo->type = $type;
 
@@ -187,12 +224,17 @@ class LoginServices extends BaseServices
             $keyValue = CacheService::get($key);
             if ($keyValue === '0') {
                 $status = 1;//正在扫描中
-                $kefuInfo = $this->dao->get(['uniqid' => $key]);
+                //扫码登录先于租户上下文建立，按uniqid全局定位客服
+                $kefuInfo = TenantContext::withoutTenant(function () use ($key) {
+                    return $this->dao->get(['uniqid' => $key]);
+                });
                 if ($kefuInfo) {
                     $tokenInfo = $this->loginByKefuInfo($kefuInfo);
                     $tokenInfo['status'] = 3;
                     $kefuInfo->uniqid = '';
-                    $kefuInfo->save();
+                    TenantContext::withoutTenant(function () use ($kefuInfo) {
+                        $kefuInfo->save();
+                    });
                     CacheService::delete($key);
                     return $tokenInfo;
                 }
