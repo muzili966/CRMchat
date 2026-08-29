@@ -144,6 +144,8 @@ class SwooleTaskService
                     'data' => $this->data,
                     'user_id' => $this->to,
                     'type' => $this->type,
+                    //投递时捕获租户上下文，task进程按此定位在线态key
+                    'tenant_id' => \crmeb\services\tenant\TenantContext::get(),
                 ]
             ]);
             $this->reset();

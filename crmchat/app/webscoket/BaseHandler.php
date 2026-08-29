@@ -111,6 +111,13 @@ abstract class BaseHandler
             return $response->message('err_tip', ['msg' => '不能和自己聊天']);
         }
 
+        /** @var ChatUserServices $chatUserServices */
+        $chatUserServices = app()->make(ChatUserServices::class);
+        //接收人必须在当前租户内，跨租户消息直接拒绝（查询已被租户Scope约束）
+        if (!$chatUserServices->getCount(['id' => $to_user_id])) {
+            return $response->message('err_tip', ['msg' => '用户不存在']);
+        }
+
         /** @var ChatServiceDialogueRecordServices $logServices */
         $logServices = app()->make(ChatServiceDialogueRecordServices::class);
         if (!in_array($msn_type, ChatServiceDialogueRecordServices::MSN_TYPE)) {
@@ -196,8 +203,12 @@ abstract class BaseHandler
         //开启自动回复
         if ($auto_reply) {
             $app = app();
-            Timer::after(100, function () use ($app, $services, $appId, $to_user_id, $other, $msn_type, $userId, $msn, $response) {
-                $data = $services->autoReply($app, $appId, $to_user_id, $userId, $msn, $msn_type, $other);
+            //Timer回调运行在新协程，需携带租户上下文
+            $tenantId = (int)(\crmeb\services\tenant\TenantContext::get() ?: 0);
+            Timer::after(100, function () use ($app, $services, $appId, $to_user_id, $other, $msn_type, $userId, $msn, $response, $tenantId) {
+                $data = \crmeb\services\tenant\TenantContext::runAs($tenantId, function () use ($app, $services, $appId, $to_user_id, $userId, $msn, $msn_type, $other) {
+                    return $services->autoReply($app, $appId, $to_user_id, $userId, $msn, $msn_type, $other);
+                });
                 if ($data) {
                     //给当前用户自动回复
                     $toUserFd = $this->manager->getUserIdByFds($userId);

@@ -15,7 +15,9 @@ namespace app\webscoket;
 
 
 use app\services\ApplicationServices;
+use app\services\TenantServices;
 use crmeb\services\CacheService;
+use crmeb\services\tenant\TenantContext;
 use Swoole\Server;
 use Swoole\Websocket\Frame;
 use think\Event;
@@ -104,6 +106,13 @@ class Manager extends Websocket
             return $this->server->close($fd);
         }
 
+        //各端login内已建立租户上下文；此处兜底按appid解析，保证后续在线态key与fd表携带租户
+        if (is_null(TenantContext::get())) {
+            /** @var TenantServices $tenantServices */
+            $tenantServices = app()->make(TenantServices::class);
+            TenantContext::set($tenantServices->tenantIdByAppid((string)($data['data']['appid'] ?? '')));
+        }
+
         $uid = $data['data']['uid'] ?? 0;
 
         if ($uid) {
@@ -118,10 +127,23 @@ class Manager extends Websocket
 
     public function login($type, $uid, $fd)
     {
-        $key = '_ws_' . $type;
+        $key = self::wsKey($type);
         $this->cache->sadd($key, $fd);
         $this->cache->sadd($key . $uid, $fd);
         $this->refresh($type, $uid);
+    }
+
+    /**
+     * 在线态key按租户隔离，避免跨租户定位到对方连接
+     * @param string $type
+     * @param string|int $uid
+     * @param int|null $tenantId 不传时取当前租户上下文
+     * @return string
+     */
+    public static function wsKey(string $type, $uid = '', ?int $tenantId = null): string
+    {
+        $tenantId = $tenantId ?? (int)(TenantContext::get() ?: 0);
+        return '_ws_' . $tenantId . '_' . $type . $uid;
     }
 
     /**
@@ -133,8 +155,7 @@ class Manager extends Websocket
      */
     public function getUserIdByFd(int $userId, string $type = '')
     {
-        $key = '_ws_' . $type;
-        return $this->cache->sMembers($key . $userId);
+        return $this->cache->sMembers(self::wsKey($type, $userId));
     }
 
     /**
@@ -144,7 +165,7 @@ class Manager extends Websocket
      */
     public function refresh($type, $uid)
     {
-        $key = '_ws_' . $type;
+        $key = self::wsKey($type);
         $this->cache->expire($key, 1800);
         $this->cache->expire($key . $uid, 1800);
     }
@@ -180,7 +201,7 @@ class Manager extends Websocket
 
     public function logout($type, $uid, $fd)
     {
-        $key = '_ws_' . $type;
+        $key = self::wsKey($type);
         $this->cache->srem($key, $fd);
         $this->cache->srem($key . $uid, $fd);
     }
@@ -188,12 +209,12 @@ class Manager extends Websocket
     /**
      * @param $type
      * @param string $uid
+     * @param int|null $tenantId 任务进程等无协程上下文场景需显式传入
      * @return array
      */
-    public static function userFd($type, $uid = '')
+    public static function userFd($type, $uid = '', ?int $tenantId = null)
     {
-        $key = '_ws_' . $type . $uid;
-        return CacheService::redisHandler()->smembers($key) ?: [];
+        return CacheService::redisHandler()->smembers(self::wsKey((string)$type, $uid, $tenantId)) ?: [];
     }
 
     /**
@@ -225,6 +246,8 @@ class Manager extends Websocket
         $result = json_decode($frame->data, true) ?: [];
 
         if (!isset($result['type']) || !$result['type']) return true;
+        //消息处理运行在独立协程，按连接归属重建租户上下文
+        TenantContext::set((int)($info['tenant_id'] ?? 0));
         $this->refresh($info['type'], $info['user_id']);
         if ($result['type'] == 'ping') {
             return $this->send($frame->fd, $this->response->message('ping', ['now' => time()]));
@@ -286,6 +309,8 @@ class Manager extends Websocket
         $tabfd = (string)$fd;
         if ($this->nowRoom->exist($fd)) {
             $data = $this->nowRoom->get($tabfd);
+            //关闭回调运行在独立协程，按连接归属重建租户上下文
+            TenantContext::set((int)($data['tenant_id'] ?? 0));
             $this->nowRoom->deleteFd($data['type'], $data['user_id'], $fd);
             $this->logout($data['type'], $data['user_id'], $fd);
             $this->nowRoom->type($data['type'])->del($tabfd);

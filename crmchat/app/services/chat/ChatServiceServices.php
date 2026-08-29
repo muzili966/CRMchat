@@ -269,8 +269,12 @@ class ChatServiceServices extends BaseServices
         try {
             //欢迎语
             $app = app();
-            Timer::after(1000, function () use ($app, $appId, $toUserId, $userId, $userInfo) {
-                $this->welcomeWords($app, $appId, $toUserId, $userId, $userInfo);
+            //Timer回调运行在新协程，需携带租户上下文
+            $tenantId = (int)(\crmeb\services\tenant\TenantContext::get() ?: 0);
+            Timer::after(1000, function () use ($app, $appId, $toUserId, $userId, $userInfo, $tenantId) {
+                \crmeb\services\tenant\TenantContext::runAs($tenantId, function () use ($app, $appId, $toUserId, $userId, $userInfo) {
+                    $this->welcomeWords($app, $appId, $toUserId, $userId, $userInfo);
+                });
             });
         } catch (\Exception $e) {
             Log::error($e->getMessage());
