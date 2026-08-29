@@ -35,7 +35,9 @@ services:
   mysql:
     image: mysql:5.7
     restart: unless-stopped
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    # sql-mode 放宽为CRMEB系代码要求的非严格模式（安装器强制校验）；
+    # 注意：升级MySQL 8.0时须去掉 NO_AUTO_CREATE_USER（8.0已移除该模式，保留会导致无法启动）
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --sql-mode=NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
     environment:
       MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?请在env文件中设置MYSQL_ROOT_PASSWORD}"
       MYSQL_DATABASE: "${DB_NAME:-crmchat}"
