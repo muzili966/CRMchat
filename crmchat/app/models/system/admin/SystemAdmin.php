@@ -27,6 +27,21 @@ class SystemAdmin extends BaseModel
     use JwtAuthModelTrait;
 
     /**
+     * 平台超级管理员
+     */
+    const TYPE_PLATFORM = 1;
+
+    /**
+     * 租户管理员
+     */
+    const TYPE_TENANT = 2;
+
+    /**
+     * 租户管理员默认级别（非0，走角色权限校验）
+     */
+    const TENANT_ADMIN_LEVEL = 1;
+
+    /**
      * 数据表主键
      * @var string
      */
@@ -120,6 +135,30 @@ class SystemAdmin extends BaseModel
     {
         if ($value != '' && $value != null) {
             $query->where('status', $value);
+        }
+    }
+
+    /**
+     * 租户搜索器
+     * @param Model $query
+     * @param $value
+     */
+    public function searchTenantIdAttr($query, $value)
+    {
+        if ($value !== '') {
+            $query->where('tenant_id', $value);
+        }
+    }
+
+    /**
+     * 管理员类型搜索器
+     * @param Model $query
+     * @param $value
+     */
+    public function searchAdminTypeAttr($query, $value)
+    {
+        if ($value) {
+            $query->where('admin_type', $value);
         }
     }
 

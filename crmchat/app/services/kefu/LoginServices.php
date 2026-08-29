@@ -14,6 +14,7 @@ namespace app\services\kefu;
 
 use app\dao\chat\ChatServiceDao;
 use app\services\chat\ChatUserServices;
+use app\services\TenantServices;
 use crmeb\basic\BaseServices;
 use crmeb\exceptions\AuthException;
 use crmeb\services\CacheService;
@@ -105,6 +106,9 @@ class LoginServices extends BaseServices
         if (!$kefuInfo->status) {
             throw new ValidateException('您已被禁止登录');
         }
+        /** @var TenantServices $tenantServices */
+        $tenantServices = app()->make(TenantServices::class);
+        $tenantServices->checkUsableByAppid((string)$kefuInfo->appid);
         $token = $this->createToken($kefuInfo->id, 'kefu');
         $kefuInfo->ip = request()->ip();
         $kefuInfo->status = 1;

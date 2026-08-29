@@ -104,7 +104,14 @@ class Application extends AuthController
             ['icon', ''],
             ['name', ''],
             ['introduce', ''],
+            [['tenant_id', 'd'], 0],
         ]);
+        if (!$data['tenant_id']) {
+            return $this->fail('请选择应用所属租户');
+        }
+        /** @var \app\services\TenantServices $tenantServices */
+        $tenantServices = app()->make(\app\services\TenantServices::class);
+        $tenantServices->checkUsable((int)$data['tenant_id']);
 
         $rand               = rand(1000, 9999);
         $time               = time();
@@ -169,6 +176,7 @@ class Application extends AuthController
             ['icon', ''],
             ['name', ''],
             ['introduce', ''],
+            [['tenant_id', 'd'], 0],
         ]);
 
         if (!$data['icon']) {
@@ -176,6 +184,13 @@ class Application extends AuthController
         }
         if (!$data['name']) {
             return $this->fail('请填写应用名称');
+        }
+        if ($data['tenant_id']) {
+            /** @var \app\services\TenantServices $tenantServices */
+            $tenantServices = app()->make(\app\services\TenantServices::class);
+            $tenantServices->checkUsable((int)$data['tenant_id']);
+        } else {
+            unset($data['tenant_id']);
         }
         $this->services->update($id, $data);
         return $this->success('保存成功');

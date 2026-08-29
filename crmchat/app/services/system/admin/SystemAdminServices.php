@@ -11,6 +11,8 @@
 
 namespace app\services\system\admin;
 
+use app\models\system\admin\SystemAdmin;
+use app\services\TenantServices;
 use crmeb\basic\BaseServices;
 use crmeb\exceptions\AdminException;
 use app\dao\system\admin\SystemAdminDao;
@@ -64,6 +66,12 @@ class SystemAdminServices extends BaseServices
         }
         if (!password_verify($password, $adminInfo->pwd)) {
             throw new AdminException('账号或密码错误，请重新输入');
+        }
+        //租户管理员登录时校验租户可用性（禁用/到期拦截）
+        if (($adminInfo->admin_type ?? SystemAdmin::TYPE_TENANT) == SystemAdmin::TYPE_TENANT) {
+            /** @var TenantServices $tenantServices */
+            $tenantServices = app()->make(TenantServices::class);
+            $tenantServices->checkUsable((int)($adminInfo->tenant_id ?? 0));
         }
         $adminInfo->last_time = time();
         $adminInfo->last_ip   = app('request')->ip();

@@ -66,7 +66,11 @@ class ApplicationServices extends BaseServices
      */
     public function getFormRule(array $data = [])
     {
+        /** @var TenantServices $tenantServices */
+        $tenantServices = app()->make(TenantServices::class);
         return [
+            FormBuilder::select('tenant_id', '所属租户', (int)($data['tenant_id'] ?? 0))
+                ->setOptions(FormBuilder::setOptions($tenantServices->getTenantOptions()))->required(),
             FormBuilder::frameImage('icon', '应用图标', $this->url('admin/widget.images/index', ['fodder' => 'icon'], true), $data['value'])
                 ->icon('ios-image')->width('950px')->height('420px')->info($data['desc'])->col(13)->required(),
             FormBuilder::input('name', '应用名称', $data['name'] ?? '')->required(),
@@ -228,6 +232,11 @@ class ApplicationServices extends BaseServices
         if ($appSecret !== $appInfo['app_secret']) {
             throw new AuthException('错误的app_secret值');
         }
+        //应用所属租户禁用/到期时拒绝接入
+        /** @var TenantServices $tenantServices */
+        $tenantServices = app()->make(TenantServices::class);
+        $tenantServices->checkUsable((int)($appData['tenant_id'] ?? 0));
+        $appInfo['tenant_id'] = (int)($appData['tenant_id'] ?? 0);
         if ($other) {
             return ['user' => $this->createUser($appData['appid'], $other), 'appInfo' => $appInfo];
         } else {
