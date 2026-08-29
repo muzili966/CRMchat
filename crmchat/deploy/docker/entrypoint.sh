@@ -4,6 +4,12 @@ set -e
 
 cd /var/www/crmchat
 
+# 安装状态声明在环境配置中：容器重建后自动恢复install.lock，避免/install重新暴露
+# 首次部署保持默认false走安装向导，安装完成后在 .env.<env> 中置 APP_INSTALLED=true
+if [ "${APP_INSTALLED:-false}" = "true" ] && [ ! -f public/install/install.lock ]; then
+    touch public/install/install.lock
+fi
+
 if [ ! -f .env ]; then
     cat > .env <<EOF
 APP_DEBUG = ${APP_DEBUG:-false}

@@ -17,6 +17,7 @@ services:
       - "${APP_PORT:-20108}:20108"
     environment:
       APP_DEBUG: "${APP_DEBUG:-false}"
+      APP_INSTALLED: "${APP_INSTALLED:-false}"
       APP_KEY: "${APP_KEY:?请在env文件中设置APP_KEY}"
       DB_HOST: mysql
       DB_PORT: "3306"
