@@ -5,10 +5,11 @@
 //
 // 前置条件：
 //   1. 构建节点需有 Docker（当前 Jenkins 只有内置节点且无标签，故用 agent any）
-//   2. Credentials: harbor-crmchat（Harbor crmchat 项目的 robot 账号，需先在 Harbor 创建项目）、
+//   2. Credentials: harbor-crmchat（Harbor crmchat 项目的 robot 账号）、
 //      deploy-ssh-key（部署服务器 SSH，与 jetlinks 复用同一凭据）
-//   3. 部署服务器 /opt/crm-chat/compose/ 已放置 docker-compose.<env>.yaml 与 .env.<env>
-//      （模板见仓库 crmchat/deploy/compose/）
+//   3. 部署定义（compose 与 .env.<env>）以仓库 crmchat/deploy/compose/ 为唯一事实源，
+//      部署阶段自动同步到部署机，无需手工预置；仅 prod 的 .env.prod 不入库，
+//      需按 .env.prod.example 在部署机放置一次
 //   4. 首次部署后需初始化数据库（访问 /install 向导或导入 crmeb.sql）
 
 def SERVICE_NAME  = 'crm-chat'
@@ -92,17 +93,22 @@ pipeline {
         }
 
         stage('部署') {
-            when { expression { params.ENV in ['dev', 'test', 'staging'] } }
+            when { expression { params.ENV in ['dev', 'test'] } }
             steps {
                 sshagent(credentials: ['deploy-ssh-key']) {
+                    // 仓库为部署事实源：每次部署同步 compose 目录到部署机（不会带出未入库的 .env.prod）
+                    // mysql/redis 与应用同编排，故不加 --no-deps；-p 按环境隔离项目与数据卷
                     sh """
+                        ssh -o StrictHostKeyChecking=no ${DEPLOY_HOST} 'mkdir -p ${DEPLOY_DIR}'
+                        scp -o StrictHostKeyChecking=no -r crmchat/deploy/compose/. ${DEPLOY_HOST}:${DEPLOY_DIR}/
                         ssh -o StrictHostKeyChecking=no ${DEPLOY_HOST} "
                             cd ${DEPLOY_DIR} && \\\\
                             docker pull ${env.IMAGE} && \\\\
                             REGISTRY=${REGISTRY} TAG=${env.IMAGE_TAG} \\\\
-                              docker compose -f docker-compose.${params.ENV}.yaml \\\\
+                              docker compose -p ${SERVICE_NAME}-${params.ENV} \\\\
+                                             -f docker-compose.yaml \\\\
                                              --env-file .env.${params.ENV} \\\\
-                                             up -d --no-deps ${SERVICE_NAME}
+                                             up -d
                         "
                     """
                 }

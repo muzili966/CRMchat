@@ -1,10 +1,11 @@
-# 部署服务器编排模板（参考 jetlinks 部署约定）：
-#   复制到部署机 /opt/crm-chat/compose/docker-compose.<env>.yaml，
-#   配套同目录 .env.<env>（模板见 .env.example）。
-# Jenkins 部署阶段执行：
-#   REGISTRY=<registry> TAG=<tag> docker compose -f docker-compose.<env>.yaml --env-file .env.<env> up -d --no-deps crm-chat
-# 首次部署后需初始化数据库：浏览器访问 http://<host>:<APP_PORT>/install 走安装向导，
-# 或手动导入 public/install/crmeb.sql 后按 .example.env 说明补齐配置。
+# CRM-Chat 部署编排：仓库为唯一事实源，Jenkins 部署阶段自动同步本目录到部署机并拉起，
+# 无需在部署机手工预置任何文件。
+# 环境差异由同目录 .env.<env> 承载（dev/test 已入库；prod 见 .env.prod.example 说明）。
+# 手工运维示例（在部署机 /opt/crm-chat/compose 下执行）：
+#   REGISTRY=10.242.98.181:9093/crmchat TAG=<tag> \
+#     docker compose -p crm-chat-dev -f docker-compose.yaml --env-file .env.dev up -d
+# 首次部署后需初始化数据库：访问 http://<host>:<APP_PORT>/install 走安装向导，
+# 或手动导入 public/install/crmeb.sql。
 services:
   crm-chat:
     image: ${REGISTRY}/crm-chat:${TAG:-latest}
@@ -49,6 +50,7 @@ services:
     volumes:
       - crmchat-redis:/data
 
+# 卷名会带 compose 项目前缀（-p crm-chat-<env>），dev/test 同机部署互不影响
 volumes:
   crmchat-mysql:
   crmchat-redis:
