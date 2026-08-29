@@ -132,4 +132,27 @@ class Tenant extends AuthController
         $this->services->createTenantAdmin($data);
         return $this->success('租户管理员创建成功');
     }
+
+    /**
+     * 为租户开通/续费套餐，生成对账单
+     * @param \app\services\TenantPlanOrderServices $orderServices
+     * @return mixed
+     */
+    public function subscribe(\app\services\TenantPlanOrderServices $orderServices)
+    {
+        $data = $this->request->postMore([
+            [['tenant_id', 'd'], 0],
+            [['plan_id', 'd'], 0],
+            [['months', 'd'], 1],
+            [['pay_type', 'd'], \app\models\TenantPlanOrder::PAY_TYPE_BACKEND],
+            ['remark', ''],
+        ]);
+        if (!$data['tenant_id'] || !$data['plan_id']) {
+            return $this->fail('缺少租户或套餐参数');
+        }
+        $data['admin_id'] = $this->adminId;
+        $order = $orderServices->subscribe($data);
+        return $this->success('套餐开通成功', $order);
+    }
+
 }

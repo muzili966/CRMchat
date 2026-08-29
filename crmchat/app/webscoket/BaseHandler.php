@@ -18,6 +18,8 @@ use app\services\chat\ChatServiceDialogueRecordServices;
 use app\services\chat\ChatServiceRecordServices;
 use app\services\chat\ChatServiceServices;
 use app\services\chat\ChatUserServices;
+use app\services\TenantPlanServices;
+use crmeb\services\tenant\TenantContext;
 use crmeb\services\SwooleTaskService;
 use crmeb\utils\Arr;
 use Swoole\Timer;
@@ -119,6 +121,12 @@ abstract class BaseHandler
             return $response->message('err_tip', ['msg' => '用户不存在']);
         }
 
+        /** @var TenantPlanServices $planServices */
+        $planServices = app()->make(TenantPlanServices::class);
+        if (!$planServices->checkDailyMessage(TenantContext::id())) {
+            return $response->message('err_tip', ['msg' => '今日消息量已达套餐上限，请联系管理员升级套餐']);
+        }
+
         /** @var ChatServiceDialogueRecordServices $logServices */
         $logServices = app()->make(ChatServiceDialogueRecordServices::class);
         if (!in_array($msn_type, ChatServiceDialogueRecordServices::MSN_TYPE)) {
@@ -199,8 +207,8 @@ abstract class BaseHandler
             $isBackstage = !!$kefuInfo['is_backstage'];
         }
 
-        //开启自动回复（Timer回调运行在新协程，wrap携带当前租户上下文）
-        if ($auto_reply) {
+        //开启自动回复（受套餐功能约束；Timer回调运行在新协程，wrap携带当前租户上下文）
+        if ($auto_reply && $planServices->hasFeature(TenantContext::id(), 'auto_reply')) {
             $app = app();
             Timer::after(100, \crmeb\services\tenant\TenantContext::wrap(function () use ($app, $services, $appId, $to_user_id, $other, $msn_type, $userId, $msn, $response) {
                 $data = $services->autoReply($app, $appId, $to_user_id, $userId, $msn, $msn_type, $other);
@@ -237,8 +245,8 @@ abstract class BaseHandler
                     'allNum' => $allUnMessagesCount,//总未读条数
                     'recored' => $data['recored']
                 ])->getData());
-            } else if ($kefuOnline && $clientId && $kefuInfo) {
-                //客服不在线,但是客服在app登录了,状态保持在线,发送app推送消息
+            } else if ($kefuOnline && $clientId && $kefuInfo && $planServices->hasFeature(TenantContext::id(), 'app_push')) {
+                //客服不在线,但是客服在app登录了,状态保持在线,发送app推送消息（受套餐功能约束）
                 UniPush::dispatch([
                     ['nickname' => $data['nickname'], 'to_user_id' => $to_user_id, 'user_id' => $userId, 'appid' => $appId],
                     $clientId,

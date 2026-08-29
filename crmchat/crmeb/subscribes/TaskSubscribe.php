@@ -11,6 +11,8 @@
 namespace crmeb\subscribes;
 
 
+use think\facade\Log;
+
 /**
  * 定时任务类
  * Class TaskSubscribe
@@ -69,10 +71,28 @@ class TaskSubscribe
     }
 
     /**
-     * 300秒钟执行的方法
+     * 300秒钟执行的方法：租户到期通知扫描 + 每日按套餐清理历史聊天记录
      */
     public function onTask_300()
     {
-
+        try {
+            /** @var \app\services\TenantNoticeServices $noticeServices */
+            $noticeServices = app()->make(\app\services\TenantNoticeServices::class);
+            $noticeServices->checkExpireNotice();
+        } catch (\Throwable $e) {
+            Log::error('租户到期通知扫描失败：' . $e->getMessage());
+        }
+        try {
+            //记录清理为天级任务，用缓存去重避免每5分钟全量执行
+            $dedupKey = 'tenant_record_clean:' . date('Ymd');
+            if (!\crmeb\services\CacheService::has($dedupKey)) {
+                \crmeb\services\CacheService::set($dedupKey, 1, 172800);
+                /** @var \app\services\TenantPlanServices $planServices */
+                $planServices = app()->make(\app\services\TenantPlanServices::class);
+                $planServices->cleanExpiredRecords();
+            }
+        } catch (\Throwable $e) {
+            Log::error('套餐保留天数清理失败：' . $e->getMessage());
+        }
     }
 }
