@@ -145,4 +145,16 @@ class ChatService extends BaseModel
     {
         $query->where('user_id', $value);
     }
+
+    /**
+     * appid搜索器
+     * @param Model $query
+     * @param $value
+     */
+    public function searchAppidAttr($query, $value)
+    {
+        if ($value !== '') {
+            $query->where('appid', $value);
+        }
+    }
 }

@@ -438,7 +438,7 @@ abstract class BaseHandler
                 $userService->update(['id' => $usreId], ['online' => 0]);
             }
 
-            $this->manager->pushing($this->room->getKefuRoomAll(), $response->message('user_online', [
+            $this->manager->pushing($this->room->getKefuRoomByAppid($appId), $response->message('user_online', [
                 'online' => 0,
                 'user_id' => $usreId
             ]), $this->fd);

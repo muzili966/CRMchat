@@ -113,6 +113,18 @@ class ChatServiceRecord extends BaseModel
     }
 
     /**
+     * appid搜索器
+     * @param Model $query
+     * @param $value
+     */
+    public function searchAppidAttr($query, $value)
+    {
+        if ($value !== '') {
+            $query->where('appid', $value);
+        }
+    }
+
+    /**
      *
      * @param $value
      * @param $data

@@ -150,7 +150,7 @@ class KefuHandler extends BaseHandler
             /** @var ChatServiceRecordServices $service */
             $service = app()->make(ChatServiceRecordServices::class);
             $service->updateRecord(['to_user_id' => $userId], ['online' => 0]);
-            $this->manager->pushing($this->room->getKefuRoomAll(), $response->message('online', [
+            $this->manager->pushing($this->room->getKefuRoomByAppid($user['appid'] ?? ''), $response->message('online', [
                 'online' => 0,
                 'user_id' => $userId
             ]), $this->fd);

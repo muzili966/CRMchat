@@ -53,13 +53,55 @@ class LoginServices extends BaseServices
      */
     public function authLogin(string $account, string $password = null, int $isApp = 0, string $clientId = null)
     {
-        $kefuInfo = $this->dao->get(['account' => $account]);
-        if (!$kefuInfo) {
+        $kefuInfo = $this->matchAccount($account, $password);
+        return $this->loginByKefuInfo($kefuInfo, $isApp, $clientId);
+    }
+
+    /**
+     * 按账号定位客服，不同应用允许同名账号，需通过密码消歧
+     * @param string $account
+     * @param string|null $password
+     * @return \think\Model
+     * @throws DataNotFoundException
+     * @throws DbException
+     * @throws ModelNotFoundException
+     */
+    protected function matchAccount(string $account, ?string $password)
+    {
+        $kefuList = $this->dao->getListByAccount($account);
+        if ($kefuList->isEmpty()) {
             throw new ValidateException('没有此用户');
         }
-        if ($password && !password_verify($password, $kefuInfo->password)) {
+        if (!$password) {
+            if (count($kefuList) > 1) {
+                throw new ValidateException('存在多个同名账号，无法免密登录，请联系管理员');
+            }
+            return $kefuList[0];
+        }
+        $matched = [];
+        foreach ($kefuList as $kefuInfo) {
+            if (password_verify($password, $kefuInfo->password)) {
+                $matched[] = $kefuInfo;
+            }
+        }
+        if (!$matched) {
             throw new ValidateException('账号或密码错误');
         }
+        if (count($matched) > 1) {
+            throw new ValidateException('存在多个同名账号且密码相同，请联系管理员处理');
+        }
+        return $matched[0];
+    }
+
+    /**
+     * 用已定位的客服信息完成登录
+     * @param \think\Model $kefuInfo
+     * @param int $isApp
+     * @param string|null $clientId
+     * @return array
+     */
+    public function loginByKefuInfo($kefuInfo, int $isApp = 0, string $clientId = null)
+    {
         if (!$kefuInfo->status) {
             throw new ValidateException('您已被禁止登录');
         }
@@ -145,9 +187,9 @@ class LoginServices extends BaseServices
             $keyValue = CacheService::get($key);
             if ($keyValue === '0') {
                 $status = 1;//正在扫描中
-                $kefuInfo = $this->dao->get(['uniqid' => $key], ['account', 'uniqid']);
+                $kefuInfo = $this->dao->get(['uniqid' => $key]);
                 if ($kefuInfo) {
-                    $tokenInfo = $this->authLogin($kefuInfo->account);
+                    $tokenInfo = $this->loginByKefuInfo($kefuInfo);
                     $tokenInfo['status'] = 3;
                     $kefuInfo->uniqid = '';
                     $kefuInfo->save();

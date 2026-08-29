@@ -65,8 +65,8 @@ class UserHandler extends BaseHandler
             /** @var ChatServiceRecordServices $service */
             $service = app()->make(ChatServiceRecordServices::class);
             $service->updateRecord(['to_user_id' => $user['id']], ['online' => 1, 'type' => $res['form_type'] ?? 1]);
-            //给所有在线客服人员发送当前用户上线消息
-            $this->manager->pushing($this->room->getKefuRoomAll(), $response->message('user_online', [
+            //给当前应用的在线客服人员发送当前用户上线消息
+            $this->manager->pushing($this->room->getKefuRoomByAppid($appId), $response->message('user_online', [
                 'user_id' => $user['id'],
                 'online' => 1
             ])->getData(), $this->fd);
@@ -136,7 +136,7 @@ class UserHandler extends BaseHandler
         }
         $this->manager->login($frame['type'], $userInfo['id'], $this->fd);
 
-        $this->manager->pushing($this->room->getKefuRoomAll(), $response->message('user_online', [
+        $this->manager->pushing($this->room->getKefuRoomByAppid($appId), $response->message('user_online', [
             'user_id' => $userInfo['id'],
             'online' => 1
         ])->getData(), $this->fd);

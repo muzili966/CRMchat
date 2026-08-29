@@ -86,4 +86,17 @@ class ChatServiceDao extends BaseDao
     {
         return $this->getModel()->whereNotIn('user_id', $where['notUid'])->update($data);
     }
+
+    /**
+     * 按账号获取客服列表（不同应用允许同名账号，登录时需逐一比对）
+     * @param string $account
+     * @return \think\Collection
+     * @throws \think\db\exception\DataNotFoundException
+     * @throws \think\db\exception\DbException
+     * @throws \think\db\exception\ModelNotFoundException
+     */
+    public function getListByAccount(string $account)
+    {
+        return $this->getModel()->where('account', $account)->select();
+    }
 }

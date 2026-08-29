@@ -54,6 +54,11 @@ class Room
     const TYPE_NAME = 'socket_user_type';
 
     /**
+     * 在线客服fd集合的缓存key
+     */
+    const KEFU_ROOM_KEY = '_ws_kefu';
+
+    /**
      * 设置缓存
      * @param $cache
      * @return $this
@@ -314,7 +319,23 @@ class Room
      */
     public function getKefuRoomAll()
     {
-        return $this->cache->sMembers('_ws_kefu');
+        return $this->cache->sMembers(self::KEFU_ROOM_KEY);
+    }
+
+    /**
+     * 获取指定应用的在线客服fd，避免跨应用广播
+     * @param string $appid
+     * @return array
+     */
+    public function getKefuRoomByAppid(string $appid)
+    {
+        if ($appid === '') {
+            return [];
+        }
+        $fds = $this->cache->sMembers(self::KEFU_ROOM_KEY) ?: [];
+        return array_values(array_filter($fds, function ($fd) use ($appid) {
+            return $this->get((string)$fd, 'appid') === $appid;
+        }));
     }
 
     /**
