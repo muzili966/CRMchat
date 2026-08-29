@@ -206,17 +206,17 @@ abstract class BaseHandler
             //Timer回调运行在新协程，需携带租户上下文
             $tenantId = (int)(\crmeb\services\tenant\TenantContext::get() ?: 0);
             Timer::after(100, function () use ($app, $services, $appId, $to_user_id, $other, $msn_type, $userId, $msn, $response, $tenantId) {
-                $data = \crmeb\services\tenant\TenantContext::runAs($tenantId, function () use ($app, $services, $appId, $to_user_id, $userId, $msn, $msn_type, $other) {
-                    return $services->autoReply($app, $appId, $to_user_id, $userId, $msn, $msn_type, $other);
+                \crmeb\services\tenant\TenantContext::runAs($tenantId, function () use ($app, $services, $appId, $to_user_id, $userId, $msn, $msn_type, $other, $response) {
+                    $data = $services->autoReply($app, $appId, $to_user_id, $userId, $msn, $msn_type, $other);
+                    if ($data) {
+                        //给当前用户自动回复
+                        $toUserFd = $this->manager->getUserIdByFds($userId);
+                        $this->manager->pushing($toUserFd, $response->message('reply', $data)->getData());
+                        //给对方回复消息
+                        $toUserFd = $this->manager->getUserIdByFds($to_user_id);
+                        $this->manager->pushing($toUserFd, $response->message('chat', $data)->getData());
+                    }
                 });
-                if ($data) {
-                    //给当前用户自动回复
-                    $toUserFd = $this->manager->getUserIdByFds($userId);
-                    $this->manager->pushing($toUserFd, $response->message('reply', $data)->getData());
-                    //给对方回复消息
-                    $toUserFd = $this->manager->getUserIdByFds($to_user_id);
-                    $this->manager->pushing($toUserFd, $response->message('chat', $data)->getData());
-                }
             });
         }
         $toUserOnline = !!$userService->value(['id' => $to_user_id], 'online');
