@@ -105,7 +105,7 @@ pipeline {
                       docker compose -p ${SERVICE_NAME}-${params.ENV} \\
                                      -f docker-compose.yaml \\
                                      --env-file .env.${params.ENV} \\
-                                     up -d
+                                     up -d --remove-orphans
                 """
                 echo "已部署: ${SERVICE_NAME} → ${params.ENV} (${env.IMAGE})"
             }

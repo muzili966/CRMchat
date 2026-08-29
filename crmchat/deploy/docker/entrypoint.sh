@@ -23,12 +23,13 @@ DEFAULT_TIMEZONE = Asia/Shanghai
 
 [DATABASE]
 TYPE = mysql
-HOSTNAME = ${DB_HOST:-mysql}
+HOSTNAME = ${DB_HOST:-host.docker.internal}
 DATABASE = ${DB_NAME:-crmchat}
 USERNAME = ${DB_USER:-crmchat}
 PASSWORD = ${DB_PASSWORD:-}
 HOSTPORT = ${DB_PORT:-3306}
 PREFIX = ${DB_PREFIX:-eb_}
+SQL_MODE = ${DB_SQL_MODE:-NO_ENGINE_SUBSTITUTION}
 CHARSET = utf8
 DEBUG = false
 

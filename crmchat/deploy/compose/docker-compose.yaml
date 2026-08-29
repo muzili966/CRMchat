@@ -6,21 +6,25 @@
 #     docker compose -p crm-chat-dev -f docker-compose.yaml --env-file .env.dev up -d
 # 首次部署后需初始化数据库：访问 http://<host>:<APP_PORT>/install 走安装向导，
 # 或手动导入 public/install/crmeb.sql。
+# MySQL 使用宿主机实例（不容器化）：容器经 host.docker.internal(host-gateway) 访问宿主3306，
+# 需预先在宿主 MySQL 为各环境建库建号（见 .env.<env> 注释）；应用连接会话级放宽 sql_mode，
+# 不改动共享实例的全局配置。
 services:
   crm-chat:
     image: ${REGISTRY}/crm-chat:${TAG:-latest}
     restart: unless-stopped
     depends_on:
-      - mysql
       - redis
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${APP_PORT:-20108}:20108"
     environment:
       APP_DEBUG: "${APP_DEBUG:-false}"
       APP_INSTALLED: "${APP_INSTALLED:-false}"
       APP_KEY: "${APP_KEY:?请在env文件中设置APP_KEY}"
-      DB_HOST: mysql
-      DB_PORT: "3306"
+      DB_HOST: "${DB_HOST:-host.docker.internal}"
+      DB_PORT: "${DB_PORT:-3306}"
       DB_NAME: "${DB_NAME:-crmchat}"
       DB_USER: "${DB_USER:-crmchat}"
       DB_PASSWORD: "${DB_PASSWORD:?请在env文件中设置DB_PASSWORD}"
@@ -32,20 +36,6 @@ services:
       - crmchat-uploads:/var/www/crmchat/public/uploads
       - crmchat-runtime:/var/www/crmchat/runtime
 
-  mysql:
-    image: mysql:5.7
-    restart: unless-stopped
-    # sql-mode 放宽为CRMEB系代码要求的非严格模式（安装器强制校验）；
-    # 注意：升级MySQL 8.0时须去掉 NO_AUTO_CREATE_USER（8.0已移除该模式，保留会导致无法启动）
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --sql-mode=NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
-    environment:
-      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?请在env文件中设置MYSQL_ROOT_PASSWORD}"
-      MYSQL_DATABASE: "${DB_NAME:-crmchat}"
-      MYSQL_USER: "${DB_USER:-crmchat}"
-      MYSQL_PASSWORD: "${DB_PASSWORD}"
-    volumes:
-      - crmchat-mysql:/var/lib/mysql
-
   redis:
     image: redis:6.2-alpine
     restart: unless-stopped
@@ -55,7 +45,6 @@ services:
 
 # 卷名会带 compose 项目前缀（-p crm-chat-<env>），dev/test 同机部署互不影响
 volumes:
-  crmchat-mysql:
   crmchat-redis:
   crmchat-uploads:
   crmchat-runtime:

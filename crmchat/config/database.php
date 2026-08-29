@@ -32,8 +32,11 @@ return [
             'hostport'        => Env::get('database.hostport', '3306'),
             // 连接dsn
             'dsn'             => '',
-            // 数据库连接参数
-            'params'          => [],
+            // 数据库连接参数：会话级放宽sql_mode（CRMEB系代码依赖非严格模式），
+            // 仅作用于本应用连接，不影响共享MySQL实例的全局配置；5.7/8.0通用
+            'params'          => [
+                \PDO::MYSQL_ATTR_INIT_COMMAND => "SET sql_mode='" . Env::get('database.sql_mode', 'NO_ENGINE_SUBSTITUTION') . "'",
+            ],
             // 数据库编码默认采用utf8
             'charset'         => Env::get('database.charset', 'utf8'),
             // 数据库表前缀
