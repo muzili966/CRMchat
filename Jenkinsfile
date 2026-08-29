@@ -95,13 +95,18 @@ pipeline {
         stage('部署') {
             when { expression { params.ENV in ['dev', 'test'] } }
             steps {
-                sshagent(credentials: ['deploy-ssh-key']) {
+                // 本 Jenkins 未安装 ssh-agent 插件（jetlinks 流水线的 sshagent 同样报错），
+                // 改用内置 credentials-binding 的 sshUserPrivateKey 等价实现
+                withCredentials([sshUserPrivateKey(
+                        credentialsId: 'deploy-ssh-key',
+                        keyFileVariable: 'SSH_KEY',
+                        usernameVariable: 'SSH_USER')]) {
                     // 仓库为部署事实源：每次部署同步 compose 目录到部署机（不会带出未入库的 .env.prod）
                     // mysql/redis 与应用同编排，故不加 --no-deps；-p 按环境隔离项目与数据卷
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${DEPLOY_HOST} 'mkdir -p ${DEPLOY_DIR}'
-                        scp -o StrictHostKeyChecking=no -r crmchat/deploy/compose/. ${DEPLOY_HOST}:${DEPLOY_DIR}/
-                        ssh -o StrictHostKeyChecking=no ${DEPLOY_HOST} "
+                        ssh -i "\$SSH_KEY" -o StrictHostKeyChecking=no "\$SSH_USER@${DEPLOY_HOST}" 'mkdir -p ${DEPLOY_DIR}'
+                        scp -i "\$SSH_KEY" -o StrictHostKeyChecking=no -r crmchat/deploy/compose/. "\$SSH_USER@${DEPLOY_HOST}:${DEPLOY_DIR}/"
+                        ssh -i "\$SSH_KEY" -o StrictHostKeyChecking=no "\$SSH_USER@${DEPLOY_HOST}" "
                             cd ${DEPLOY_DIR} && \\\\
                             docker pull ${env.IMAGE} && \\\\
                             REGISTRY=${REGISTRY} TAG=${env.IMAGE_TAG} \\\\
