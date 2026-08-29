@@ -1,0 +1,12 @@
+.git
+.idea
+.env
+runtime/*
+public/uploads/*
+public/install/install.lock
+tests
+phpunit.xml
+.phpunit.result.cache
+deploy/compose
+*.log
+swoole.pid

@@ -13,7 +13,8 @@ return is_win() ? [] : [
         'options'   => [
             'pid_file'              => runtime_path() . 'swoole.pid',
             'log_file'              => runtime_path() . 'swoole.log',
-            'daemonize'             => true,//是否守护进程
+            //容器内需前台运行（SWOOLE_DAEMONIZE=false），裸机部署保持守护进程默认值
+            'daemonize'             => (bool)env('SWOOLE_DAEMONIZE', true),
             // Normally this value should be 1~4 times larger according to your cpu cores.
             'reactor_num'           => swoole_cpu_num() * 4,
             'worker_num'            => swoole_cpu_num() * 4,
