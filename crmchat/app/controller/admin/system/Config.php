@@ -264,14 +264,8 @@ class Config extends AuthController
                 return $this->fail('提现最低金额只能为数字!');
             }
         }
-        foreach ($post as $k => $v) {
-            $config_one = $this->services->getOne(['menu_name' => $k]);
-            if ($config_one) {
-                $config_one['value'] = $v;
-                $this->services->valiDateValue($config_one);
-                $this->services->update($k, ['value' => json_encode($v)], 'menu_name');
-            }
-        }
+        //平台管理员写平台默认层；租户管理员仅可覆盖白名单配置
+        $this->services->saveConfigValues($post);
         if (isset($post['wss_open'])) {
             $this->services->saveSslFilePath((int)$post['wss_open'], $post['wss_local_pk'] ?? '', $post['wss_local_cert'] ?? '');
         }

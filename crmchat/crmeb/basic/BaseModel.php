@@ -33,11 +33,11 @@ class BaseModel extends Model
     protected $globalScope = ['tenant'];
 
     /**
-     * 是否受租户隔离约束；带 tenant_id 字段的业务模型置为 true，
-     * 平台级模型（菜单/配置分类/租户本体等）保持 false
+     * 是否受租户隔离约束；默认约束（新模型默认隔离），
+     * 平台级模型（菜单/配置分类/缓存/租户本体等）显式置为 false 豁免
      * @var bool
      */
-    protected $tenantScoped = false;
+    protected $tenantScoped = true;
 
     /**
      * 当前模型是否受租户隔离约束

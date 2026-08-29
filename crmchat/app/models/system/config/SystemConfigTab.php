@@ -37,6 +37,12 @@ class SystemConfigTab extends BaseModel
     protected $name = 'system_config_tab';
 
     /**
+     * 配置分类结构平台统一，豁免租户隔离
+     * @var bool
+     */
+    protected $tenantScoped = false;
+
+    /**
      * 状态搜索器
      * @param Model $query
      * @param $value

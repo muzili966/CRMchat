@@ -49,7 +49,9 @@ class Service extends AuthController
      */
     public function index()
     {
-        return $this->success($this->services->getServiceList([]));
+        return $this->success($this->withPlatformScope(function () {
+            return $this->services->getServiceList([]);
+        }));
     }
 
     /**

@@ -118,7 +118,7 @@ class SystemAttachmentServices extends BaseServices
             $upload_type = sys_config('upload_type', 1);
         }
         try {
-            $path = make_path('attach', 2, true);
+            $path = \crmeb\services\tenant\TenantScope::uploadDir(make_path('attach', 2, true));
             $upload = UploadService::init($upload_type);
             $res = $upload->to($path)->setAuthThumb(false)->validate()->move($file);
             if ($res === false) {

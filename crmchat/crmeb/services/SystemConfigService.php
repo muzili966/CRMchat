@@ -12,6 +12,7 @@
 namespace crmeb\services;
 
 use app\services\system\config\SystemConfigServices;
+use crmeb\services\tenant\TenantContext;
 use crmeb\utils\Arr;
 use think\facade\Config;
 
@@ -31,6 +32,20 @@ class SystemConfigService
     const EXPIRE_TIME = 30 * 24 * 3600;
 
     /**
+     * 允许租户覆盖的配置白名单（品牌类）；
+     * 存储AK/SK、上传方式等基础设施配置为平台统一，不在此列
+     */
+    const TENANT_OVERRIDABLE = [
+        'site_name',
+        'seo_title',
+        'site_logo',
+        'site_logo_square',
+        'login_logo',
+        'tourist_avatar',
+        'service_feedback',
+    ];
+
+    /**
      * 获取配置缓存前缀
      * @return string
      */
@@ -48,20 +63,30 @@ class SystemConfigService
      */
     public static function get(string $key, $default = '', bool $isCaChe = false)
     {
-        $callable = function () use ($key) {
+        $tenantId = self::currentTenantId();
+        $callable = function () use ($key, $tenantId) {
             /** @var SystemConfigServices $service */
             $service = app()->make(SystemConfigServices::class);
-            return $service->getConfigValue($key);
+            return $service->getTenantConfigValue($key, $tenantId);
         };
 
         try {
             if ($isCaChe) {
                 return $callable();
             }
-            return CacheService::redisHandler(self::getTag())->remember(self::CACHE_SYSTEM . ':' . $key, $callable, self::EXPIRE_TIME);
+            return CacheService::redisHandler(self::getTag())->remember(self::CACHE_SYSTEM . ':' . $tenantId . ':' . $key, $callable, self::EXPIRE_TIME);
         } catch (\Throwable $e) {
             return $default;
         }
+    }
+
+    /**
+     * 当前租户上下文（未初始化按平台默认层读取）
+     * @return int
+     */
+    protected static function currentTenantId(): int
+    {
+        return (int)(TenantContext::get() ?: 0);
     }
 
     /**
@@ -72,16 +97,17 @@ class SystemConfigService
      */
     public static function more(array $keys, bool $isCaChe = false)
     {
-        $callable = function () use ($keys) {
+        $tenantId = self::currentTenantId();
+        $callable = function () use ($keys, $tenantId) {
             /** @var SystemConfigServices $service */
             $service = app()->make(SystemConfigServices::class);
-            return Arr::getDefaultValue($keys, $service->getConfigAll($keys));
+            return Arr::getDefaultValue($keys, $service->getTenantConfigAll($keys, $tenantId));
         };
         try {
             if ($isCaChe)
                 return $callable();
 
-            return CacheService::redisHandler(self::getTag())->remember(self::CACHE_SYSTEM . ':' . md5(implode(',', $keys)), $callable, self::EXPIRE_TIME);
+            return CacheService::redisHandler(self::getTag())->remember(self::CACHE_SYSTEM . ':' . $tenantId . ':' . md5(implode(',', $keys)), $callable, self::EXPIRE_TIME);
         } catch (\Throwable $e) {
             return Arr::getDefaultValue($keys);
         }

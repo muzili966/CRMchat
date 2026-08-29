@@ -37,6 +37,12 @@ class SystemGroup extends BaseModel
     protected $name = 'system_group';
 
     /**
+     * 组合数据模板定义平台统一，豁免租户隔离
+     * @var bool
+     */
+    protected $tenantScoped = false;
+
+    /**
      * 配置名搜索器
      * @param Model $query
      * @param $value

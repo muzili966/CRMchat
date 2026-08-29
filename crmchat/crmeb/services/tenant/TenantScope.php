@@ -38,6 +38,20 @@ class TenantScope
     }
 
     /**
+     * 附件上传目录按租户分目录，平台上下文保持原目录
+     * @param string $dir
+     * @return string
+     */
+    public static function uploadDir(string $dir): string
+    {
+        $tenantId = (int)(TenantContext::get() ?: 0);
+        if ($tenantId > 0) {
+            return 'tenant/' . $tenantId . '/' . ltrim($dir, '/');
+        }
+        return $dir;
+    }
+
+    /**
      * 批量写入数据时补充租户字段（insertAll 不触发模型事件，需显式填充）
      * @param mixed $model
      * @param array $rows

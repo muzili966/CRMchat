@@ -30,6 +30,12 @@ class Cache extends BaseModel
     protected $name = 'cache';
 
     /**
+     * 键值缓存表为平台级数据，豁免租户隔离
+     * @var bool
+     */
+    protected $tenantScoped = false;
+
+    /**
      * 缓存KEY搜索器
      * @param Model $query
      * @param $value

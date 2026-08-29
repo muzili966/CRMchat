@@ -306,7 +306,7 @@ class User extends AuthController
         if (!$data['filename']) return $this->fail('参数有误');
         if (CacheService::has('start_uploads_' . $request->kefuId()) && CacheService::get('start_uploads_' . $request->kefuId()) >= 100) return $this->fail('非法操作');
         $upload = UploadService::init();
-        $info = $upload->to('store/comment')->validate()->move($data['filename']);
+        $info = $upload->to(\crmeb\services\tenant\TenantScope::uploadDir('store/comment'))->validate()->move($data['filename']);
         if ($info === false) {
             return $this->fail($upload->getError());
         }

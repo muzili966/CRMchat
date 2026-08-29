@@ -243,6 +243,8 @@ class ApplicationServices extends BaseServices
         $tenantServices = app()->make(TenantServices::class);
         $tenantServices->checkUsable((int)($appData['tenant_id'] ?? 0));
         $appInfo['tenant_id'] = (int)($appData['tenant_id'] ?? 0);
+        //token解析即完成租户定位，为当前协程建立租户上下文（mobile请求与websocket连接共用此入口）
+        TenantContext::set($appInfo['tenant_id']);
         if ($other) {
             return ['user' => $this->createUser($appData['appid'], $other), 'appInfo' => $appInfo];
         } else {

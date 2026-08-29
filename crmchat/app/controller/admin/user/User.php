@@ -53,7 +53,9 @@ class User extends AuthController
             ['is_tourist', '']
         ]);
 
-        return $this->success($this->services->getChatUserList($where));
+        return $this->success($this->withPlatformScope(function () use ($where) {
+            return $this->services->getChatUserList($where);
+        }));
     }
 
     /**

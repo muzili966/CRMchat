@@ -37,6 +37,25 @@ class SystemConfig extends BaseModel
     protected $name = 'system_config';
 
     /**
+     * 配置表采用「平台默认+租户覆盖」两层读取，租户维度由服务层显式处理，
+     * 不走自动Scope（自动Scope会破坏miss回落平台默认的语义）
+     * @var bool
+     */
+    protected $tenantScoped = false;
+
+    /**
+     * 租户搜索器
+     * @param Model $query
+     * @param $value
+     */
+    public function searchTenantIdAttr($query, $value)
+    {
+        if ($value !== '') {
+            $query->where('tenant_id', $value);
+        }
+    }
+
+    /**
      * 菜单名搜索器
      * @param Model $query
      * @param $value
