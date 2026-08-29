@@ -14,6 +14,7 @@ namespace app\services\system\admin;
 use app\models\system\admin\SystemAdmin;
 use app\services\TenantServices;
 use crmeb\basic\BaseServices;
+use crmeb\services\tenant\TenantContext;
 use crmeb\exceptions\AdminException;
 use app\dao\system\admin\SystemAdminDao;
 use app\services\system\SystemMenusServices;
@@ -57,7 +58,10 @@ class SystemAdminServices extends BaseServices
      */
     public function verifyLogin(string $account, string $password)
     {
-        $adminInfo = $this->dao->accountByAdmin($account);
+        //登录先于租户上下文建立，按账号全局定位管理员
+        $adminInfo = TenantContext::withoutTenant(function () use ($account) {
+            return $this->dao->accountByAdmin($account);
+        });
         if (!$adminInfo) {
             throw new AdminException('管理员不存在!');
         }
@@ -76,7 +80,9 @@ class SystemAdminServices extends BaseServices
         $adminInfo->last_time = time();
         $adminInfo->last_ip   = app('request')->ip();
         $adminInfo->login_count++;
-        $adminInfo->save();
+        TenantContext::withoutTenant(function () use ($adminInfo) {
+            $adminInfo->save();
+        });
 
         return $adminInfo;
     }
@@ -206,7 +212,11 @@ class SystemAdminServices extends BaseServices
         }
         unset($data['conf_pwd']);
 
-        if ($this->dao->count(['account' => $data['account'], 'is_del' => 0])) {
+        //管理员账号全局唯一（统一入口按账号定位租户），需跨租户检查
+        $accountExists = TenantContext::withoutTenant(function () use ($data) {
+            return $this->dao->count(['account' => $data['account'], 'is_del' => 0]);
+        });
+        if ($accountExists) {
             throw new AdminException('管理员账号已存在');
         }
 
@@ -269,8 +279,12 @@ class SystemAdminServices extends BaseServices
             }
             $adminInfo->pwd = $this->passwordHash($data['pwd']);
         }
-        //修改账号
-        if (isset($data['account']) && $data['account'] != $adminInfo->account && $this->dao->isAccountUsable($data['account'], $id)) {
+        //修改账号（账号全局唯一，需跨租户检查）
+        $accountConflict = isset($data['account']) && $data['account'] != $adminInfo->account
+            && TenantContext::withoutTenant(function () use ($data, $id) {
+                return $this->dao->isAccountUsable($data['account'], $id);
+            });
+        if ($accountConflict) {
             throw new AdminException('管理员账号已存在');
         }
         if (isset($data['roles'])) {

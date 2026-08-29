@@ -35,6 +35,24 @@ class Application extends BaseModel
     protected $key = 'id';
 
     /**
+     * 受租户隔离约束
+     * @var bool
+     */
+    protected $tenantScoped = true;
+
+    /**
+     * 租户搜索器
+     * @param Model $query
+     * @param $value
+     */
+    public function searchTenantIdAttr($query, $value)
+    {
+        if ($value !== '') {
+            $query->where('tenant_id', $value);
+        }
+    }
+
+    /**
      * name搜索
      * @param Model $query
      * @param $value

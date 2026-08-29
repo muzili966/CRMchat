@@ -1,0 +1,59 @@
+<?php
+// +----------------------------------------------------------------------
+// | CRMEB [ CRMEB赋能开发者，助力企业发展 ]
+// +----------------------------------------------------------------------
+// | Copyright (c) 2016~2020 https://www.crmeb.com All rights reserved.
+// +----------------------------------------------------------------------
+// | Licensed CRMEB并不是自由软件，未经许可不能去掉CRMEB相关版权
+// +----------------------------------------------------------------------
+// | Author: CRMEB Team <admin@crmeb.com>
+// +----------------------------------------------------------------------
+
+namespace crmeb\services\tenant;
+
+
+/**
+ * 租户隔离作用域判定
+ * Class TenantScope
+ * @package crmeb\services\tenant
+ */
+class TenantScope
+{
+    /**
+     * 租户隔离字段名
+     */
+    const FIELD = 'tenant_id';
+
+    /**
+     * 判定模型当前是否需要施加租户隔离
+     * @param mixed $model
+     * @return bool
+     */
+    public static function applies($model): bool
+    {
+        if (TenantContext::isBypass()) {
+            return false;
+        }
+        return method_exists($model, 'isTenantScoped') && $model->isTenantScoped();
+    }
+
+    /**
+     * 批量写入数据时补充租户字段（insertAll 不触发模型事件，需显式填充）
+     * @param mixed $model
+     * @param array $rows
+     * @return array
+     */
+    public static function fillRows($model, array $rows): array
+    {
+        if (!self::applies($model)) {
+            return $rows;
+        }
+        $tenantId = TenantContext::must();
+        foreach ($rows as &$row) {
+            if (is_array($row) && empty($row[self::FIELD])) {
+                $row[self::FIELD] = $tenantId;
+            }
+        }
+        return $rows;
+    }
+}

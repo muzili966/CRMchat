@@ -11,6 +11,8 @@
 
 namespace app\controller\admin;
 
+use app\models\system\admin\SystemAdmin;
+use crmeb\services\tenant\TenantContext;
 use crmeb\traits\Help;
 use think\facade\Validate;
 
@@ -74,6 +76,21 @@ abstract class AuthController
         $this->adminId   = $this->request->adminId();
         $this->adminInfo = $this->request->adminInfo();
         $this->auth      = $this->request->adminInfo['rule'] ?? [];
+    }
+
+    /**
+     * 平台超管未选择租户视角时跨全租户执行（如全局列表），
+     * 租户管理员或已选租户视角时按当前上下文执行
+     * @param \Closure $fn
+     * @return mixed
+     */
+    protected function withPlatformScope(\Closure $fn)
+    {
+        $adminType = $this->adminInfo['admin_type'] ?? SystemAdmin::TYPE_TENANT;
+        if ($adminType == SystemAdmin::TYPE_PLATFORM && !TenantContext::get()) {
+            return TenantContext::withoutTenant($fn);
+        }
+        return $fn();
     }
 
     /**

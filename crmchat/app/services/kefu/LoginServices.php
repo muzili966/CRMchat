@@ -17,6 +17,7 @@ use app\services\chat\ChatUserServices;
 use app\services\TenantServices;
 use crmeb\basic\BaseServices;
 use crmeb\exceptions\AuthException;
+use crmeb\services\tenant\TenantContext;
 use crmeb\services\CacheService;
 use crmeb\utils\ApiErrorCode;
 use crmeb\utils\JwtAuth;
@@ -54,7 +55,10 @@ class LoginServices extends BaseServices
      */
     public function authLogin(string $account, string $password = null, int $isApp = 0, string $clientId = null)
     {
-        $kefuInfo = $this->matchAccount($account, $password);
+        //登录先于租户上下文建立，按账号全局定位客服
+        $kefuInfo = TenantContext::withoutTenant(function () use ($account, $password) {
+            return $this->matchAccount($account, $password);
+        });
         return $this->loginByKefuInfo($kefuInfo, $isApp, $clientId);
     }
 
@@ -109,6 +113,21 @@ class LoginServices extends BaseServices
         /** @var TenantServices $tenantServices */
         $tenantServices = app()->make(TenantServices::class);
         $tenantServices->checkUsableByAppid((string)$kefuInfo->appid);
+        //登录先于租户上下文建立，状态落库需逃逸执行
+        return TenantContext::withoutTenant(function () use ($kefuInfo, $isApp, $clientId) {
+            return $this->doLoginByKefuInfo($kefuInfo, $isApp, $clientId);
+        });
+    }
+
+    /**
+     * 执行登录状态落库并签发token
+     * @param \think\Model $kefuInfo
+     * @param int $isApp
+     * @param string|null $clientId
+     * @return array
+     */
+    protected function doLoginByKefuInfo($kefuInfo, int $isApp, ?string $clientId)
+    {
         $token = $this->createToken($kefuInfo->id, 'kefu');
         $kefuInfo->ip = request()->ip();
         $kefuInfo->status = 1;
@@ -191,12 +210,17 @@ class LoginServices extends BaseServices
             $keyValue = CacheService::get($key);
             if ($keyValue === '0') {
                 $status = 1;//正在扫描中
-                $kefuInfo = $this->dao->get(['uniqid' => $key]);
+                //扫码登录先于租户上下文建立，按uniqid全局定位客服
+                $kefuInfo = TenantContext::withoutTenant(function () use ($key) {
+                    return $this->dao->get(['uniqid' => $key]);
+                });
                 if ($kefuInfo) {
                     $tokenInfo = $this->loginByKefuInfo($kefuInfo);
                     $tokenInfo['status'] = 3;
                     $kefuInfo->uniqid = '';
-                    $kefuInfo->save();
+                    TenantContext::withoutTenant(function () use ($kefuInfo) {
+                        $kefuInfo->save();
+                    });
                     CacheService::delete($key);
                     return $tokenInfo;
                 }

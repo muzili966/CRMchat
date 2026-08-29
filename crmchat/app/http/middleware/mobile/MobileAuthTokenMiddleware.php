@@ -15,6 +15,7 @@ namespace app\http\middleware\mobile;
 use app\Request;
 use app\services\ApplicationServices;
 use crmeb\interfaces\MiddlewareInterface;
+use crmeb\services\tenant\TenantContext;
 use Psr\SimpleCache\InvalidArgumentException;
 use think\db\exception\DataNotFoundException;
 use think\db\exception\DbException;
@@ -43,6 +44,8 @@ class MobileAuthTokenMiddleware implements MiddlewareInterface
         /** @var ApplicationServices $services */
         $services = app()->make(ApplicationServices::class);
         $appInfo  = $services->parseToken($token);
+
+        TenantContext::set((int)($appInfo['appInfo']['tenant_id'] ?? 0));
 
         Request::macro('appId', function () use (&$appInfo) {
             return $appInfo['appInfo']['appid'] ?? null;

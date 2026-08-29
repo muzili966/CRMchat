@@ -53,6 +53,12 @@ class SystemAdmin extends BaseModel
      */
     protected $name = 'system_admin';
 
+    /**
+     * 受租户隔离约束
+     * @var bool
+     */
+    protected $tenantScoped = true;
+
     protected $insert = ['add_time'];
 
     /**

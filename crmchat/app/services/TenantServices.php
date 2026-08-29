@@ -19,6 +19,7 @@ use app\models\system\admin\SystemAdmin;
 use app\models\Tenant;
 use crmeb\basic\BaseServices;
 use crmeb\exceptions\AdminException;
+use crmeb\services\tenant\TenantContext;
 
 /**
  * 租户service
@@ -149,16 +150,38 @@ class TenantServices extends BaseServices
      */
     public function checkUsableByAppid(string $appid)
     {
+        $this->checkUsable($this->tenantIdByAppid($appid));
+    }
+
+    /**
+     * 由appid解析所属租户ID，应用不存在返回0
+     * @param string $appid
+     * @return int
+     */
+    public function tenantIdByAppid(string $appid): int
+    {
         if (!$appid) {
-            return;
+            return Tenant::PLATFORM_TENANT_ID;
         }
-        /** @var ApplicationDao $applicationDao */
-        $applicationDao = app()->make(ApplicationDao::class);
-        $tenantId = $applicationDao->value(['appid' => $appid], 'tenant_id');
-        if (is_null($tenantId)) {
-            return;
+        //appid寻址属于跨租户定位，需逃逸执行
+        return (int)TenantContext::withoutTenant(function () use ($appid) {
+            /** @var ApplicationDao $applicationDao */
+            $applicationDao = app()->make(ApplicationDao::class);
+            return $applicationDao->value(['appid' => $appid], 'tenant_id') ?: 0;
+        });
+    }
+
+    /**
+     * 校验租户存在性（不校验状态，供平台超管切换租户视角）
+     * @param int $tenantId
+     * @return void
+     */
+    public function mustExists(int $tenantId)
+    {
+        $tenantInfo = $this->dao->get($tenantId);
+        if (!$tenantInfo || $tenantInfo->is_delete) {
+            throw new AdminException('租户不存在');
         }
-        $this->checkUsable((int)$tenantId);
     }
 
     /**
@@ -180,7 +203,11 @@ class TenantServices extends BaseServices
         }
         /** @var SystemAdminDao $adminDao */
         $adminDao = app()->make(SystemAdminDao::class);
-        if ($adminDao->count(['account' => $data['account'], 'is_del' => 0])) {
+        //管理员账号全局唯一（统一入口按账号定位租户），需跨租户检查
+        $accountExists = TenantContext::withoutTenant(function () use ($adminDao, $data) {
+            return $adminDao->count(['account' => $data['account'], 'is_del' => 0]);
+        });
+        if ($accountExists) {
             throw new AdminException('管理员账号已存在');
         }
         $adminData = [

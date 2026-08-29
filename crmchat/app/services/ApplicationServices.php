@@ -18,6 +18,7 @@ use crmeb\basic\BaseServices;
 use crmeb\exceptions\AdminException;
 use crmeb\exceptions\AuthException;
 use crmeb\services\CacheService;
+use crmeb\services\tenant\TenantContext;
 use crmeb\services\FormBuilder;
 use crmeb\utils\Arr;
 use crmeb\utils\Encrypter;
@@ -201,7 +202,10 @@ class ApplicationServices extends BaseServices
     public function parseToken(string $token, array $other = [])
     {
         if (strlen($token) === 32) {
-            $token = $this->dao->value(['token_md5' => $token], 'token');
+            //token寻址发生在租户上下文建立之前，需逃逸执行
+            $token = TenantContext::withoutTenant(function () use ($token) {
+                return $this->dao->value(['token_md5' => $token], 'token');
+            });
         }
         /** @var Encrypter $encrypter */
         $encrypter = app()->make(Encrypter::class);
@@ -222,7 +226,9 @@ class ApplicationServices extends BaseServices
             throw new AuthException('缺少应用ID');
         }
 
-        $appData = $this->dao->get(['appid' => $appInfo['appid'], 'is_delete' => 0]);
+        $appData = TenantContext::withoutTenant(function () use ($appInfo) {
+            return $this->dao->get(['appid' => $appInfo['appid'], 'is_delete' => 0]);
+        });
 
         if (!$appData) {
             throw new AuthException('应用不存在');

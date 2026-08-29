@@ -296,7 +296,9 @@ abstract class BaseDao
      */
     public function saveAll(array $data)
     {
-        return $this->getModel()::insertAll($data);
+        $model = $this->getModel();
+        //insertAll 不触发模型事件，需显式补充租户字段
+        return $model::insertAll(\crmeb\services\tenant\TenantScope::fillRows($model, $data));
     }
 
     /**

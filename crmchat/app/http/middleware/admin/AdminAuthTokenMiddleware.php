@@ -12,9 +12,12 @@
 namespace app\http\middleware\admin;
 
 
+use app\models\system\admin\SystemAdmin;
 use app\Request;
 use app\services\system\admin\AdminAuthServices;
+use app\services\TenantServices;
 use crmeb\interfaces\MiddlewareInterface;
+use crmeb\services\tenant\TenantContext;
 use think\facade\Config;
 
 /**
@@ -31,7 +34,12 @@ class AdminAuthTokenMiddleware implements MiddlewareInterface
 
         /** @var AdminAuthServices $service */
         $service = app()->make(AdminAuthServices::class);
-        $adminInfo = $service->parseToken($token);
+        //token寻址发生在租户上下文建立之前，需逃逸执行
+        $adminInfo = TenantContext::withoutTenant(function () use ($service, $token) {
+            return $service->parseToken($token);
+        });
+
+        TenantContext::set($this->resolveTenantId($request, $adminInfo));
 
         Request::macro('isAdminLogin', function () use (&$adminInfo) {
             return !is_null($adminInfo);
@@ -45,5 +53,28 @@ class AdminAuthTokenMiddleware implements MiddlewareInterface
         });
 
         return $next($request);
+    }
+
+    /**
+     * 解析当前请求的租户上下文：
+     * 租户管理员固定为自己所属租户；平台超管默认平台视角(0)，
+     * 携带 tenant_id 参数时切换为对应租户视角
+     * @param Request $request
+     * @param array $adminInfo
+     * @return int
+     */
+    protected function resolveTenantId(Request $request, array $adminInfo): int
+    {
+        $adminType = $adminInfo['admin_type'] ?? SystemAdmin::TYPE_TENANT;
+        if ($adminType != SystemAdmin::TYPE_PLATFORM) {
+            return (int)($adminInfo['tenant_id'] ?? 0);
+        }
+        $tenantId = (int)$request->param('tenant_id', 0);
+        if ($tenantId > 0) {
+            /** @var TenantServices $tenantServices */
+            $tenantServices = app()->make(TenantServices::class);
+            $tenantServices->mustExists($tenantId);
+        }
+        return $tenantId;
     }
 }

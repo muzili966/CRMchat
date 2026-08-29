@@ -14,7 +14,9 @@ namespace app\http\middleware\kefu;
 
 use app\Request;
 use app\services\kefu\LoginServices;
+use app\services\TenantServices;
 use crmeb\interfaces\MiddlewareInterface;
+use crmeb\services\tenant\TenantContext;
 use think\facade\Config;
 
 /**
@@ -38,7 +40,14 @@ class KefuAuthTokenMiddleware implements MiddlewareInterface
         $token = trim(ltrim($request->header(Config::get('cookie.token_name', 'Authori-zation')), 'Bearer'));
         /** @var LoginServices $services */
         $services = app()->make(LoginServices::class);
-        $kefuInfo = $services->parseToken($token);
+        //token寻址发生在租户上下文建立之前，需逃逸执行
+        $kefuInfo = TenantContext::withoutTenant(function () use ($services, $token) {
+            return $services->parseToken($token);
+        });
+
+        /** @var TenantServices $tenantServices */
+        $tenantServices = app()->make(TenantServices::class);
+        TenantContext::set($tenantServices->tenantIdByAppid((string)$kefuInfo['appid']));
 
         Request::macro('kefuId', function () use (&$kefuInfo) {
             return (int)$kefuInfo['id'];

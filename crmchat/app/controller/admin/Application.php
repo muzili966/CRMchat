@@ -50,7 +50,9 @@ class Application extends AuthController
             ['name', '', 'name_like'],
         ]);
 
-        return $this->success($this->services->getList($where));
+        return $this->success($this->withPlatformScope(function () use ($where) {
+            return $this->services->getList($where);
+        }));
     }
 
     /**
