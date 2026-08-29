@@ -9,14 +9,16 @@
 //   3. Jenkins 与部署为同一台服务器：部署阶段在本机直接执行 compose，无需SSH；
 //      未来拆分独立部署机时，将部署阶段改回 withCredentials(sshUserPrivateKey)+scp/ssh 远程执行
 //   4. 部署定义（compose 与 .env.<env>）以仓库 crmchat/deploy/compose/ 为唯一事实源，
-//      部署阶段自动同步到部署目录；仅 prod 的 .env.prod 不入库，需在服务器放置一次
+//      部署阶段自动同步到 jenkins 用户主目录下的 ~/crm-chat/compose（免sudo，零预置）；
+//      仅 prod 的 .env.prod 不入库，需在该目录放置一次
 //   5. 首次部署后需初始化数据库（访问 /install 向导或导入 crmeb.sql）
 
 def SERVICE_NAME  = 'crm-chat'
 def REGISTRY      = '10.242.98.181:9093/crmchat'
 // 登录只需主机部分: 10.242.98.181:9093/crmchat → 10.242.98.181:9093
 def REGISTRY_HOST = '10.242.98.181:9093'
-def DEPLOY_DIR    = '/opt/crm-chat/compose'
+// jenkins 用户对 /opt 无写权限，部署目录放在其主目录下（shell 内解析 $HOME）
+def DEPLOY_DIR    = '$HOME/crm-chat/compose'
 // 各环境宿主机映射端口（容器内固定 20108）
 def APP_PORT      = [dev: '20118', test: '20128']
 
@@ -98,9 +100,9 @@ pipeline {
                 // 仓库为部署事实源（不会覆盖服务器上未入库的 .env.prod）
                 // mysql/redis 与应用同编排，故不加 --no-deps；-p 按环境隔离项目与数据卷
                 sh """
-                    mkdir -p ${DEPLOY_DIR}
-                    cp -r crmchat/deploy/compose/. ${DEPLOY_DIR}/
-                    cd ${DEPLOY_DIR}
+                    mkdir -p "${DEPLOY_DIR}"
+                    cp -r crmchat/deploy/compose/. "${DEPLOY_DIR}/"
+                    cd "${DEPLOY_DIR}"
                     REGISTRY=${REGISTRY} TAG=${env.IMAGE_TAG} \\
                       docker compose -p ${SERVICE_NAME}-${params.ENV} \\
                                      -f docker-compose.yaml \\
