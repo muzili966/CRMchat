@@ -5,18 +5,17 @@
 //
 // 前置条件：
 //   1. 构建节点需有 Docker（当前 Jenkins 只有内置节点且无标签，故用 agent any）
-//   2. Credentials: harbor-crmchat（Harbor crmchat 项目的 robot 账号）、
-//      deploy-ssh-key（部署服务器 SSH，与 jetlinks 复用同一凭据）
-//   3. 部署定义（compose 与 .env.<env>）以仓库 crmchat/deploy/compose/ 为唯一事实源，
-//      部署阶段自动同步到部署机，无需手工预置；仅 prod 的 .env.prod 不入库，
-//      需按 .env.prod.example 在部署机放置一次
-//   4. 首次部署后需初始化数据库（访问 /install 向导或导入 crmeb.sql）
+//   2. Credentials: harbor-crmchat（Harbor crmchat 项目的 robot 账号）
+//   3. Jenkins 与部署为同一台服务器：部署阶段在本机直接执行 compose，无需SSH；
+//      未来拆分独立部署机时，将部署阶段改回 withCredentials(sshUserPrivateKey)+scp/ssh 远程执行
+//   4. 部署定义（compose 与 .env.<env>）以仓库 crmchat/deploy/compose/ 为唯一事实源，
+//      部署阶段自动同步到部署目录；仅 prod 的 .env.prod 不入库，需在服务器放置一次
+//   5. 首次部署后需初始化数据库（访问 /install 向导或导入 crmeb.sql）
 
 def SERVICE_NAME  = 'crm-chat'
 def REGISTRY      = '10.242.98.181:9093/crmchat'
 // 登录只需主机部分: 10.242.98.181:9093/crmchat → 10.242.98.181:9093
 def REGISTRY_HOST = '10.242.98.181:9093'
-def DEPLOY_HOST   = '10.242.98.181'
 def DEPLOY_DIR    = '/opt/crm-chat/compose'
 // 各环境宿主机映射端口（容器内固定 20108）
 def APP_PORT      = [dev: '20118', test: '20128']
@@ -95,28 +94,19 @@ pipeline {
         stage('部署') {
             when { expression { params.ENV in ['dev', 'test'] } }
             steps {
-                // 本 Jenkins 未安装 ssh-agent 插件（jetlinks 流水线的 sshagent 同样报错），
-                // 改用内置 credentials-binding 的 sshUserPrivateKey 等价实现
-                withCredentials([sshUserPrivateKey(
-                        credentialsId: 'deploy-ssh-key',
-                        keyFileVariable: 'SSH_KEY',
-                        usernameVariable: 'SSH_USER')]) {
-                    // 仓库为部署事实源：每次部署同步 compose 目录到部署机（不会带出未入库的 .env.prod）
-                    // mysql/redis 与应用同编排，故不加 --no-deps；-p 按环境隔离项目与数据卷
-                    sh """
-                        ssh -i "\$SSH_KEY" -o StrictHostKeyChecking=no "\$SSH_USER@${DEPLOY_HOST}" 'mkdir -p ${DEPLOY_DIR}'
-                        scp -i "\$SSH_KEY" -o StrictHostKeyChecking=no -r crmchat/deploy/compose/. "\$SSH_USER@${DEPLOY_HOST}:${DEPLOY_DIR}/"
-                        ssh -i "\$SSH_KEY" -o StrictHostKeyChecking=no "\$SSH_USER@${DEPLOY_HOST}" "
-                            cd ${DEPLOY_DIR} && \\\\
-                            docker pull ${env.IMAGE} && \\\\
-                            REGISTRY=${REGISTRY} TAG=${env.IMAGE_TAG} \\\\
-                              docker compose -p ${SERVICE_NAME}-${params.ENV} \\\\
-                                             -f docker-compose.yaml \\\\
-                                             --env-file .env.${params.ENV} \\\\
-                                             up -d
-                        "
-                    """
-                }
+                // Jenkins与部署同机：本机直接同步compose目录并拉起，镜像用刚构建的本地镜像无需pull
+                // 仓库为部署事实源（不会覆盖服务器上未入库的 .env.prod）
+                // mysql/redis 与应用同编排，故不加 --no-deps；-p 按环境隔离项目与数据卷
+                sh """
+                    mkdir -p ${DEPLOY_DIR}
+                    cp -r crmchat/deploy/compose/. ${DEPLOY_DIR}/
+                    cd ${DEPLOY_DIR}
+                    REGISTRY=${REGISTRY} TAG=${env.IMAGE_TAG} \\
+                      docker compose -p ${SERVICE_NAME}-${params.ENV} \\
+                                     -f docker-compose.yaml \\
+                                     --env-file .env.${params.ENV} \\
+                                     up -d
+                """
                 echo "已部署: ${SERVICE_NAME} → ${params.ENV} (${env.IMAGE})"
             }
         }
@@ -124,10 +114,10 @@ pipeline {
         stage('部署验证') {
             when { expression { params.ENV in ['dev', 'test'] } }
             steps {
-                // 探活接口为免鉴权的登录页信息接口；数据库未初始化时返回400也视为进程存活
+                // 同机部署直接探活本机端口；数据库未初始化时返回400/404也视为进程存活
                 retry(10) {
                     sleep 10
-                    sh "curl -s -o /dev/null -w '%{http_code}' http://${DEPLOY_HOST}:${APP_PORT[params.ENV]}/api/admin/login/info | grep -E '200|400|404'"
+                    sh "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:${APP_PORT[params.ENV]}/api/admin/login/info | grep -E '200|400|404'"
                 }
             }
         }
