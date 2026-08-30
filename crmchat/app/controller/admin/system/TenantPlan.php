@@ -55,6 +55,7 @@ class TenantPlan extends AuthController
             [['ai_reply', 'd'], 0],
             [['auto_reply', 'd'], 0],
             [['brand_custom', 'd'], 0],
+            [['white_label', 'd'], 0],
             [['data_export', 'd'], 0],
             [['app_push', 'd'], 0],
             [['sort', 'd'], 0],

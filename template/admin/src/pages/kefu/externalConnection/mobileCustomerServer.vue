@@ -1,16 +1,27 @@
 <template>
   <div class="pc_customerServer_container">
     <!-- 客服头部开始 -->
-    <div class="pc_customerServer_container_header">
+    <div class="pc_customerServer_container_header" :style="themeBgStyle">
       <div class="pc_customerServer_container_header_title">
-        <img :src="chatServerData.to_user_avatar" alt="">
-        <span>{{chatServerData.to_user_nickname}}</span>
+        <img v-if="headerLogo" :src="headerLogo" alt="">
+        <span>{{headerTitle}}</span>
       </div>
       <div class="pc_customerServer_container_header_handle" @click="closeIframe" v-if="upperData.noCanClose != '1'">
         <span class="iconfont">&#xe6c5;</span>
       </div>
     </div>
     <!-- 客服头部结束 -->
+
+    <!-- 装修轮播广告，未配置时整块不渲染以免占用聊天区高度 -->
+    <div class="theme_banner" v-if="themeBanners.length">
+      <Carousel v-model="bannerIndex" loop autoplay :autoplay-speed="bannerAutoplaySpeed" :height="bannerHeight" arrow="never" radius-dot>
+        <CarouselItem v-for="(banner, index) in themeBanners" :key="index">
+          <div class="theme_banner_item" :class="{'theme_banner_item-link': banner.link}" :style="{ height: bannerHeight + 'px' }" @click="openBanner(banner)">
+            <img :src="banner.image" alt="">
+          </div>
+        </CarouselItem>
+      </Carousel>
+    </div>
 
     <!-- 聊天内容开始 -->
     <div class="pc_customerServer_container_content">
@@ -45,7 +56,7 @@
                   <img :src="item.avatar" alt="">
                 </div>
                 <!-- 文字及表情信息 -->
-                <div class="chart_list_item_text" v-if="item.msn_type <= 2">
+                <div class="chart_list_item_text" v-if="item.msn_type <= 2" :style="messageBubbleStyle(item)">
                   <span v-html="replace_em(item.msn)"></span>
                 </div>
                 <!-- 图片信息 -->
@@ -83,7 +94,7 @@
 
     <div class="footer_customerServer_container">
       <div class="mobel_customerServer_container_footer">
-        <div class="crmchat_link" @click="tolink">
+        <div class="crmchat_link" @click="tolink" v-if="isShowPlatformBrand">
           <span>CRMChat开源客服系统</span>
         </div>
         <div class="mobel_customerServer_container_footer_uploag_image">
@@ -107,7 +118,7 @@
         <!-- 转人工 -->
         <div class="transferHuman" v-if="showTransferHuman" @click="sendTransferHuman">转人工</div>
         <!-- 发送消息 -->
-        <div class="sendMessage" :class="{'sendMessage-primary': userMessage}">
+        <div class="sendMessage" :class="{'sendMessage-primary': userMessage}" :style="sendButtonStyle">
           <div @click="sendText">发送</div>
         </div>
       </div>
@@ -121,27 +132,34 @@
     </div>
     <!-- 内容输入结束 -->
 
+    <!-- 平台标识，白标套餐(show_platform_brand=0)下隐藏 -->
+    <div class="platform_brand" v-if="isShowPlatformBrand">{{platformBrandText}}</div>
+
   </div>
 </template>
 <script>
 import { HappyScroll } from 'vue-happy-scroll'
 import emojiList from "@/utils/emoji";
 import socketServer from './minix/socketServer';
+import appTheme from './minix/appTheme';
 
 const TRANSFER_HUMAN_TEXT = '转人工'; // 与后端转人工关键词保持一致，走关键词识别链路
+// 广告位固定高度，避免图片异步加载时轮播算不出高度而塌陷
+const BANNER_HEIGHT = 80;
 
 export default {
   components: {
     HappyScroll
   },
-  mixins: [socketServer],
+  mixins: [socketServer, appTheme],
   data() {
     return {
       isLoad: false,
       scrollTop: 0,
       emojiList: emojiList,
       pCont: '',
-      isTransferred: false // 转接后 to_user_is_ai 仍是接单时的旧值，用本地标记兜底
+      isTransferred: false, // 转接后 to_user_is_ai 仍是接单时的旧值，用本地标记兜底
+      bannerHeight: BANNER_HEIGHT
     }
   },
   created() {
@@ -157,6 +175,10 @@ export default {
     }
   },
   computed: {
+    // 无输入内容时保持置灰态，不能被主题色覆盖
+    sendButtonStyle() {
+      return this.userMessage ? this.themeBgStyle : {};
+    },
     // 仅 AI 坐席接待时才需要转人工入口
     showTransferHuman() {
       if(this.isTransferred || !this.chatServerData.to_user_id) return false;
@@ -514,6 +536,31 @@ export default {
     }
   }
 }
+.theme_banner {
+  flex-shrink: 0;
+  &_item {
+    overflow: hidden;
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+  }
+  &_item-link {
+    cursor: pointer;
+  }
+}
+
+.platform_brand {
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 12px;
+  line-height: 14px;
+  color: #bbb;
+  padding: 4px 0;
+}
+
 .canSelectemoji {
   height: 165px !important;
   padding: 10px;

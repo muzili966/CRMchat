@@ -69,6 +69,10 @@ Route::group('api', function () {
         Route::group('chat', function () {
             //客服列表
             Route::get('kefu', 'Service/index')->option(['real_name' => '客服列表']);
+            //客户端装修配置详情
+            Route::get('theme', 'AppTheme/index')->option(['real_name' => '装修配置详情']);
+            //保存客户端装修配置
+            Route::post('theme', 'AppTheme/save')->option(['real_name' => '保存装修配置']);
             //AI客服配置详情
             Route::get('ai', 'AiConfig/index')->option(['real_name' => 'AI配置详情']);
             //保存AI客服配置

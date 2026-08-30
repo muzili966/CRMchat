@@ -17,38 +17,38 @@ use crmeb\traits\ModelTrait;
 use think\Model;
 
 /**
- * 租户套餐模型
- * Class TenantPlan
+ * 客户端装修配置模型
+ * Class ApplicationTheme
  * @package app\models
  */
-class TenantPlan extends BaseModel
+class ApplicationTheme extends BaseModel
 {
     use ModelTrait;
 
     /**
-     * 停售状态
+     * 默认主题色
      */
-    const STATUS_OFF = 0;
+    const DEFAULT_THEME_COLOR = '#2d8cf0';
 
     /**
-     * 在售状态
+     * 显示平台标识
      */
-    const STATUS_ON = 1;
+    const BRAND_SHOW = 1;
 
     /**
-     * 配额值：不限
+     * 隐藏平台标识（白标，需套餐支持）
      */
-    const LIMIT_UNLIMITED = 0;
+    const BRAND_HIDE = 0;
 
     /**
-     * 功能开关字段清单
+     * 轮播广告条数上限
      */
-    const FEATURE_FIELDS = ['auto_reply', 'brand_custom', 'data_export', 'app_push', 'ai_reply', 'white_label'];
+    const MAX_BANNERS = 5;
 
     /**
-     * 配额字段清单
+     * 窗口标题长度上限，与DDL varchar(50)一致，超出会被MySQL静默截断
      */
-    const QUOTA_FIELDS = ['app_limit', 'seat_limit', 'daily_msg_limit', 'storage_limit_mb', 'record_keep_days', 'daily_ai_limit'];
+    const MAX_TITLE = 50;
 
     /**
      * 数据表主键
@@ -60,7 +60,7 @@ class TenantPlan extends BaseModel
      * 模型名称
      * @var string
      */
-    protected $name = 'tenant_plan';
+    protected $name = 'application_theme';
 
     /**
      * 时间字段为int时间戳且由服务层显式写入，全局auto_timestamp会按SQL timestamp类型格式化int值导致TypeError
@@ -69,42 +69,26 @@ class TenantPlan extends BaseModel
     protected $autoWriteTimestamp = false;
 
     /**
-     * 套餐定义为平台级数据，豁免租户隔离
-     * @var bool
-     */
-    protected $tenantScoped = false;
-
-    /**
-     * 状态搜索器
+     * 应用搜索器
      * @param Model $query
      * @param $value
      */
-    public function searchStatusAttr($query, $value)
+    public function searchAppidAttr($query, $value)
     {
-        if ($value !== '') {
-            $query->where('status', $value);
+        if ($value) {
+            $query->where('appid', $value);
         }
     }
 
     /**
-     * 是否删除搜索器
+     * 租户搜索器
      * @param Model $query
      * @param $value
      */
-    public function searchIsDeleteAttr($query, $value)
+    public function searchTenantIdAttr($query, $value)
     {
-        $query->where('is_delete', $value);
-    }
-
-    /**
-     * 套餐名称搜索器
-     * @param Model $query
-     * @param $value
-     */
-    public function searchNameLikeAttr($query, $value)
-    {
-        if ($value) {
-            $query->whereLike('name', '%' . $value . '%');
+        if ($value !== '') {
+            $query->where('tenant_id', $value);
         }
     }
 }

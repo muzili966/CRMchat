@@ -4,11 +4,11 @@
     <div class="fixed" v-if="upperData.noCanClose == 1"></div>
     <div class="pc_customerServer_container max-width_con" :class="{'max-width_advertisement': upperData.noCanClose == 1 || upperData.windowStyle == `center`}">
       <!-- 客服头部开始 -->
-      <div class="pc_customerServer_container_header">
+      <div class="pc_customerServer_container_header" :style="themeBgStyle">
         <div class="pc_customerServer_container_header_title">
 
-          <img :src="chatServerData.to_user_avatar" alt="">
-          <span>{{chatServerData.to_user_nickname}}</span>
+          <img v-if="headerLogo" :src="headerLogo" alt="">
+          <span>{{headerTitle}}</span>
         </div>
         <div class="pc_customerServer_container_header_handle" @click="closeIframe" v-if="upperData.noCanClose != '1'">
           <span class="iconfont">&#xe6c5;</span>
@@ -53,7 +53,7 @@
                         <img :src="item.avatar" alt="">
                       </div>
                       <!-- 文字及表情信息 -->
-                      <div class="chart_list_item_text" v-if="item.msn_type <= 2">
+                      <div class="chart_list_item_text" v-if="item.msn_type <= 2" :style="messageBubbleStyle(item)">
                         <span v-html="replace_em(item.msn)"></span>
                       </div>
                       <!-- 图片信息 -->
@@ -123,12 +123,12 @@
             <!-- 相关操作 -- 点击发送 -->
             <div class="pc_customerServer_container_footer_handle">
 
-              <div class="pc_customerServer_container_footer_handle_send" @click="sendText">
+              <div class="pc_customerServer_container_footer_handle_send" @click="sendText" :style="themeBgStyle">
                 <span>发送</span>
               </div>
 
             </div>
-            <div class="pc_customerServer_container_footer_copyright" @click="tolink" v-if="upperData.noCanClose != '1' && upperData.windowStyle != `center`">
+            <div class="pc_customerServer_container_footer_copyright" @click="tolink" v-if="isShowPlatformBrand && upperData.noCanClose != '1' && upperData.windowStyle != `center`">
               <span>CRMChat开源客服系统</span>
             </div>
             <!-- 相关操作结束 -->
@@ -139,13 +139,24 @@
 
         <div class="pc_customerServer_container_advertisement" v-if="upperData.noCanClose == '1' || upperData.windowStyle == `center`">
           <div class="advertisement">
-            <div v-html="advertisement"></div>
-            <div class="copyright" @click="tolink">
+            <!-- 装修配置了轮播图才替换广告位，否则沿用原有富文本，保证旧站点不受影响 -->
+            <Carousel class="theme_banner" v-if="themeBanners.length" v-model="bannerIndex" loop autoplay :autoplay-speed="bannerAutoplaySpeed" :height="bannerHeight" arrow="never" radius-dot>
+              <CarouselItem v-for="(banner, index) in themeBanners" :key="index">
+                <div class="theme_banner_item" :class="{'theme_banner_item-link': banner.link}" :style="{ height: bannerHeight + 'px' }" @click="openBanner(banner)">
+                  <img :src="banner.image" alt="">
+                </div>
+              </CarouselItem>
+            </Carousel>
+            <div v-else v-html="advertisement"></div>
+            <div class="copyright" @click="tolink" v-if="isShowPlatformBrand">
               <span>CRMChat开源客服系统</span>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- 平台标识，白标套餐(show_platform_brand=0)下隐藏 -->
+      <div class="platform_brand" v-if="isShowPlatformBrand">{{platformBrandText}}</div>
 
     </div>
 
@@ -155,16 +166,19 @@
 import { HappyScroll } from 'vue-happy-scroll'
 import emojiList from "@/utils/emoji";
 import socketServer from './minix/socketServer';
+import appTheme from './minix/appTheme';
 
 // 与后端转人工关键词保持一致，后端收到该文本后自动分配人工坐席
 const TRANSFER_KEYWORD = '转人工';
 const MSN_TYPE_TEXT = 1;
+// 广告位固定高度，避免图片异步加载时轮播算不出高度而塌陷
+const BANNER_HEIGHT = 150;
 
 export default {
   components: {
     HappyScroll
   },
-  mixins: [socketServer],
+  mixins: [socketServer, appTheme],
   data() {
     return {
       happyScroll: false,
@@ -172,7 +186,8 @@ export default {
       scrollTop: 0,
       emojiList: emojiList,
       inputConType: 1,
-      isTransferred: false
+      isTransferred: false,
+      bannerHeight: BANNER_HEIGHT
     }
   },
   watch: {
@@ -520,11 +535,42 @@ export default {
       width: 110%;
       display: block;
       text-align: center;
-      bottom: 0;
+      // 让位给容器底部的平台标识行，两者显示条件一致，不会出现留白
+      bottom: 22px;
       color: #bbb;
       padding: 5px 10px;
       /*background-color: #eee;*/
     }
+  }
+}
+
+.platform_brand {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  line-height: 14px;
+  color: #bbb;
+  padding: 4px 0;
+  background: #fff;
+  z-index: 1;
+}
+
+.theme_banner {
+  margin-bottom: 10px;
+  &_item {
+    overflow: hidden;
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+  }
+  &_item-link {
+    cursor: pointer;
   }
 }
 
@@ -553,7 +599,8 @@ export default {
     }
     .copyright {
       position: fixed;
-      bottom: 20px;
+      // 同上，让位给底部平台标识行
+      bottom: 42px;
       text-align: center;
       width: 230px;
       transition: 0.3s;

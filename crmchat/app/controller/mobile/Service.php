@@ -17,6 +17,7 @@ use app\services\chat\ChatServiceServices;
 use app\services\other\CacheServices;
 use app\services\system\attachment\SystemAttachmentServices;
 use crmeb\services\CacheService;
+use crmeb\services\tenant\TenantContext;
 use crmeb\services\UploadService;
 use think\db\exception\DataNotFoundException;
 use think\db\exception\DbException;
@@ -79,7 +80,7 @@ class Service extends AuthController
     {
         /** @var CacheServices $cache */
         $cache = app()->make(CacheServices::class);
-        $content = $cache->getDbCache('kf_adv', '');
+        $content = $cache->getDbCache(CacheServices::kfAdvKey((int)TenantContext::id()), '');
         return $this->success(compact('content'));
     }
 

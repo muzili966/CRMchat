@@ -18,6 +18,7 @@ use app\services\ai\AiAgentServices;
 use app\services\ai\AiConfigServices;
 use app\services\ai\AiDispatcher;
 use app\services\ApplicationServices;
+use app\services\ApplicationThemeServices;
 use app\services\system\config\SystemConfigServices;
 use app\services\TenantPlanServices;
 use crmeb\services\tenant\TenantContext;
@@ -243,6 +244,8 @@ class ChatServiceServices extends BaseServices
             'to_user_avatar' => $toUserInfo['avatar'],
             //访客端据此决定是否展示"转人工"入口
             'to_user_is_ai' => (int)($toUserInfo['is_ai'] ?? 0),
+            //客户端装修：套餐不支持时服务端已回退为平台默认外观
+            'theme' => app()->make(ApplicationThemeServices::class)->getPublicTheme($appId),
         ];
         //查找聊天记录
         $serviceLogList = $logServices->getServiceChatList(['appid' => $appId, 'to_user_id' => $userId], $limit, $idTo);

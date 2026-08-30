@@ -29,6 +29,15 @@ export default {
         title: 'AI客服设置'
       },
       component: () => import('@/pages/chat/ai/index')
+    },
+    {
+      path: 'theme',
+      name: `${pre}theme`,
+      meta: {
+        auth: ['chat-theme'],
+        title: '客户端装修'
+      },
+      component: () => import('@/pages/chat/theme/index')
     }
   ]
 }

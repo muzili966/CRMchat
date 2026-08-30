@@ -1277,3 +1277,36 @@ INSERT INTO `eb_system_menus` (`id`, `pid`, `icon`, `menu_name`, `module`, `cont
 (1252, 1250, '', '保存AI配置', 'admin', '', '', 'api/admin/chat/ai', 'POST', '[]', 0, 0, 0, 1, '', '165/1250', 2, '', 0, '', 0, 1),
 (1253, 1250, '', 'AI用量统计', 'admin', '', '', 'api/admin/chat/ai/usage', 'GET', '[]', 0, 0, 0, 1, '', '165/1250', 2, '', 0, '', 0, 1);
 UPDATE `eb_system_role` SET `rules` = CONCAT(`rules`, ',1250,1251,1252,1253') WHERE `role_name` = '租户管理员' AND `tenant_id` > 0 AND `rules` NOT LIKE '%1250%';
+
+-- 客户端装修（与update.sql保持一致）
+-- 按应用维度：接入代码按应用发放，同租户不同应用可以是不同品牌与站点
+CREATE TABLE IF NOT EXISTS `eb_application_theme` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID',
+  `appid` varchar(50) NOT NULL DEFAULT '' COMMENT '所属应用',
+  `title` varchar(50) NOT NULL DEFAULT '' COMMENT '窗口标题,空=用应用名',
+  `logo` varchar(255) NOT NULL DEFAULT '' COMMENT '窗口LOGO',
+  `theme_color` varchar(20) NOT NULL DEFAULT '#2d8cf0' COMMENT '主题色',
+  `pc_icon` varchar(255) NOT NULL DEFAULT '' COMMENT 'PC悬浮按钮图标',
+  `mobile_icon` varchar(255) NOT NULL DEFAULT '' COMMENT '移动端悬浮按钮图标',
+  `banners` text COMMENT '轮播广告json[{image,link,sort}]',
+  `show_platform_brand` tinyint(1) NOT NULL DEFAULT '1' COMMENT '是否显示平台标识1=显示,0=白标(需套餐支持)',
+  `create_time` int(10) NOT NULL DEFAULT '0' COMMENT '创建时间',
+  `update_time` int(10) NOT NULL DEFAULT '0' COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_appid` (`appid`),
+  KEY `idx_tenant_id` (`tenant_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='客户端装修配置表';
+
+-- 白标能力：去除平台标识，仅旗舰版
+ALTER TABLE `eb_tenant_plan` ADD `white_label` tinyint(1) NOT NULL DEFAULT '0' COMMENT '去平台标识0=否,1=是' AFTER `brand_custom`;
+UPDATE `eb_tenant_plan` SET `white_label` = 1 WHERE `name` = '旗舰版';
+
+-- 修复存量漏洞：客服广告原以固定key存于缓存表导致所有租户串台，改为按租户拆分key（见CacheServices::kfAdvKey），无需改表结构
+
+-- 菜单：租户端客户端装修
+INSERT INTO `eb_system_menus` (`id`, `pid`, `icon`, `menu_name`, `module`, `controller`, `action`, `api_url`, `methods`, `params`, `sort`, `is_show`, `is_show_path`, `access`, `menu_path`, `path`, `auth_type`, `header`, `is_header`, `unique_auth`, `is_del`, `is_tenant`) VALUES
+(1260, 165, '', '客户端装修', 'admin', '', '', '', '', '[]', 4, 1, 0, 1, '/admin/chat/theme', '165', 1, 'kefu', 0, 'chat-theme', 0, 1),
+(1261, 1260, '', '装修配置详情', 'admin', '', '', 'api/admin/chat/theme', 'GET', '[]', 0, 0, 0, 1, '', '165/1260', 2, '', 0, '', 0, 1),
+(1262, 1260, '', '保存装修配置', 'admin', '', '', 'api/admin/chat/theme', 'POST', '[]', 0, 0, 0, 1, '', '165/1260', 2, '', 0, '', 0, 1);
+UPDATE `eb_system_role` SET `rules` = CONCAT(`rules`, ',1260,1261,1262') WHERE `role_name` = '租户管理员' AND `tenant_id` > 0 AND `rules` NOT LIKE '%1260%';
