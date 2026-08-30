@@ -13,6 +13,7 @@ namespace app\services\ai;
 
 
 use app\models\chat\ChatServiceDialogueRecord;
+use app\webscoket\Manager;
 use app\services\chat\ChatServiceDialogueRecordServices;
 use app\services\chat\ChatServiceRecordServices;
 use app\services\chat\ChatUserServices;
@@ -20,8 +21,8 @@ use app\services\TenantPlanServices;
 use crmeb\basic\BaseServices;
 use crmeb\services\ai\AiClient;
 use crmeb\services\ai\AiPrompt;
-use crmeb\services\SwooleTaskService;
 use crmeb\services\tenant\TenantContext;
+use Swoole\Server;
 use think\facade\Log;
 
 /**
@@ -270,8 +271,31 @@ class AiReplyServices extends BaseServices
      */
     protected function pushReply(array $ctx, array $data)
     {
-        SwooleTaskService::user()->to($ctx['user_id'])->type('reply')->data($data)->push();
-        SwooleTaskService::kefu()->to($ctx['ai_user_id'])->type('chat')->data($data)->push();
+        //本方法运行在task进程，而SwooleTaskService::push()内部是$server->task()——
+        //Swoole禁止task进程再投递task，异常会被其try/catch吞成日志，表现为"AI回复入库但不推送"。
+        //故照搬SwooleTaskListen::message()的做法直接push，少一次投递也更快
+        $this->pushFrame('user', $ctx['user_id'], 'reply', $data);
+        $this->pushFrame('kefu', $ctx['ai_user_id'], 'chat', $data);
+    }
+
+    /**
+     * 按在线fd直推一帧，帧格式与Response::message()保持一致
+     * @param string $type 连接类型 user/kefu
+     * @param int $userId 接收方chat_user id
+     * @param string $msgType 前端消息类型
+     * @param array $data
+     * @return void
+     */
+    protected function pushFrame(string $type, int $userId, string $msgType, array $data)
+    {
+        /** @var Server $server */
+        $server = app()->make(Server::class);
+        $frame = json_encode(['type' => $msgType, 'data' => $data]);
+        foreach (Manager::userFd($type, $userId, TenantContext::id()) as $fd) {
+            if ($server->isEstablished((int)$fd)) {
+                $server->push((int)$fd, $frame);
+            }
+        }
     }
 
     /**
