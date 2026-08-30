@@ -260,3 +260,8 @@ INSERT INTO `eb_system_menus` (`id`, `pid`, `icon`, `menu_name`, `module`, `cont
 (1244, 1240, '', '申请开票', 'admin', '', '', 'api/admin/setting/tenant/invoice', 'POST', '[]', 0, 0, 0, 1, '', '1240', 2, '', 0, '', 0, 1);
 -- 存量租户默认角色补充我的订阅权限（新建租户角色由代码自动包含）
 UPDATE `eb_system_role` SET `rules` = CONCAT(`rules`, ',1240,1241,1242,1243,1244') WHERE `role_name` = '租户管理员' AND `tenant_id` > 0 AND `rules` NOT LIKE '%1240%';
+
+-- ============ 租户端套餐升级与续订（2026-08-30） ============
+INSERT INTO `eb_system_menus` (`id`, `pid`, `icon`, `menu_name`, `module`, `controller`, `action`, `api_url`, `methods`, `params`, `sort`, `is_show`, `is_show_path`, `access`, `menu_path`, `path`, `auth_type`, `header`, `is_header`, `unique_auth`, `is_del`, `is_tenant`) VALUES
+(1245, 1240, '', '在售套餐展示', 'admin', '', '', 'api/admin/setting/tenant/plans', 'GET', '[]', 0, 0, 0, 1, '', '1240', 2, '', 0, '', 0, 1);
+UPDATE `eb_system_role` SET `rules` = CONCAT(`rules`, ',1245') WHERE `role_name` = '租户管理员' AND `tenant_id` > 0 AND `rules` NOT LIKE '%1245%';

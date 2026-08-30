@@ -10,6 +10,9 @@
             <Tabs v-model="curTab" @on-click="onTabChange" v-else>
                 <TabPane label="我的套餐" name="plan">
                     <div v-if="summary.tenant" class="plan-panel">
+                        <div class="upgrade-bar">
+                            <Button type="primary" icon="md-trending-up" @click="openPlans">套餐升级与续订</Button>
+                        </div>
                         <Row :gutter="16">
                             <Col span="8">
                                 <div class="info-cell">
@@ -117,6 +120,41 @@
             </Tabs>
         </Card>
 
+        <!-- 套餐升级与续订 -->
+        <Modal v-model="plansModal" title="套餐升级与续订" width="960" footer-hide>
+            <Alert type="info" show-icon>
+                在线自助开通暂未开放，如需升级或续费，请联系您的客户经理办理，我们将在确认后为您开通。
+            </Alert>
+            <Row :gutter="16" class="plans-row">
+                <Col :xl="6" :lg="6" :md="12" :sm="24" v-for="item in plans" :key="item.id">
+                    <div class="plan-card" :class="{ 'plan-card-current': isCurrentPlan(item) }">
+                        <div class="plan-card-badge" v-if="isCurrentPlan(item)">当前套餐</div>
+                        <div class="plan-card-name">{{ item.name }}</div>
+                        <div class="plan-card-price">
+                            <span class="plan-card-amount">￥{{ item.price }}</span>
+                            <span class="plan-card-unit">/月</span>
+                        </div>
+                        <ul class="plan-card-quota">
+                            <li>接入应用：{{ limitText(item.app_limit, '个') }}</li>
+                            <li>客服坐席：{{ limitText(item.seat_limit, '个') }}</li>
+                            <li>日消息量：{{ limitText(item.daily_msg_limit, '条') }}</li>
+                            <li>存储空间：{{ limitText(item.storage_limit_mb, 'MB') }}</li>
+                            <li>记录保留：{{ item.record_keep_days > 0 ? item.record_keep_days + '天' : '永久' }}</li>
+                        </ul>
+                        <div class="plan-card-features">
+                            <Tag size="small" :color="item.auto_reply ? 'green' : 'default'">自动回复</Tag>
+                            <Tag size="small" :color="item.brand_custom ? 'green' : 'default'">品牌定制</Tag>
+                            <Tag size="small" :color="item.data_export ? 'green' : 'default'">数据导出</Tag>
+                            <Tag size="small" :color="item.app_push ? 'green' : 'default'">应用推送</Tag>
+                        </div>
+                        <Button long :type="isCurrentPlan(item) ? 'default' : 'primary'" @click="contactUpgrade(item)">
+                            {{ isCurrentPlan(item) ? '联系客户经理续费' : '联系客户经理升级' }}
+                        </Button>
+                    </div>
+                </Col>
+            </Row>
+        </Modal>
+
         <!-- 申请开票 -->
         <Modal v-model="applyModal" title="申请开票" :closable="false">
             <Form ref="applyForm" :model="applyForm" :rules="applyRules" :label-width="90">
@@ -152,7 +190,7 @@
 </template>
 
 <script>
-    import { mySubscriptionApi, orderListApi, invoiceListApi, invoiceApplyApi } from '@/api/tenant'
+    import { mySubscriptionApi, orderListApi, invoiceListApi, invoiceApplyApi, tenantPlansApi } from '@/api/tenant'
 
     const INVOICE_STATUS_TEXT = { 0: '待开具', 1: '已开具', 2: '已驳回' }
     const INVOICE_STATUS_COLOR = { 0: 'orange', 1: 'green', 2: 'red' }
@@ -173,6 +211,8 @@
                 invoiceTotal: 0,
                 invoiceWhere: { page: 1, limit: 10 },
                 invoiceList: [],
+                plansModal: false,
+                plans: [],
                 applyModal: false,
                 applyForm: { order_id: '', title: '', tax_no: '', type: 1, email: '' },
                 applyRules: {
@@ -260,6 +300,25 @@
                 this.invoiceWhere.page = index
                 this.getInvoices()
             },
+            isCurrentPlan (item) {
+                return this.summary.plan && this.summary.plan.id === item.id
+            },
+            openPlans () {
+                this.plansModal = true
+                if (this.plans.length) return
+                tenantPlansApi().then(res => {
+                    this.plans = res.data || []
+                }).catch(res => {
+                    this.$Message.error(res.msg)
+                })
+            },
+            contactUpgrade (item) {
+                const action = this.isCurrentPlan(item) ? '续费' : '升级'
+                this.$Modal.info({
+                    title: `${action}「${item.name}」`,
+                    content: `如需${action}【${item.name}】（￥${item.price}/月），请联系您的客户经理或平台客服办理，我们将在收到款项后为您开通并生成对账单。`
+                })
+            },
             openApply () {
                 if (!this.effectiveOrders.length) {
                     return this.$Message.warning('暂无可开票的对账单')
@@ -303,5 +362,63 @@
     }
     .expire-danger {
         color: #ed4014;
+    }
+    .upgrade-bar {
+        margin-bottom: 16px;
+    }
+    .plans-row {
+        margin-top: 16px;
+    }
+    .plan-card {
+        position: relative;
+        border: 1px solid #dcdee2;
+        border-radius: 6px;
+        padding: 20px 16px;
+        margin-bottom: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .plan-card-current {
+        border-color: #2d8cf0;
+        box-shadow: 0 0 0 1px #2d8cf0;
+    }
+    .plan-card-badge {
+        position: absolute;
+        top: 0;
+        right: 0;
+        background: #2d8cf0;
+        color: #fff;
+        font-size: 12px;
+        padding: 2px 10px;
+        border-radius: 0 5px 0 6px;
+    }
+    .plan-card-name {
+        font-size: 16px;
+        font-weight: 600;
+    }
+    .plan-card-price {
+        color: #2d8cf0;
+    }
+    .plan-card-amount {
+        font-size: 26px;
+        font-weight: 700;
+    }
+    .plan-card-unit {
+        color: #808695;
+        font-size: 13px;
+    }
+    .plan-card-quota {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        color: #515a6e;
+        font-size: 13px;
+        line-height: 2;
+        border-top: 1px dashed #e8eaec;
+        padding-top: 8px;
+    }
+    .plan-card-features {
+        min-height: 50px;
     }
 </style>

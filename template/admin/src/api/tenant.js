@@ -235,6 +235,16 @@ export function mySubscriptionApi() {
 }
 
 /**
+ * @description 租户端--在售套餐展示（升级续订选择）
+ */
+export function tenantPlansApi() {
+    return request({
+        url: 'setting/tenant/plans',
+        method: 'get'
+    })
+}
+
+/**
  * @description 租户端--申请开票
  * @param {Object} param data {Object} order_id/title/tax_no/type/email
  */

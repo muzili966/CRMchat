@@ -333,6 +333,8 @@ Route::group('api', function () {
             //租户列表
             Route::get('tenant/my', 'system.TenantSubscription/my')->option(['real_name' => '我的订阅概览']);
 
+            Route::get('tenant/plans', 'system.TenantSubscription/plans')->option(['real_name' => '在售套餐展示']);
+
             Route::get('tenant', 'system.Tenant/index')->option(['real_name' => '租户列表']);
             //创建租户
             Route::post('tenant', 'system.Tenant/save')->option(['real_name' => '创建租户']);

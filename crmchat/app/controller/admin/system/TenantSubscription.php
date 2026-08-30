@@ -46,4 +46,13 @@ class TenantSubscription extends AuthController
         }
         return $this->success($this->services->getMySubscription($tenantId));
     }
+
+    /**
+     * 在售套餐展示（租户升级续订选择用，只读）
+     * @return mixed
+     */
+    public function plans()
+    {
+        return $this->success($this->services->getOptions());
+    }
 }
