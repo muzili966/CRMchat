@@ -58,6 +58,12 @@ class Tenant extends BaseModel
     protected $name = 'tenant';
 
     /**
+     * 时间字段为int时间戳且由服务层显式写入，全局auto_timestamp会按SQL timestamp类型格式化int值导致TypeError
+     * @var bool
+     */
+    protected $autoWriteTimestamp = false;
+
+    /**
      * 租户本体为平台级数据，豁免租户隔离
      * @var bool
      */

@@ -63,6 +63,12 @@ class TenantNotice extends BaseModel
     protected $name = 'tenant_notice';
 
     /**
+     * 时间字段为int时间戳且由服务层显式写入，全局auto_timestamp会按SQL timestamp类型格式化int值导致TypeError
+     * @var bool
+     */
+    protected $autoWriteTimestamp = false;
+
+    /**
      * 是否已读搜索器
      * @param Model $query
      * @param $value
