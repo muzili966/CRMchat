@@ -86,6 +86,26 @@ class SystemMenusServices extends BaseServices
     }
 
     /**
+     * 按当前管理员身份过滤菜单集合
+     *
+     * 平台超管看全量；其余账号只看自己角色范围内的，避免平台菜单结构外泄
+     * @param mixed $list 菜单集合
+     * @param array $adminInfo
+     * @return array
+     */
+    public function filterVisibleMenus($list, array $adminInfo)
+    {
+        if ((int)($adminInfo['level'] ?? 1) === 0) {
+            return $list;
+        }
+        $granted = $this->getGrantableMenuIds((array)($adminInfo['roles'] ?? []));
+        //保持集合元素仍为模型对象，调用方依赖 getData() 取原始pid
+        return $list->filter(function ($item) use ($granted) {
+            return in_array((int)$item->id, $granted, true);
+        })->values();
+    }
+
+    /**
      * 某组角色可授出的菜单ID集合（即这些角色自身权限的并集）
      *
      * 用于防提权：授权者不能把自己没有的权限授予他人

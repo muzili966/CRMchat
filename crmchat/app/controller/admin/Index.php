@@ -64,6 +64,8 @@ class Index extends AuthController
         /** @var SystemMenusServices $menusServices */
         $menusServices = app()->make(SystemMenusServices::class);
         $list          = $menusServices->getSearchList();
+        //该接口在鉴权白名单内，必须自行按身份过滤，否则平台后台的完整菜单结构会泄露给租户
+        $list          = $menusServices->filterVisibleMenus($list, $this->adminInfo);
         $counts        = $menusServices->getColumn([
             ['is_show', '=', 1],
             ['auth_type', '=', 1],
