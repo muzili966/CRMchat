@@ -1,274 +1,227 @@
 <template>
-  <div class="getCode_container">
-    <div class="content">
-      <Tabs value="name1">
+  <div>
+    <div class="i-layout-page-header">
+      <div class="i-layout-page-header">
+        <span class="ivu-page-header-title">应用管理</span>
+      </div>
+    </div>
+    <Card :bordered="false" dis-hover class="ivu-mt">
+      <Form ref="searchForm" :model="searchWhere" :label-width="labelWidth" :label-position="labelPosition" @submit.native.prevent>
+        <Row type="flex" :gutter="24">
+          <Col v-bind="grid">
+            <FormItem label="搜索：" label-for="name">
+              <Input search enter-button placeholder="请输入应用名称" v-model="searchWhere.name" @on-search="userSearchs"/>
+            </FormItem>
+          </Col>
+        </Row>
+        <Row type="flex">
+          <Col v-bind="grid">
+            <Button type="primary" icon="md-add" @click="add">添加应用</Button>
+          </Col>
+        </Row>
+      </Form>
+      <Table :columns="columns" :data="list" class="mt25" :loading="loading" highlight-row no-userFrom-text="暂无数据">
+        <template slot-scope="{ row }" slot="icon">
+          <viewer>
+            <div class="tabBox_img"><img v-lazy="row.icon" v-if="row.icon"></div>
+          </viewer>
+        </template>
+        <template slot-scope="{ row }" slot="auth_mode">
+          <Tag :color="row.auth_mode === 1 ? 'green' : 'orange'">
+            {{ row.auth_mode === 1 ? '签名模式' : '兼容模式' }}
+          </Tag>
+        </template>
+        <template slot-scope="{ row, index }" slot="action">
+          <a @click="showCode(row)">接入代码</a>
+          <Divider type="vertical"/>
+          <a @click="edit(row)">编辑</a>
+          <Divider type="vertical"/>
+          <a @click="resetToken(row)">重置token</a>
+          <Divider type="vertical"/>
+          <a class="danger-link" @click="del(row, index)">删除</a>
+        </template>
+      </Table>
+      <div class="acea-row row-right page">
+        <Page :total="total" :current="searchWhere.page" show-total @on-change="pageChange" :page-size="searchWhere.limit"/>
+      </div>
+    </Card>
+
+    <!-- 接入代码：按选中的应用生成，多应用互不串用 -->
+    <Modal v-model="codeModal" :title="`接入代码 - ${current.name || ''}`" width="900" footer-hide>
+      <Tabs value="name1" v-if="current.token">
         <TabPane label="网页内嵌" name="name1">
-          <wangye :tokeninfo="token" :siteUrl="siteUrl" @cgetCopy='getCopy'></wangye>
+          <wangye :tokeninfo="current" :siteUrl="siteUrl" @cgetCopy="getCopy"></wangye>
         </TabPane>
         <TabPane label="超链接" name="name2">
-          <alink :tokeninfo="token" :siteUrl="siteUrl" @cgetCopy='getCopy'></alink>
+          <alink :tokeninfo="current" :siteUrl="siteUrl" @cgetCopy="getCopy"></alink>
         </TabPane>
         <TabPane label="定制开发" name="name3">
-          <kaifa :tokeninfo="token" :siteUrl="siteUrl" @cgetCopy='getCopy'></kaifa>
-        </TabPane>
-        <TabPane label="重置token" name="name4">
-          <setting :tokeninfo="token" :siteUrl="siteUrl" @cgetCopy='getCopy' @cresetToken="resetToken"></setting>
+          <kaifa :tokeninfo="current" :siteUrl="siteUrl" @cgetCopy="getCopy"></kaifa>
         </TabPane>
       </Tabs>
-    </div>
-    <Modal v-model="canfrime" title="提示" @on-ok="confirme" @on-cancel="cancel">
-      <div class="ivu-modal-confirm">
-        <img class="modimg" src="@/assets/images/warring.png" alt="">
-        <div>
-          token重置后，数据将全部更新，历史数据将会失效，请问是否确定？
-        </div>
-      </div>
     </Modal>
-  </div>
 
+    <!-- 新增/编辑应用（后端FormBuilder表单） -->
+    <app-from :FromData="FromData" ref="appfrom" @submitFail="getList"></app-from>
+  </div>
 </template>
 
 <script>
-import { mapState } from 'vuex';
-import { adminAppCustomer, appReset } from '@/api/kefu';
-import alink from './components/alink';
-import wangye from './components/wangye';
-import kaifa from './components/kaifa';
-import setting from './components/setting';
-
+import { mapState } from 'vuex'
+import { appListApi, appCreateFormApi, appEditFormApi, appResetTokenApi } from '@/api/application'
+import appFrom from '@/components/from/from'
+import alink from './components/alink'
+import wangye from './components/wangye'
+import kaifa from './components/kaifa'
 
 export default {
-  name: 'setting_user',
-  components: {
-    alink,
-    wangye,
-    kaifa,
-    setting
+  name: 'system_code',
+  components: { appFrom, alink, wangye, kaifa },
+  data () {
+    return {
+      grid: { xl: 7, lg: 7, md: 12, sm: 24, xs: 24 },
+      loading: false,
+      total: 0,
+      searchWhere: { name: '', page: 1, limit: 15 },
+      list: [],
+      current: {},
+      codeModal: false,
+      FromData: null,
+      siteUrl: `${location.origin}`,
+      columns: [
+        { title: '图标', slot: 'icon', width: 90 },
+        { title: '应用名称', key: 'name', minWidth: 140 },
+        { title: '应用ID', key: 'appid', minWidth: 180 },
+        { title: '接入模式', slot: 'auth_mode', minWidth: 110 },
+        { title: '简介', key: 'introduce', minWidth: 160 },
+        { title: '操作', slot: 'action', fixed: 'right', minWidth: 260 }
+      ]
+    }
   },
   computed: {
-    ...mapState('media', [
-      'isMobile'
-    ]),
-    ...mapState('userLevel', [
-      'categoryId'
-    ]),
-    labelWidth() {
-      return this.isMobile ? undefined : 75
+    ...mapState('media', ['isMobile']),
+    labelWidth () {
+      return this.isMobile ? undefined : 50
     },
-    labelPosition() {
+    labelPosition () {
       return this.isMobile ? 'top' : 'left'
-    },
-    linkUrl() {
-      return `${location.origin}/chat/index?token=${this.token.token_md5}&noCanClose=1`;
     }
   },
-  data() {
-    return {
-      token: '',
-      canfrime: false,
-      srcUrl: `${location.origin}/customerServer.js`,
-      siteUrl: `${location.origin}`,
-      cloneTip: false,
-      canCustomerServer: ''
-    }
-  },
-
-  mounted() {
-    this.getAdminAppCustomer();
+  created () {
+    this.getList()
   },
   methods: {
-    // 获取token
-    getAdminAppCustomer() {
-      adminAppCustomer().then(res => {
-        if(res.status == 200) {
-          if(res.data.list.length) {
-            this.token = res.data.list[0];
-          }
+    getList () {
+      this.loading = true
+      appListApi(this.searchWhere).then(res => {
+        this.total = res.data.count
+        this.list = res.data.list
+        this.loading = false
+      }).catch(res => {
+        this.loading = false
+        this.$Message.error(res.msg)
+      })
+    },
+    pageChange (index) {
+      this.searchWhere.page = index
+      this.getList()
+    },
+    userSearchs () {
+      this.searchWhere.page = 1
+      this.getList()
+    },
+    showCode (row) {
+      this.current = row
+      this.codeModal = true
+    },
+    add () {
+      appCreateFormApi().then(res => {
+        this.FromData = res.data
+        this.$refs.appfrom.modals = true
+      }).catch(res => {
+        this.$Message.error(res.msg)
+      })
+    },
+    edit (row) {
+      appEditFormApi(row.id).then(res => {
+        this.FromData = res.data
+        this.$refs.appfrom.modals = true
+      }).catch(res => {
+        this.$Message.error(res.msg)
+      })
+    },
+    resetToken (row) {
+      this.$Modal.confirm({
+        title: '重置token',
+        content: 'token重置后，原有接入代码将全部失效，需要重新部署，是否继续？',
+        onOk: () => {
+          appResetTokenApi(row.id).then(res => {
+            this.$Message.success('重置成功，请重新复制接入代码')
+            this.getList()
+          }).catch(res => {
+            this.$Message.error(res.msg)
+          })
         }
       })
     },
-
-    // 重置token
-    resetToken() {
-      this.canfrime = true;
-    },
-    // 确定重置token
-    confirme() {
-      appReset(this.token.id).then(res => {
-        if(res.status == 200) {
-          this.$set(this.token, 'token', res.data.token);
-        }
-      })
-    },
-    cancel() { },
-    getCopy(id) {
-      let content = this.copyToClipboard(document.getElementById(id))
-      if(content) this.cloneTip = true
-    },
-    copyToClipboard(elem) {
-      // create hidden text element, if it doesn't already exist
-      var targetId = "_hiddenCopyText_";
-      var isInput = elem.tagName === "INPUT" || elem.tagName === "TEXTAREA";
-      var origSelectionStart, origSelectionEnd;
-      if(isInput) {
-        // can just use the original source element for the selection and copy
-        target = elem;
-        origSelectionStart = elem.selectionStart;
-        origSelectionEnd = elem.selectionEnd;
-      } else {
-        // must use a temporary form element for the selection and copy
-        target = document.getElementById(targetId);
-        if(!target) {
-          var target = document.createElement("textarea");
-          target.style.position = "absolute";
-          target.style.left = "-9999px";
-          target.style.top = "0";
-          target.id = targetId;
-          document.body.appendChild(target);
-        }
-        target.textContent = elem.textContent;
+    del (row, index) {
+      const delfromData = {
+        title: '删除应用',
+        num: index,
+        url: `app/${row.id}`,
+        method: 'DELETE',
+        ids: ''
       }
-      // select the content
-      var currentFocus = document.activeElement;
-      target.focus();
-      target.setSelectionRange(0, target.value.length);
-
-      // copy the selection
-      var succeed;
+      this.$modalSure(delfromData).then(res => {
+        this.$Message.success(res.msg)
+        this.getList()
+      }).catch(res => {
+        this.$Message.error(res.msg)
+      })
+    },
+    getCopy (id) {
+      const content = this.copyToClipboard(document.getElementById(id))
+      if (content) this.$Message.success('复制成功')
+    },
+    copyToClipboard (elem) {
+      if (!elem) return false
+      const isInput = elem.tagName === 'INPUT' || elem.tagName === 'TEXTAREA'
+      let target = elem
+      if (!isInput) {
+        target = document.createElement('textarea')
+        target.style.position = 'absolute'
+        target.style.left = '-9999px'
+        target.textContent = elem.textContent
+        document.body.appendChild(target)
+      }
+      target.select()
+      let succeed = false
       try {
-        succeed = document.execCommand("copy");
-      } catch(e) {
-        succeed = false;
+        succeed = document.execCommand('copy')
+      } catch (e) {
+        succeed = false
       }
-      // restore original focus
-      if(currentFocus && typeof currentFocus.focus === "function") {
-        currentFocus.focus();
+      if (!isInput) {
+        document.body.removeChild(target)
       }
-
-      if(isInput) {
-        // restore prior selection
-        elem.setSelectionRange(origSelectionStart, origSelectionEnd);
-      } else {
-        // clear temporary content
-        target.textContent = "";
-      }
-
-      this.$Message.success('已成功复制到粘贴板');
-
-      return succeed;
+      return succeed
     }
   }
 }
 </script>
 
-<style lang="less">
-.getCode_container {
-  .content {
-    width: 100%;
-    color: #323437;
-    background: #ffffff;
-    margin-top: 18px;
-    font-size: 13px;
-    padding: 10px;
-  }
-  .font-w {
-    font-weight: 800;
-    margin: 10px 0;
-  }
-
-  .text-i {
-    text-indent: 2em;
-  }
-
-  .content > p {
-    margin-bottom: 6px;
-  }
-
-  .code-content-wrap {
-    clear: both;
-    border: 1px solid #e4e4e4;
-    border-radius: 3px;
-    padding: 12px 17px;
-    background-color: #f8f8f8;
-  }
-
-  .other-wrap {
-    margin: 4px 0;
-    text-align: right;
-  }
-
-  .textarea {
-    border: none;
-    /* height: 40px; */
-    width: 100%;
-    outline: 0;
-    resize: none;
-    background-color: #f8f8f8;
-    font-family: Arial;
-    color: #323437;
-    line-height: 24px;
-    text-align: left;
-  }
-
-  .code {
-    border: none;
-    /* height: 40px; */
-    width: 100%;
-    outline: 0;
-    resize: none;
-    background-color: #f8f8f8;
-    font-family: Arial;
-    color: #323437;
-    line-height: 24px;
-    text-align: left;
-  }
-
-  .btn {
-    display: inline-block;
-    zoom: 1;
-    padding: 6px 16px;
-    border: 1px solid #d9dbdc;
-    border-radius: 2px;
-    line-height: 1;
-    color: #323437;
-    cursor: pointer;
-    outline: 0;
-  }
-
-  .btn.btn-blue {
-    color: #fff;
-    background-color: #4f97e7;
-    border-color: #3085e3;
-  }
-
-  .setting-highlight {
-    color: #f15755;
-    margin-left: 5px;
-    line-height: 30px;
-  }
-  .fenlei {
-    margin: 10px 0;
-    border: 1px solid #eee;
-    padding: 30px;
-    padding-bottom: 10px;
-    border-radius: 6px;
-  }
-  .typetitle {
-    padding: 4px 7px;
-    font-size: 18px;
-  }
+<style scoped>
+.tabBox_img {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  cursor: pointer;
 }
-
-</style>
-<style  scoped>
-  .ivu-modal-confirm {
-    display: flex;
-    align-items: center;
-
-  }
-  .modimg {
-    width: 40px !important;
-    height: 40px !important;
-    margin-right: 30px;
-  }
+.tabBox_img img {
+  width: 100%;
+  height: 100%;
+}
+.danger-link {
+  color: #ed4014;
+}
 </style>

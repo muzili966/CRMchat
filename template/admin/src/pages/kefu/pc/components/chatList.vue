@@ -309,7 +309,14 @@ export default {
       this.$emit('changeType', item.key)
       this.getList()
     },
-    getList() {
+    // 接管 AI 会话后需要重新拉取列表，keepActive 保证不打断客服当前正在进行的对话
+    reloadList() {
+      this.page = 1
+      this.isScroll = true
+      this.userList = []
+      this.getList(true)
+    },
+    getList(keepActive) {
       if(!this.isScroll) return
       record({
         nickname: this.nickname,
@@ -318,18 +325,19 @@ export default {
         is_tourist: this.hdTabCur === 1 ? '' : 0
       }).then(res => {
         if(res.data.length > 0) {
-          res.data[0].mssage_num = 0
+          // 清零仅服务于随后自动选中的首条会话，刷新时保留未读数
+          if(!keepActive) res.data[0].mssage_num = 0
           this.isScroll = res.data.length >= this.limit
 
           this.userList = this.userList.concat(res.data)
 
-          if(this.page == 1 && res.data.length > 0 && !this.isSearch) {
+          if(this.page == 1 && res.data.length > 0 && !this.isSearch && !keepActive) {
             this.curId = res.data[0].id
             res.data[0].index = 0
             this.$emit('setDataId', res.data[0])
           }
           this.page++
-        } else {
+        } else if(!keepActive) {
           this.$emit('setDataId', 0)
         }
 

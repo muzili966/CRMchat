@@ -149,8 +149,14 @@ class KefuServices extends BaseServices
             //给转接的客服发送消息通知
             SwooleTaskService::kefu()->type('transfer')->to($kefuToUserId)->data(['recored' => $record, 'kefuInfo' => $keufInfo])->push();
             //告知用户对接此用户聊天
-            $keufToInfo = $this->dao->get(['user_id' => $kefuToUserId], ['avatar', 'nickname']);
-            SwooleTaskService::user()->type('to_transfer')->to($userId)->data(['toUid' => $kefuToUserId, 'avatar' => $keufToInfo['avatar'] ?? '', 'nickname' => $keufToInfo['nickname'] ?? ''])->push();
+            $keufToInfo = $this->dao->get(['user_id' => $kefuToUserId], ['avatar', 'nickname', 'is_ai']);
+            //携带is_ai让访客端同步切换"转人工"入口的显隐
+            SwooleTaskService::user()->type('to_transfer')->to($userId)->data([
+                'toUid' => $kefuToUserId,
+                'avatar' => $keufToInfo['avatar'] ?? '',
+                'nickname' => $keufToInfo['nickname'] ?? '',
+                'is_ai' => (int)($keufToInfo['is_ai'] ?? 0),
+            ])->push();
         } catch (\Exception $e) {
         }
         return true;

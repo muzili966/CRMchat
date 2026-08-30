@@ -236,23 +236,27 @@ class AiReplyServices extends BaseServices
 
         /** @var ChatUserServices $userService */
         $userService = app()->make(ChatUserServices::class);
+        //推送给访客的消息署AI坐席的名，而会话摘要要显示对端(访客)的名
         $aiInfo = $userService->getUserInfo($ctx['ai_user_id'], ['nickname', 'avatar']);
+        $visitorInfo = $userService->getUserInfo($ctx['user_id'], ['nickname', 'avatar']);
         $data['nickname'] = $aiInfo['nickname'] ?? '';
         $data['avatar'] = $aiInfo['avatar'] ?? '';
 
         /** @var ChatServiceRecordServices $recordServices */
         $recordServices = app()->make(ChatServiceRecordServices::class);
+        //saveRecord内部会反转两个id落库，故按"访客,坐席"顺序传入，
+        //这样生成的摘要行user_id=AI坐席，与工作台会话列表口径一致
         $data['recored'] = $recordServices->saveRecord(
             $ctx['appid'],
-            $ctx['ai_user_id'],
             $ctx['user_id'],
+            $ctx['ai_user_id'],
             $content,
             0,
             ChatServiceDialogueRecordServices::MSN_TYPE_TXT,
             0,
             $ctx['is_tourist'],
-            $data['nickname'],
-            $data['avatar'],
+            $visitorInfo['nickname'] ?? '',
+            $visitorInfo['avatar'] ?? '',
             0
         );
         return $data;

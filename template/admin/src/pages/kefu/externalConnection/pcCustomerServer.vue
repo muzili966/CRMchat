@@ -106,6 +106,9 @@
                   <img src="@/assets/images/customerServer/picture.png" alt="">
                   <input type="file" accept=".jp2,.jpe,.jpeg,.jpg,.png,.svf,.tif,.tiff" class="type_file" @change="uploadFile">
                 </div>
+                <div class="transfer_service" title="转人工客服" @click="transferService" v-if="isShowTransfer">
+                  <Icon type="md-person" size="18" />
+                </div>
               </div>
             </div>
 
@@ -152,6 +155,11 @@
 import { HappyScroll } from 'vue-happy-scroll'
 import emojiList from "@/utils/emoji";
 import socketServer from './minix/socketServer';
+
+// 与后端转人工关键词保持一致，后端收到该文本后自动分配人工坐席
+const TRANSFER_KEYWORD = '转人工';
+const MSN_TYPE_TEXT = 1;
+
 export default {
   components: {
     HappyScroll
@@ -163,10 +171,26 @@ export default {
       isLoad: false,
       scrollTop: 0,
       emojiList: emojiList,
-      inputConType: 1
+      inputConType: 1,
+      isTransferred: false
+    }
+  },
+  watch: {
+    'chatServerData.to_user_id'(val, oldVal) {
+      // 首次拿到接待坐席时 oldVal 为空，只有换人（to_transfer）才算已转接
+      if (oldVal && val != oldVal) {
+        this.isTransferred = true;
+      }
     }
   },
   computed: {
+    // 仅与 AI 坐席对话时才需要转人工入口
+    isShowTransfer() {
+      //已转接过人工则不再展示；字段缺失(旧后端)时保持显示
+      if (this.isTransferred) return false;
+      let isAi = this.chatServerData.to_user_is_ai;
+      return isAi === undefined || isAi === null ? true : !!Number(isAi);
+    },
     records() {
       return this.chatServerData.serviceList.map((item, index) => {
         item.time = this.$moment(item.add_time * 1000).format('MMMDo H:mm')
@@ -201,6 +225,16 @@ export default {
       setTimeout(() => {
         this.isLoad = false;
       }, 2000)
+    },
+    // 转人工：以访客身份发送关键词文本，转接动作由后端识别关键词后完成
+    transferService() {
+      this.$Modal.confirm({
+        title: '转人工客服',
+        content: '确定要转接人工客服吗？',
+        onOk: () => {
+          this.sendMsg(TRANSFER_KEYWORD, MSN_TYPE_TEXT);
+        }
+      });
     },
     // 聊天表情转换
     replace_em(str) {
@@ -408,6 +442,12 @@ export default {
             left: 0;
             opacity: 0;
           }
+        }
+        .transfer_service {
+          height: 18px;
+          line-height: 18px;
+          color: #666;
+          cursor: pointer;
         }
       }
     }

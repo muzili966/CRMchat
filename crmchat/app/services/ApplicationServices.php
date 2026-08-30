@@ -72,8 +72,8 @@ class ApplicationServices extends BaseServices
         return [
             FormBuilder::select('tenant_id', '所属租户', (int)($data['tenant_id'] ?? 0))
                 ->setOptions(FormBuilder::setOptions($tenantServices->getTenantOptions()))->required(),
-            FormBuilder::frameImage('icon', '应用图标', $this->url('admin/widget.images/index', ['fodder' => 'icon'], true), $data['value'])
-                ->icon('ios-image')->width('950px')->height('420px')->info($data['desc'])->col(13)->required(),
+            FormBuilder::frameImage('icon', '应用图标', $this->url('admin/widget.images/index', ['fodder' => 'icon'], true), $data['icon'] ?? '')
+                ->icon('ios-image')->width('950px')->height('420px')->col(13)->required(),
             FormBuilder::input('name', '应用名称', $data['name'] ?? '')->required(),
             FormBuilder::textarea('introduce', '应用简介', $data['introduce'] ?? ''),
             FormBuilder::radio('auth_mode', '接入模式', (int)($data['auth_mode'] ?? \app\models\Application::AUTH_MODE_SIGN))

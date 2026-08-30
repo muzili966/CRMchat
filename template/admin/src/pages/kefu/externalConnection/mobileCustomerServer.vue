@@ -104,6 +104,8 @@
         <div class="mobel_customerServer_container_footer_emoji" @click="selectEmoji">
           <span class="iconfont ">&#xe6cb;</span>
         </div>
+        <!-- 转人工 -->
+        <div class="transferHuman" v-if="showTransferHuman" @click="sendTransferHuman">转人工</div>
         <!-- 发送消息 -->
         <div class="sendMessage" :class="{'sendMessage-primary': userMessage}">
           <div @click="sendText">发送</div>
@@ -125,6 +127,9 @@
 import { HappyScroll } from 'vue-happy-scroll'
 import emojiList from "@/utils/emoji";
 import socketServer from './minix/socketServer';
+
+const TRANSFER_HUMAN_TEXT = '转人工'; // 与后端转人工关键词保持一致，走关键词识别链路
+
 export default {
   components: {
     HappyScroll
@@ -135,14 +140,29 @@ export default {
       isLoad: false,
       scrollTop: 0,
       emojiList: emojiList,
-      pCont: ''
+      pCont: '',
+      isTransferred: false // 转接后 to_user_is_ai 仍是接单时的旧值，用本地标记兜底
     }
   },
   created() {
     // this.connentServer(); // 连接webSocket 服务 [mixins 方法]
     // this.getUserRecord(); // 查看当前是否有客服在线
   },
+  watch: {
+    'chatServerData.to_user_id'(val, oldVal) {
+      // 首次拿到接待坐席时 oldVal 为空，只有换人（to_transfer）才算已转接
+      if(oldVal && val != oldVal) {
+        this.isTransferred = true;
+      }
+    }
+  },
   computed: {
+    // 仅 AI 坐席接待时才需要转人工入口
+    showTransferHuman() {
+      if(this.isTransferred || !this.chatServerData.to_user_id) return false;
+      // 旧版本后端不返回 to_user_is_ai，此时保持显示，避免访客无法转人工
+      return this.chatServerData.to_user_is_ai === undefined || this.chatServerData.to_user_is_ai == 1;
+    },
     records() {
       return this.chatServerData.serviceList.map((item, index) => {
         item.time = this.$moment(item.add_time * 1000).format('MMMDo H:mm')
@@ -164,6 +184,11 @@ export default {
     }
   },
   methods: {
+
+    // 以访客身份发送普通文本，由后端关键词识别触发转人工
+    sendTransferHuman() {
+      this.sendMsg(TRANSFER_HUMAN_TEXT, 1);
+    },
 
     textareaChange(e) {
       let strCont = e.target.value.replace(/\n\s(\s)*/gi, '\n') // 将多个回车换行合并为 1个
@@ -453,6 +478,17 @@ export default {
       display: flex;
       align-items: center;
       font-size: 24px;
+    }
+    .transferHuman {
+      flex-shrink: 0; // 输入内容变长时不被挤压
+      padding: 6px 10px;
+      border: 1px solid #3875ea;
+      border-radius: 4px;
+      margin-left: 8px;
+      color: #3875ea;
+      font-size: 14px;
+      line-height: 18px;
+      white-space: nowrap;
     }
     .sendMessage {
       background: #ccc;

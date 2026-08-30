@@ -726,3 +726,29 @@ export function updateUserData(userId, data) {
     data
   })
 }
+
+/**
+ * AI 坐席正在接待的会话列表
+ * @constructor
+ */
+export function aiSessionListApi(params) {
+  return request({
+    url: 'service/ai_sessions',
+    method: 'get',
+    params,
+    kefu: true
+  });
+}
+
+/**
+ * 接管 AI 坐席正在接待的会话
+ * @constructor
+ */
+export function aiTakeOverApi(data) {
+  return request({
+    url: 'service/ai_take_over',
+    method: 'post',
+    data,
+    kefu: true
+  });
+}

@@ -227,7 +227,7 @@ class ChatServiceServices extends BaseServices
             $transfeerService->delete(['appid' => $appId, 'binding_id' => $userId]);
         }
         //组合数据
-        $toUserInfo = $this->dao->get(['user_id' => $toUserId], ['nickname', 'avatar']);
+        $toUserInfo = $this->dao->get(['user_id' => $toUserId], ['nickname', 'avatar', 'is_ai']);
         /** @var ChatServiceDialogueRecordServices $logServices */
         $logServices = app()->make(ChatServiceDialogueRecordServices::class);
         $result = [
@@ -240,7 +240,9 @@ class ChatServiceServices extends BaseServices
             'nickname' => $userInfo['nickname'],
             'avatar' => $userInfo['avatar'],
             'to_user_nickname' => $toUserInfo['nickname'],
-            'to_user_avatar' => $toUserInfo['avatar']
+            'to_user_avatar' => $toUserInfo['avatar'],
+            //访客端据此决定是否展示"转人工"入口
+            'to_user_is_ai' => (int)($toUserInfo['is_ai'] ?? 0),
         ];
         //查找聊天记录
         $serviceLogList = $logServices->getServiceChatList(['appid' => $appId, 'to_user_id' => $userId], $limit, $idTo);

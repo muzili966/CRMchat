@@ -81,6 +81,10 @@
                 </div>
                 <div class="icon-item" @click.stop.stop="isMsg = true"><span class="iconfont iconliaotian"></span></div>
                 <div class="icon-item" @click.stop.stop="authMsg = true"><Icon style="font-weight: bold" size="22" color="#515a6e" type="ios-chatboxes-outline" /></div>
+                <div class="icon-item" @click.stop="openAiSession">
+                  <Icon style="font-weight: bold" size="22" color="#515a6e" type="ios-people-outline" />
+                  <span class="ai-label">AI会话</span>
+                </div>
               </div>
               <div class="right-wrapper">
                 <div class="icon-item" @click.stop="isTransfer = !isTransfer">
@@ -122,6 +126,30 @@
       <Modal v-model="authMsg" :mask="true" class="none-radius isMsgbox" width="600" :footer-hide="true">
         <auth-reply v-if="authMsg" @close="msgAuthClose" @activeTxt="activeTxt"></auth-reply>
       </Modal>
+      <!-- AI 坐席接待中的会话 -->
+      <Modal v-model="aiModal" :mask="true" title="AI会话" width="620" :footer-hide="true">
+        <div class="ai-session">
+          <Input v-model="aiNickname" prefix="ios-search" placeholder="搜索用户名称" @on-enter="getAiSessionList" />
+          <div class="ai-list" v-if="aiSessionList.length > 0">
+            <div class="ai-item" v-for="(item,index) in aiSessionList" :key="index">
+              <div class="avatar"><img :src="item.avatar" alt=""></div>
+              <div class="info">
+                <div class="name line1">{{item.nickname}}</div>
+                <div class="msg line1">
+                  <template v-if="item.message_type <= 2">{{item.message}}</template>
+                  <template v-if="item.message_type == 3">[图片]</template>
+                  <template v-if="item.message_type == 5">[商品]</template>
+                  <template v-if="item.message_type == 6">[订单]</template>
+                </div>
+              </div>
+              <div class="time">{{item.update_time ? $moment(item.update_time * 1000).format('MM-DD HH:mm') : ''}}</div>
+              <Button type="primary" size="small" :loading="aiTakeId === item.to_user_id" @click="takeOverAi(item)">接管</Button>
+            </div>
+          </div>
+          <div class="ai-empty" v-else-if="!aiLoading">暂无AI接待中的会话</div>
+          <Spin fix v-if="aiLoading"></Spin>
+        </div>
+      </Modal>
       <!-- 商品弹窗 -->
       <!-- <div v-if="isProductBox">
         <div class="bg" @click.stop="isProductBox = false"></div>
@@ -152,7 +180,7 @@ import { Socket } from '@/libs/socket';
 import msgWindow from "./components/msgWindow";
 import authReply from "./components/authReply";
 import transfer from './components/transfer'
-import { serviceList } from '@/api/kefu'
+import { serviceList, aiSessionListApi, aiTakeOverApi } from '@/api/kefu'
 // import goodsDetail from "./components/goods_detail";
 // import orderDetail from "./components/order_detail";
 import { mapState } from 'vuex'
@@ -228,6 +256,11 @@ export default {
       tourist: 0,
       isShow:false,
       toChat:false,
+      aiModal: false, // AI会话弹窗
+      aiLoading: false,
+      aiNickname: '', // AI会话搜索名称
+      aiSessionList: [],
+      aiTakeId: '', // 正在接管的访客uid
     }
   },
   computed: {
@@ -474,6 +507,36 @@ export default {
       }
 
 
+    },
+    // 打开AI会话弹窗
+    openAiSession() {
+      this.aiModal = true
+      this.getAiSessionList()
+    },
+    // AI坐席接待中的会话
+    getAiSessionList() {
+      this.aiLoading = true
+      aiSessionListApi({ nickname: this.aiNickname }).then(res => {
+        this.aiLoading = false
+        // 兼容列表直出与分页包装两种返回
+        this.aiSessionList = Array.isArray(res.data) ? res.data : (res.data && res.data.list) || []
+      }).catch(error => {
+        this.aiLoading = false
+        this.$Message.error(error.msg)
+      })
+    },
+    // 接管AI会话，会话行的 to_user_id 才是访客uid，user_id 为虚拟AI坐席
+    takeOverAi(item) {
+      this.aiTakeId = item.to_user_id
+      aiTakeOverApi({ user_id: item.to_user_id }).then(res => {
+        this.aiTakeId = ''
+        this.$Message.success(res.msg || '接管成功')
+        this.getAiSessionList()
+        this.$refs.chatList.reloadList()
+      }).catch(error => {
+        this.aiTakeId = ''
+        this.$Message.error(error.msg)
+      })
     },
     msgClose(e) {
       this.isTransfer = false
@@ -822,6 +885,12 @@ textarea.ivu-input {
                 font-size: 22px;
                 color: #333333;
               }
+
+              .ai-label {
+                margin-left: 4px;
+                font-size: 14px;
+                color: #515a6e;
+              }
             }
           }
 
@@ -953,6 +1022,70 @@ textarea.ivu-input {
 .isMsgbox {
   >>> .ivu-modal-body {
     padding: 0;
+  }
+}
+
+.ai-session {
+  position: relative;
+  min-height: 120px;
+
+  .ai-list {
+    margin-top: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  .ai-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #ECECEC;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .avatar {
+      width: 40px;
+      height: 40px;
+
+      img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+      }
+    }
+
+    .info {
+      flex: 1;
+      width: 0;
+      margin-left: 12px;
+
+      .name {
+        font-size: 14px;
+        color: rgba(0, 0, 0, 0.65);
+      }
+
+      .msg {
+        margin-top: 3px;
+        font-size: 12px;
+        color: #8E959E;
+      }
+    }
+
+    .time {
+      margin: 0 12px;
+      font-size: 12px;
+      color: #8E959E;
+    }
+  }
+
+  .ai-empty {
+    padding: 40px 0;
+    text-align: center;
+    font-size: 14px;
+    color: #8E959E;
   }
 }
 
