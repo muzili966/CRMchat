@@ -14,6 +14,7 @@ import user from './modules/user'
 import setting from './modules/setting'
 import app from './modules/app'
 import system from './modules/system'
+import tenant from './modules/tenant'
 import BasicLayout from '@/components/main'
 import frameOut from './modules/frameOut'
 /**
@@ -105,7 +106,8 @@ const frameIn = [
     user,
     setting,
     system,
-    app
+    app,
+    tenant
 ]
 
 /**

@@ -36,9 +36,18 @@ module.exports = {
     },
     // 设为false打包时不生成.map文件
     productionSourceMap: false,
-    // 这里写你调用接口的基础路径，来解决跨域，如果设置了代理，那你本地开发环境的axios的baseUrl要写为 '' ，即空字符串
-    // devServer: {
-    //   proxy: 'localhost:3000'
-    // }
+    // 本地开发代理到 dev 环境后端（VUE_APP_PROXY_TARGET 可覆盖）
+    devServer: {
+        proxy: {
+            '/api': {
+                target: process.env.VUE_APP_PROXY_TARGET || 'http://192.168.8.39:20118',
+                changeOrigin: true
+            },
+            '/uploads': {
+                target: process.env.VUE_APP_PROXY_TARGET || 'http://192.168.8.39:20118',
+                changeOrigin: true
+            }
+        }
+    },
     publicPath: env === 'development' ? '/admin/' : '/admin/'
 }
