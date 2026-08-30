@@ -59,6 +59,10 @@ export default {
         .filter(item => item && item.image)
         .sort((a, b) => (a.sort || 0) - (b.sort || 0));
     },
+    // 自定义广告HTML，后端已做XSS清洗；未配置轮播图时才用它替代旧的 kf_adv 富文本
+    themeCustomHtml() {
+      return this.appTheme.custom_html || '';
+    },
     // 旧后端不下发 theme，默认展示平台标识，仅显式置 0 时才隐藏
     isShowPlatformBrand() {
       const flag = this.appTheme.show_platform_brand;

@@ -340,6 +340,56 @@ class SystemConfigServices extends BaseServices
     }
 
     /**
+     * 仅平台可见的配置分类（含密钥等平台基础设施配置）
+     */
+    const PLATFORM_ONLY_TABS = [90];
+
+    /**
+     * 表单中需要打掩码的密钥类字段
+     */
+    const SECRET_FIELDS = ['ai_api_key'];
+
+    /**
+     * 把密钥类字段的值替换为掩码
+     *
+     * 后台只需知道"已配置"，不应把密钥再吐回浏览器；
+     * 提交时若仍是掩码则视为未修改（见 AiSecretServices::saveApiKey）
+     * @param array $form FormBuilder 生成的表单结构
+     * @return array
+     */
+    public function maskSecretFields(array $form): array
+    {
+        if (empty($form['rules']) || !is_array($form['rules'])) {
+            return $form;
+        }
+        foreach ($form['rules'] as &$rule) {
+            $field = is_array($rule) ? ($rule['field'] ?? '') : '';
+            if ($field !== '' && in_array($field, self::SECRET_FIELDS, true) && !empty($rule['value'])) {
+                $rule['value'] = \app\services\ai\AiSecretServices::MASK;
+            }
+        }
+        unset($rule);
+        return $form;
+    }
+
+    /**
+     * 直接写入平台层配置值
+     *
+     * 用于平台级密钥这类不允许租户覆盖、也不经表单校验的配置项；
+     * 调用方需自行确保已做平台身份校验
+     * @param string $key
+     * @param mixed $value
+     * @return void
+     */
+    public function setPlatformValue(string $key, $value)
+    {
+        TenantContext::withoutTenant(function () use ($key, $value) {
+            $this->dao->update(['menu_name' => $key, 'tenant_id' => 0], ['value' => json_encode($value)]);
+        });
+        \crmeb\services\SystemConfigService::clear();
+    }
+
+    /**
      * 配置表单展示时叠加当前租户的覆盖值（保持原始json形态与平台行一致）
      * @param array $list 平台配置定义列表
      * @return array

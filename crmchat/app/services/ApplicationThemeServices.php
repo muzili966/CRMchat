@@ -60,6 +60,21 @@ class ApplicationThemeServices extends BaseServices
     const INTERNAL_FIELDS = ['id', 'tenant_id', 'create_time', 'update_time'];
 
     /**
+     * 自定义广告HTML中需连内容一起剥离的标签，访客端以v-html渲染，留下即等于任意脚本执行
+     */
+    const DANGEROUS_TAGS = ['script', 'iframe', 'object', 'embed'];
+
+    /**
+     * on*事件属性（onerror/onclick等），三种取值写法：双引号、单引号、裸值
+     */
+    const EVENT_ATTR_PATTERN = '/\son[a-z]+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]*)/i';
+
+    /**
+     * javascript伪协议；浏览器解析URL时会忽略协议名内的空白与控制字符，故逐字符允许空白以防绕过
+     */
+    const JS_PROTOCOL_PATTERN = '/j\s*a\s*v\s*a\s*s\s*c\s*r\s*i\s*p\s*t\s*:/i';
+
+    /**
      * ApplicationThemeServices constructor.
      * @param ApplicationThemeDao $dao
      */
@@ -151,6 +166,7 @@ class ApplicationThemeServices extends BaseServices
             'pc_icon' => '',
             'mobile_icon' => '',
             'banners' => [],
+            'custom_html' => '',
             'show_platform_brand' => ApplicationTheme::BRAND_SHOW,
         ];
     }
@@ -162,9 +178,11 @@ class ApplicationThemeServices extends BaseServices
      */
     public static function formatTheme(array $theme): array
     {
+        //读取侧同样清洗：入库前的存量数据与绕过服务层的直写都可能带脚本
         return array_merge(self::defaultTheme(), $theme, [
             'theme_color' => self::sanitizeColor((string)($theme['theme_color'] ?? '')),
             'banners' => self::normalizeBanners($theme['banners'] ?? []),
+            'custom_html' => self::sanitizeHtml(self::stringValue($theme, 'custom_html')),
             'show_platform_brand' => self::normalizeBrand($theme['show_platform_brand'] ?? ApplicationTheme::BRAND_SHOW),
         ]);
     }
@@ -232,6 +250,7 @@ class ApplicationThemeServices extends BaseServices
             'pc_icon' => self::stringValue($data, 'pc_icon'),
             'mobile_icon' => self::stringValue($data, 'mobile_icon'),
             'banners' => json_encode(self::normalizeBanners($data['banners'] ?? []), JSON_UNESCAPED_UNICODE),
+            'custom_html' => self::sanitizeHtml(self::stringValue($data, 'custom_html')),
             'show_platform_brand' => self::normalizeBrand($data['show_platform_brand'] ?? ApplicationTheme::BRAND_SHOW),
         ];
     }
@@ -303,6 +322,10 @@ class ApplicationThemeServices extends BaseServices
         if ($color !== '' && !self::isValidColor($color)) {
             throw new AdminException('主题色格式不正确，请使用#RRGGBB');
         }
+        //以原值判长，避免清洗掉的脚本为超长内容让出配额
+        if (mb_strlen(self::stringValue($data, 'custom_html')) > ApplicationTheme::MAX_CUSTOM_HTML) {
+            throw new AdminException('自定义广告内容最多' . ApplicationTheme::MAX_CUSTOM_HTML . '个字符');
+        }
         $this->validateBanners($data['banners'] ?? []);
     }
 
@@ -336,6 +359,36 @@ class ApplicationThemeServices extends BaseServices
                 throw new AdminException('轮播广告链接必须以http://或https://开头');
             }
         }
+    }
+
+    /**
+     * 清洗自定义广告HTML（纯函数）：剥离危险标签、on*事件属性与javascript伪协议
+     * 只做减法不做白名单，保证租户已有的排版标签不被误伤；
+     * preg_replace回溯超限时返回null，此处统一转空串——宁可广告位不展示，也不能把未清洗内容下发给访客
+     * @param string $html
+     * @return string
+     */
+    protected static function sanitizeHtml(string $html): string
+    {
+        $value = trim($html);
+        if ($value === '') {
+            return '';
+        }
+        $stripped = array_reduce(self::DANGEROUS_TAGS, [self::class, 'stripTag'], $value);
+        $withoutEvent = preg_replace(self::EVENT_ATTR_PATTERN, '', $stripped);
+        return (string)preg_replace(self::JS_PROTOCOL_PATTERN, '', (string)$withoutEvent);
+    }
+
+    /**
+     * 移除指定标签及其内容（纯函数），未闭合或孤立的标签也一并清掉
+     * @param string $html
+     * @param string $tag
+     * @return string
+     */
+    protected static function stripTag(string $html, string $tag): string
+    {
+        $paired = preg_replace('/<' . $tag . '\b[^>]*>.*?<\/\s*' . $tag . '\s*>/is', '', $html);
+        return (string)preg_replace('/<\/?\s*' . $tag . '\b[^>]*>/i', '', (string)$paired);
     }
 
     /**

@@ -367,3 +367,17 @@ UPDATE `eb_system_config` SET `value` = '""' WHERE `menu_name` IN ('site_logo','
 UPDATE `eb_application` SET `icon` = '/statics/avatar/tourist-1.svg' WHERE `icon` LIKE '%crmeb.net%';
 UPDATE `eb_chat_service` SET `avatar` = '/statics/avatar/tourist-1.svg' WHERE `avatar` LIKE '%crmeb.net%';
 UPDATE `eb_chat_user` SET `avatar` = '/statics/avatar/tourist-1.svg' WHERE `avatar` LIKE '%crmeb.net%';
+
+-- ============ 客服页面广告并入客户端装修（2026-08-30） ============
+-- 旧「客服页面广告」(菜单913)只有富文本一条能力，装修页已覆盖轮播图，这里补齐富文本以便完全替代
+ALTER TABLE `eb_application_theme` ADD `custom_html` text COMMENT '自定义广告HTML' AFTER `banners`;
+
+-- ============ AI密钥改为数据库管理（2026-08-30） ============
+-- 密钥加密存储（APP_KEY派生），后台可自助更换；留空时回落环境变量 AI_API_KEY
+INSERT INTO `eb_system_config_tab` (`id`, `pid`, `title`, `eng_title`, `status`, `type`, `icon`, `info`) VALUES
+(90, 0, 'AI客服配置', 'ai_config', 1, 0, '', '平台统一的大模型接入配置，密钥加密存储');
+INSERT INTO `eb_system_config` (`tenant_id`, `menu_name`, `type`, `input_type`, `config_tab_id`, `parameter`, `upload_type`, `required`, `width`, `high`, `value`, `info`, `desc`, `sort`, `status`) VALUES
+(0, 'ai_base_url', 'text', 'input', 90, '', 0, '', 100, 0, '"https://api.deepseek.com"', '接口地址', '大模型服务地址，需兼容OpenAI协议。DeepSeek填 https://api.deepseek.com', 40, 1),
+(0, 'ai_api_key', 'text', 'input', 90, '', 0, '', 100, 0, '""', 'API密钥', '加密存储；留空则回落环境变量 AI_API_KEY。保存后仅显示掩码', 30, 1),
+(0, 'ai_model', 'text', 'input', 90, '', 0, '', 100, 0, '"deepseek-chat"', '模型名称', '如 deepseek-chat、qwen-plus、glm-4', 20, 1),
+(0, 'ai_timeout', 'text', 'input', 90, '', 0, '', 100, 0, '"30"', '超时秒数', '单次调用超时时间，建议20-60秒', 10, 1);

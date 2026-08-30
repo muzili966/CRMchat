@@ -1290,6 +1290,7 @@ CREATE TABLE IF NOT EXISTS `eb_application_theme` (
   `pc_icon` varchar(255) NOT NULL DEFAULT '' COMMENT 'PC悬浮按钮图标',
   `mobile_icon` varchar(255) NOT NULL DEFAULT '' COMMENT '移动端悬浮按钮图标',
   `banners` text COMMENT '轮播广告json[{image,link,sort}]',
+  `custom_html` text COMMENT '自定义广告HTML',
   `show_platform_brand` tinyint(1) NOT NULL DEFAULT '1' COMMENT '是否显示平台标识1=显示,0=白标(需套餐支持)',
   `create_time` int(10) NOT NULL DEFAULT '0' COMMENT '创建时间',
   `update_time` int(10) NOT NULL DEFAULT '0' COMMENT '更新时间',
@@ -1327,3 +1328,13 @@ UPDATE `eb_system_config` SET `value` = '""' WHERE `menu_name` IN ('site_logo','
 UPDATE `eb_application` SET `icon` = '/statics/avatar/tourist-1.svg' WHERE `icon` LIKE '%crmeb.net%';
 UPDATE `eb_chat_service` SET `avatar` = '/statics/avatar/tourist-1.svg' WHERE `avatar` LIKE '%crmeb.net%';
 UPDATE `eb_chat_user` SET `avatar` = '/statics/avatar/tourist-1.svg' WHERE `avatar` LIKE '%crmeb.net%';
+
+-- AI密钥数据库管理（与update.sql保持一致）
+-- 密钥加密存储（APP_KEY派生），后台可自助更换；留空时回落环境变量 AI_API_KEY
+INSERT INTO `eb_system_config_tab` (`id`, `pid`, `title`, `eng_title`, `status`, `type`, `icon`, `info`) VALUES
+(90, 0, 'AI客服配置', 'ai_config', 1, 0, '', '平台统一的大模型接入配置，密钥加密存储');
+INSERT INTO `eb_system_config` (`tenant_id`, `menu_name`, `type`, `input_type`, `config_tab_id`, `parameter`, `upload_type`, `required`, `width`, `high`, `value`, `info`, `desc`, `sort`, `status`) VALUES
+(0, 'ai_base_url', 'text', 'input', 90, '', 0, '', 100, 0, '"https://api.deepseek.com"', '接口地址', '大模型服务地址，需兼容OpenAI协议。DeepSeek填 https://api.deepseek.com', 40, 1),
+(0, 'ai_api_key', 'text', 'input', 90, '', 0, '', 100, 0, '""', 'API密钥', '加密存储；留空则回落环境变量 AI_API_KEY。保存后仅显示掩码', 30, 1),
+(0, 'ai_model', 'text', 'input', 90, '', 0, '', 100, 0, '"deepseek-chat"', '模型名称', '如 deepseek-chat、qwen-plus、glm-4', 20, 1),
+(0, 'ai_timeout', 'text', 'input', 90, '', 0, '', 100, 0, '"30"', '超时秒数', '单次调用超时时间，建议20-60秒', 10, 1);

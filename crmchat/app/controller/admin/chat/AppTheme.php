@@ -72,6 +72,8 @@ class AppTheme extends AuthController
             ['pc_icon', ''],
             ['mobile_icon', ''],
             [['banners', 'a'], []],
+            //富文本广告位，服务层会剥离脚本后入库
+            ['custom_html', ''],
             [['show_platform_brand', 'd'], ApplicationTheme::BRAND_SHOW],
         ]);
         $appid = (string)$data['appid'];

@@ -231,12 +231,17 @@ class Config extends AuthController
      * */
     public function edit_basics(Request $request)
     {
-        $tabId = $this->request->param('tab_id', 1);
+        $tabId = (int)$this->request->param('tab_id', 1);
         if (!$tabId) {
             return $this->fail('参数错误');
         }
+        //含平台密钥的配置分类禁止租户读取，且密钥本身只回显掩码
+        if (in_array($tabId, SystemConfigServices::PLATFORM_ONLY_TABS, true)) {
+            $this->mustPlatformAdmin('该配置分类');
+        }
         $url = $request->baseUrl();
-        return $this->success($this->services->getConfigForm($url, $tabId));
+        $form = $this->services->getConfigForm($url, $tabId);
+        return $this->success($this->services->maskSecretFields($form));
     }
 
     /**
@@ -256,6 +261,13 @@ class Config extends AuthController
                     }
                 }
             }
+        }
+        //密钥类配置单独走加密通道，不能与普通配置一样明文入库
+        if (array_key_exists(\app\services\ai\AiSecretServices::CONFIG_KEY, $post)) {
+            $this->mustPlatformAdmin('AI密钥');
+            app()->make(\app\services\ai\AiSecretServices::class)
+                ->saveApiKey((string)$post[\app\services\ai\AiSecretServices::CONFIG_KEY]);
+            unset($post[\app\services\ai\AiSecretServices::CONFIG_KEY]);
         }
         $this->validate($post, SystemConfigValidata::class);
         if (isset($post['upload_type'])) {

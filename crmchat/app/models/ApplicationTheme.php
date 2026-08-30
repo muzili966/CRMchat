@@ -51,6 +51,11 @@ class ApplicationTheme extends BaseModel
     const MAX_TITLE = 50;
 
     /**
+     * 自定义广告HTML长度上限，字段为text（64KB），按utf8mb4最坏4字节/字留足余量
+     */
+    const MAX_CUSTOM_HTML = 10000;
+
+    /**
      * 数据表主键
      * @var string
      */

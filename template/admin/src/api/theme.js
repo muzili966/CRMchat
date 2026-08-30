@@ -24,7 +24,7 @@ export function appThemeApi(params) {
 
 /**
  * @description 客户端装修--保存配置
- * @param {Object} param data {Object} appid/title/logo/theme_color/pc_icon/mobile_icon/banners/show_platform_brand
+ * @param {Object} param data {Object} appid/title/logo/theme_color/pc_icon/mobile_icon/banners/custom_html/show_platform_brand
  */
 export function appThemeSaveApi(data) {
     return request({

@@ -46,6 +46,11 @@ module.exports = {
             '/uploads': {
                 target: process.env.VUE_APP_PROXY_TARGET || 'http://192.168.8.39:20118',
                 changeOrigin: true
+            },
+            // 内置静态资源（默认头像等）由后端提供，本地开发同样需要代理，否则相对路径图片404
+            '/statics': {
+                target: process.env.VUE_APP_PROXY_TARGET || 'http://192.168.8.39:20118',
+                changeOrigin: true
             }
         }
     },

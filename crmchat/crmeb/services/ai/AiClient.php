@@ -92,6 +92,8 @@ class AiClient
     /**
      * 系统配置：模型名
      */
+    const CONFIG_BASE_URL = 'ai_base_url';
+
     const CONFIG_MODEL = 'ai_model';
 
     /**
@@ -149,10 +151,12 @@ class AiClient
     {
         return new self([
             'base_url' => self::readOr(function () {
-                return Env::get(self::ENV_BASE_URL, self::DEFAULT_BASE_URL);
+                $configured = (string)sys_config(self::CONFIG_BASE_URL, '');
+                return $configured !== '' ? $configured : Env::get(self::ENV_BASE_URL, self::DEFAULT_BASE_URL);
             }, self::DEFAULT_BASE_URL, self::ENV_BASE_URL),
+            //密钥优先取后台配置（加密存储，平台可自助更换），未配置时回落环境变量
             'api_key' => self::readOr(function () {
-                return Env::get(self::ENV_API_KEY, '');
+                return app()->make(\app\services\ai\AiSecretServices::class)->getApiKey();
             }, '', self::ENV_API_KEY),
             'model' => self::readOr(function () {
                 return sys_config(self::CONFIG_MODEL, self::DEFAULT_MODEL);

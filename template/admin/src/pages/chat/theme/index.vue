@@ -69,6 +69,22 @@
                                 {{ bannerFull ? `最多添加 ${bannerMax} 张` : '添加一张' }}
                             </Button>
                         </FormItem>
+                        <FormItem label="自定义广告：">
+                            <Collapse v-model="advPanel" simple>
+                                <Panel :name="advPanelName">
+                                    自定义广告内容（HTML）· 高级用法
+                                    <div slot="content">
+                                        <Input v-model="form.custom_html" type="textarea" :rows="customHtmlRows"
+                                               :maxlength="customHtmlMax"
+                                               placeholder="支持HTML，留空则只展示上方轮播图"/>
+                                        <div class="counter">{{ form.custom_html.length }}/{{ customHtmlMax }}</div>
+                                        <p class="field-tip">
+                                            仅在未配置轮播广告时展示；保存时会自动移除 script、iframe 等不安全内容
+                                        </p>
+                                    </div>
+                                </Panel>
+                            </Collapse>
+                        </FormItem>
                         <FormItem label="平台标识：">
                             <i-switch v-model="form.show_platform_brand" :true-value="brandShow" :false-value="brandHide"
                                       :disabled="!whiteLabel" size="large">
@@ -137,6 +153,10 @@
     const BRAND_HIDE = 0
     const BANNER_MAX = 5
     const TITLE_MAX = 50
+    // 与后端 ApplicationTheme::MAX_CUSTOM_HTML 保持一致
+    const CUSTOM_HTML_MAX = 10000
+    const CUSTOM_HTML_ROWS = 6
+    const ADV_PANEL_NAME = 'custom-html'
     const APP_LIMIT = 100
     const NO_BANNER = -1
     const HEX_COLOR_REG = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/
@@ -158,6 +178,7 @@
         pc_icon: '',
         mobile_icon: '',
         banners: [],
+        custom_html: '',
         show_platform_brand: BRAND_SHOW
     })
 
@@ -202,6 +223,10 @@
                 platformBrand: PLATFORM_BRAND,
                 titleMax: TITLE_MAX,
                 bannerMax: BANNER_MAX,
+                customHtmlMax: CUSTOM_HTML_MAX,
+                customHtmlRows: CUSTOM_HTML_ROWS,
+                advPanel: [],
+                advPanelName: ADV_PANEL_NAME,
                 brandShow: BRAND_SHOW,
                 brandHide: BRAND_HIDE
             }
@@ -261,9 +286,12 @@
                     title: theme.title || '',
                     theme_color: theme.theme_color || THEME_COLOR_DEFAULT,
                     banners: normalizeBanners(theme.banners),
+                    custom_html: theme.custom_html || '',
                     // 开关与预览按数值严格比较，后端字符串形态需先归一
                     show_platform_brand: Number(theme.show_platform_brand) === BRAND_HIDE ? BRAND_HIDE : BRAND_SHOW
                 })
+                // 已有自定义内容时默认展开，避免折叠区里的配置被忽略
+                this.advPanel = this.form.custom_html ? [ADV_PANEL_NAME] : []
                 if (data.white_label !== undefined) this.whiteLabel = !!data.white_label
             },
             onAppChange () {

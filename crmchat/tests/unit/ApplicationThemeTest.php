@@ -115,10 +115,11 @@ class ApplicationThemeTest extends TestCase
     {
         $theme = ApplicationThemeServices::defaultTheme();
         $this->assertSame(
-            ['title', 'logo', 'theme_color', 'pc_icon', 'mobile_icon', 'banners', 'show_platform_brand'],
+            ['title', 'logo', 'theme_color', 'pc_icon', 'mobile_icon', 'banners', 'custom_html', 'show_platform_brand'],
             array_keys($theme)
         );
         $this->assertSame('', $theme['title']);
+        $this->assertSame('', $theme['custom_html']);
         $this->assertSame(ApplicationTheme::DEFAULT_THEME_COLOR, $theme['theme_color']);
         $this->assertSame([], $theme['banners']);
         $this->assertSame(ApplicationTheme::BRAND_SHOW, $theme['show_platform_brand']);
