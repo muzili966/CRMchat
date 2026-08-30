@@ -47,18 +47,20 @@
     </Card>
 
     <!-- 接入代码：按选中的应用生成，多应用互不串用 -->
-    <Modal v-model="codeModal" :title="`接入代码 - ${current.name || ''}`" width="900" footer-hide>
-      <Tabs value="name1" v-if="current.token">
-        <TabPane label="网页内嵌" name="name1">
-          <wangye :tokeninfo="current" :siteUrl="siteUrl" @cgetCopy="getCopy"></wangye>
-        </TabPane>
-        <TabPane label="超链接" name="name2">
-          <alink :tokeninfo="current" :siteUrl="siteUrl" @cgetCopy="getCopy"></alink>
-        </TabPane>
-        <TabPane label="定制开发" name="name3">
-          <kaifa :tokeninfo="current" :siteUrl="siteUrl" @cgetCopy="getCopy"></kaifa>
-        </TabPane>
-      </Tabs>
+    <Modal v-model="codeModal" :title="`接入代码 - ${current.name || ''}`" width="900" footer-hide class="code-modal">
+      <div class="getCode_container">
+        <Tabs value="name1" v-if="current.token">
+          <TabPane label="网页内嵌" name="name1">
+            <wangye :tokeninfo="current" :siteUrl="siteUrl" @cgetCopy="getCopy"></wangye>
+          </TabPane>
+          <TabPane label="超链接" name="name2">
+            <alink :tokeninfo="current" :siteUrl="siteUrl" @cgetCopy="getCopy"></alink>
+          </TabPane>
+          <TabPane label="定制开发" name="name3">
+            <kaifa :tokeninfo="current" :siteUrl="siteUrl" @cgetCopy="getCopy"></kaifa>
+          </TabPane>
+        </Tabs>
+      </div>
     </Modal>
 
     <!-- 新增/编辑应用（后端FormBuilder表单） -->
@@ -223,5 +225,121 @@ export default {
 }
 .danger-link {
   color: #ed4014;
+}
+</style>
+
+<!-- 接入代码三个子组件的样式原本挂在页面根节点上，改为弹窗后需在此提供；不加scoped以便作用到子组件 -->
+<style lang="less">
+.code-modal {
+  .ivu-modal-body {
+    max-height: 68vh;
+    overflow-y: auto;
+  }
+
+  .getCode_container {
+    color: #323437;
+    font-size: 13px;
+
+    .content {
+      width: 100%;
+      background: #ffffff;
+      padding: 4px 2px;
+    }
+
+    .font-w {
+      font-weight: 600;
+      margin: 10px 0 6px;
+    }
+
+    .text-i {
+      text-indent: 2em;
+      color: #515a6e;
+      line-height: 22px;
+    }
+
+    .content > p {
+      margin-bottom: 6px;
+    }
+
+    .typetitle {
+      font-size: 15px;
+      font-weight: 600;
+      margin: 14px 0 8px;
+    }
+
+    // 弹窗内空间有限，压缩原全屏布局的留白
+    .fenlei {
+      margin: 10px 0;
+      border: 1px solid #eee;
+      padding: 14px;
+      border-radius: 6px;
+    }
+
+    .code-content-wrap {
+      clear: both;
+      border: 1px solid #e4e4e4;
+      border-radius: 3px;
+      padding: 10px 12px;
+      background-color: #f8f8f8;
+    }
+
+    .code,
+    .textarea {
+      border: none;
+      width: 100%;
+      outline: 0;
+      resize: vertical;
+      background-color: #f8f8f8;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12.5px;
+      color: #323437;
+      line-height: 20px;
+      text-align: left;
+      // 代码块过长时自身滚动，避免把弹窗撑高
+      max-height: 320px;
+      overflow-y: auto;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    .other-wrap {
+      margin: 8px 0 0;
+      text-align: right;
+    }
+
+    .btn {
+      display: inline-block;
+      zoom: 1;
+      padding: 6px 16px;
+      border: 1px solid #d9dbdc;
+      border-radius: 2px;
+      line-height: 1;
+      color: #323437;
+      cursor: pointer;
+      outline: 0;
+      text-decoration: none;
+    }
+
+    .btn.btn-blue {
+      color: #fff;
+      background-color: #2d8cf0;
+      border-color: #2d8cf0;
+
+      &:hover {
+        background-color: #57a3f3;
+        border-color: #57a3f3;
+      }
+    }
+
+    .mr10 {
+      margin-right: 10px;
+    }
+
+    .setting-highlight {
+      color: #f15755;
+      margin-left: 5px;
+      line-height: 30px;
+    }
+  }
 }
 </style>

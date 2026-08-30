@@ -7,7 +7,7 @@
 
     <div class="fenlei">
       <div class="code-content-wrap">
-        <textarea id="NormalCodeTextarea1" class="code" rows="22">
+        <textarea id="NormalCodeTextarea1" class="code" rows="18">
 <script>
   (function() {
   _s = document.createElement('script');
@@ -16,7 +16,7 @@
   var option = {
         "authInit":true,
         openUrl: '{{siteUrl}}',
-        token: '4109fbb2d7bc3d5559348278816a20bc',
+        token: '{{tokeninfo.token_md5}}',
         kefuid:'',//默认为空自动对接客服，可填写指定客服ID
         isShowTip: true, // 初始化成功后，界面右下角会自动创建 “联系客服按钮”， 如无需默认展示，则填写false即可,默认为true
         mobileIcon: '', //  手机端悬浮客服图片
