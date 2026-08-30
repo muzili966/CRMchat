@@ -45,6 +45,17 @@ class ApplicationThemeServices extends BaseServices
     const FEATURE_WHITE_LABEL = 'white_label';
 
     /**
+     * 自定义广告位能力：未开通的租户展示平台默认广告
+     */
+    const FEATURE_CUSTOM_AD = 'custom_ad';
+
+    /**
+     * 平台默认广告的配置项
+     */
+    const CONFIG_PLATFORM_BANNERS = 'platform_ad_banners';
+    const CONFIG_PLATFORM_AD_HTML = 'platform_ad_html';
+
+    /**
      * 主题色格式：#RRGGBB
      */
     const COLOR_PATTERN = '/^#[0-9a-fA-F]{6}$/';
@@ -102,6 +113,39 @@ class ApplicationThemeServices extends BaseServices
      * @param string $appid
      * @return array
      */
+    /**
+     * 用平台默认广告替换租户自定义广告
+     *
+     * 免费/低档套餐的客服窗口由平台统一投放，既是能力分层也是平台自身的曝光位
+     * @param array $theme
+     * @return array
+     */
+    protected static function applyPlatformAd(array $theme): array
+    {
+        //不用sys_config：它会遍历数组元素做路径替换，而广告是对象数组会触发类型错误
+        $theme['banners'] = self::normalizeBanners(self::platformConfig(self::CONFIG_PLATFORM_BANNERS));
+        $theme['custom_html'] = self::sanitizeHtml((string)self::platformConfig(self::CONFIG_PLATFORM_AD_HTML));
+        return $theme;
+    }
+
+    /**
+     * 读平台层配置原始值
+     * @param string $name
+     * @return mixed
+     */
+    protected static function platformConfig(string $name)
+    {
+        try {
+            return TenantContext::withoutTenant(function () use ($name) {
+                return app()->make(\app\services\system\config\SystemConfigServices::class)
+                    ->getConfigValue($name);
+            });
+        } catch (\Throwable $e) {
+            Log::error('读取平台广告配置失败：' . $e->getMessage());
+            return '';
+        }
+    }
+
     public function getPublicTheme(string $appid): array
     {
         $theme = $this->getTheme($appid);
@@ -114,6 +158,10 @@ class ApplicationThemeServices extends BaseServices
         }
         if (!$planServices->hasFeature($tenantId, self::FEATURE_WHITE_LABEL)) {
             $theme['show_platform_brand'] = ApplicationTheme::BRAND_SHOW;
+        }
+        //广告位单独判定：未开通自定义广告的租户回落平台默认广告，使免费版也成为平台的曝光位
+        if (!$planServices->hasFeature($tenantId, self::FEATURE_CUSTOM_AD)) {
+            $theme = self::applyPlatformAd($theme);
         }
         return array_diff_key($theme, array_flip(self::INTERNAL_FIELDS));
     }

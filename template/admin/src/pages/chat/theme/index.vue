@@ -65,9 +65,13 @@
                                 <a class="banner-del" @click="removeBanner(index)">删除</a>
                             </div>
                             <Button type="dashed" long icon="md-add" class="banner-add"
-                                    :disabled="bannerFull" @click="addBanner">
+                                    :disabled="bannerFull || !customAd" @click="addBanner">
                                 {{ bannerFull ? `最多添加 ${bannerMax} 张` : '添加一张' }}
                             </Button>
+                            <template v-if="!customAd">
+                                <Tag color="gold" class="brand-tag">标准版及以上</Tag>
+                                <p class="field-tip">当前套餐的客服窗口展示平台统一广告，升级后可投放自有广告</p>
+                            </template>
                         </FormItem>
                         <FormItem label="自定义广告：">
                             <Collapse v-model="advPanel" simple>
@@ -75,7 +79,7 @@
                                     自定义广告内容（HTML）· 高级用法
                                     <div slot="content">
                                         <Input v-model="form.custom_html" type="textarea" :rows="customHtmlRows"
-                                               :maxlength="customHtmlMax"
+                                               :maxlength="customHtmlMax" :disabled="!customAd"
                                                placeholder="支持HTML，留空则只展示上方轮播图"/>
                                         <div class="counter">{{ form.custom_html.length }}/{{ customHtmlMax }}</div>
                                         <p class="field-tip">
@@ -212,6 +216,7 @@
                 appid: '',
                 appList: [],
                 whiteLabel: false,
+                customAd: false,
                 form: createForm(),
                 modalPic: false,
                 isChoice: '单选',
@@ -293,6 +298,10 @@
                 // 已有自定义内容时默认展开，避免折叠区里的配置被忽略
                 this.advPanel = this.form.custom_html ? [ADV_PANEL_NAME] : []
                 if (data.white_label !== undefined) this.whiteLabel = !!data.white_label
+                //装修详情接口已带套餐能力时以它为准，省一次订阅接口请求
+                const plan = data.plan || {}
+                if (plan.white_label !== undefined) this.whiteLabel = !!plan.white_label
+                if (plan.custom_ad !== undefined) this.customAd = !!plan.custom_ad
             },
             onAppChange () {
                 if (!this.appid) return

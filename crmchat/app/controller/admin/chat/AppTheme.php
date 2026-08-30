@@ -123,6 +123,11 @@ class AppTheme extends AuthController
         if ($hideBrand && !$planServices->hasFeature($tenantId, ApplicationThemeServices::FEATURE_WHITE_LABEL)) {
             return '当前套餐不支持隐藏平台标识，请升级套餐';
         }
+        //未开通自定义广告的租户，访客端展示平台默认广告，此处直接拒绝写入避免"配了却不生效"
+        $hasAd = !empty($data['banners']) || trim((string)($data['custom_html'] ?? '')) !== '';
+        if ($hasAd && !$planServices->hasFeature($tenantId, ApplicationThemeServices::FEATURE_CUSTOM_AD)) {
+            return '当前套餐不支持自定义广告位，升级后可投放自有广告';
+        }
         return '';
     }
 
@@ -137,6 +142,7 @@ class AppTheme extends AuthController
         return [
             'brand_custom' => $planServices->hasFeature($tenantId, ApplicationThemeServices::FEATURE_BRAND_CUSTOM),
             'white_label' => $planServices->hasFeature($tenantId, ApplicationThemeServices::FEATURE_WHITE_LABEL),
+            'custom_ad' => $planServices->hasFeature($tenantId, ApplicationThemeServices::FEATURE_CUSTOM_AD),
         ];
     }
 

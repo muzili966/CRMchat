@@ -1338,3 +1338,46 @@ INSERT INTO `eb_system_config` (`tenant_id`, `menu_name`, `type`, `input_type`, 
 (0, 'ai_api_key', 'text', 'input', 90, '', 0, '', 100, 0, '""', 'API密钥', '加密存储；留空则回落环境变量 AI_API_KEY。保存后仅显示掩码', 30, 1),
 (0, 'ai_model', 'text', 'input', 90, '', 0, '', 100, 0, '"deepseek-chat"', '模型名称', '如 deepseek-chat、qwen-plus、glm-4', 20, 1),
 (0, 'ai_timeout', 'text', 'input', 90, '', 0, '', 100, 0, '"30"', '超时秒数', '单次调用超时时间，建议20-60秒', 10, 1);
+
+-- 菜单信息架构重排与平台默认广告（与update.sql保持一致）
+SET SESSION group_concat_max_len = 1000000;
+-- 客服管理提至一级第二位（原header为空属存量脏数据）；客服列表含"进入工作台"入口，排组内第一
+UPDATE `eb_system_menus` SET `sort` = 120, `header` = 'kefu', `is_header` = 1 WHERE `id` = 165;
+UPDATE `eb_system_menus` SET `sort` = 50 WHERE `id` = 678;
+UPDATE `eb_system_menus` SET `sort` = 40 WHERE `id` = 679;
+UPDATE `eb_system_menus` SET `sort` = 30 WHERE `id` = 738;
+UPDATE `eb_system_menus` SET `sort` = 20 WHERE `id` = 1250;
+UPDATE `eb_system_menus` SET `sort` = 10 WHERE `id` = 1260;
+-- eb_chat_user 是访客档案，与管理员账号并列时叫"用户"有歧义
+UPDATE `eb_system_menus` SET `menu_name` = '客户管理', `sort` = 100 WHERE `id` = 9;
+UPDATE `eb_system_menus` SET `menu_name` = '客户列表' WHERE `id` = 10;
+UPDATE `eb_system_menus` SET `menu_name` = '客户分组' WHERE `id` = 227;
+UPDATE `eb_system_menus` SET `menu_name` = '客户标签' WHERE `id` = 1008;
+-- 应用管理与权限管理自立门户：前者是租户开通后第一件事，后者是独立管理域
+UPDATE `eb_system_menus` SET `pid` = 0, `icon` = 'md-apps', `header` = 'app', `is_header` = 1, `sort` = 90, `path` = '' WHERE `id` = 1011;
+UPDATE `eb_system_menus` SET `path` = '1011' WHERE `pid` = 1011;
+UPDATE `eb_system_menus` SET `pid` = 0, `icon` = 'md-key', `header` = 'auth', `is_header` = 1, `sort` = 70, `menu_name` = '权限管理', `path` = '' WHERE `id` = 14;
+UPDATE `eb_system_menus` SET `path` = '14', `header` = 'auth' WHERE `pid` = 14;
+-- 账户中心收拢两个单页低频菜单，腾出一级位
+INSERT INTO `eb_system_menus` (`id`, `pid`, `icon`, `menu_name`, `module`, `controller`, `action`, `api_url`, `methods`, `params`, `sort`, `is_show`, `is_show_path`, `access`, `menu_path`, `path`, `auth_type`, `header`, `is_header`, `unique_auth`, `is_del`, `is_tenant`) VALUES
+(1300, 0, 'md-briefcase', '账户中心', 'admin', '', '', '', '', '[]', 60, 1, 0, 1, '', '', 1, 'account', 1, 'admin-account', 0, 1);
+UPDATE `eb_system_menus` SET `pid` = 1300, `header` = 'account', `is_header` = 0, `sort` = 20, `path` = '1300' WHERE `id` = 1240;
+UPDATE `eb_system_menus` SET `pid` = 1300, `header` = 'account', `is_header` = 0, `sort` = 10, `path` = '1300', `menu_name` = '消息通知' WHERE `id` = 1205;
+-- 附件管理/个人中心迁出平台专属子树：建树从根递归，父级不在权限内会导致整棵丢弃，租户因此传不了图
+UPDATE `eb_system_menus` SET `pid` = 12, `header` = 'setting', `path` = '12' WHERE `id` IN (1063, 1082);
+UPDATE `eb_system_menus` SET `menu_name` = '个人中心' WHERE `id` = 1082;
+-- 客服页面广告能力已并入客户端装修，先对租户隐藏保留平台侧编辑入口以迁移存量内容
+UPDATE `eb_system_menus` SET `is_tenant` = 0 WHERE `id` IN (656, 913, 915, 916);
+UPDATE `eb_system_menus` SET `sort` = 50 WHERE `id` = 12;
+UPDATE `eb_system_menus` SET `sort` = 20 WHERE `id` = 1200;
+UPDATE `eb_system_menus` SET `sort` = 10 WHERE `id` = 25;
+
+-- 广告分层：平台配默认广告，付费套餐方可自定义
+ALTER TABLE `eb_application_theme` ADD `custom_html` text COMMENT '自定义广告HTML' AFTER `banners`;
+ALTER TABLE `eb_tenant_plan` ADD `custom_ad` tinyint(1) NOT NULL DEFAULT '0' COMMENT '自定义广告位0=用平台默认,1=可自定义' AFTER `white_label`;
+UPDATE `eb_tenant_plan` SET `custom_ad` = 1 WHERE `name` IN ('标准版', '旗舰版');
+INSERT INTO `eb_system_config` (`tenant_id`, `menu_name`, `type`, `input_type`, `config_tab_id`, `parameter`, `upload_type`, `required`, `width`, `high`, `value`, `info`, `desc`, `sort`, `status`) VALUES
+(0, 'platform_ad_banners', 'upload', 'upload', 69, '', 2, '', 100, 0, '[]', '平台默认广告图', '未开通自定义广告位的租户，其客服窗口展示这些图片（可多张轮播）', 8, 1),
+(0, 'platform_ad_html', 'textarea', 'textarea', 69, '', 0, '', 100, 6, '""', '平台默认广告HTML', '选填。未配置广告图时展示此内容，支持HTML（会做安全清洗）', 7, 1);
+
+UPDATE `eb_system_role` SET `rules` = (SELECT GROUP_CONCAT(`id`) FROM (SELECT `id` FROM `eb_system_menus` WHERE `is_tenant` = 1 AND `is_del` = 0) t) WHERE `role_name` = '租户管理员' AND `tenant_id` > 0;
