@@ -17,6 +17,9 @@ APP_KEY = ${APP_KEY:-}
 SWOOLE_HOST = ${SWOOLE_HOST:-0.0.0.0}
 SWOOLE_PORT = ${SWOOLE_PORT:-20108}
 SWOOLE_DAEMONIZE = false
+# AI客服：密钥不入库不进后台，仅从环境变量注入；留空即关闭AI能力
+AI_BASE_URL = ${AI_BASE_URL:-https://api.deepseek.com}
+AI_API_KEY = ${AI_API_KEY:-}
 
 [APP]
 DEFAULT_TIMEZONE = Asia/Shanghai

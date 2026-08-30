@@ -17,38 +17,42 @@ use crmeb\traits\ModelTrait;
 use think\Model;
 
 /**
- * 租户套餐模型
- * Class TenantPlan
+ * AI调用用量流水模型
+ * Class AiUsageLog
  * @package app\models
  */
-class TenantPlan extends BaseModel
+class AiUsageLog extends BaseModel
 {
     use ModelTrait;
 
     /**
-     * 停售状态
+     * 调用成功
      */
-    const STATUS_OFF = 0;
+    const STATUS_OK = 1;
 
     /**
-     * 在售状态
+     * 调用失败
      */
-    const STATUS_ON = 1;
+    const STATUS_FAIL = 2;
 
     /**
-     * 配额值：不限
+     * 调用超时
      */
-    const LIMIT_UNLIMITED = 0;
+    const STATUS_TIMEOUT = 3;
 
     /**
-     * 功能开关字段清单
+     * 状态文案
      */
-    const FEATURE_FIELDS = ['auto_reply', 'brand_custom', 'data_export', 'app_push', 'ai_reply'];
+    const STATUS_TEXT = [
+        self::STATUS_OK => '成功',
+        self::STATUS_FAIL => '失败',
+        self::STATUS_TIMEOUT => '超时',
+    ];
 
     /**
-     * 配额字段清单
+     * 失败原因长度上限，与DDL varchar(255)一致，超出会被MySQL静默截断
      */
-    const QUOTA_FIELDS = ['app_limit', 'seat_limit', 'daily_msg_limit', 'storage_limit_mb', 'record_keep_days', 'daily_ai_limit'];
+    const MAX_ERROR = 255;
 
     /**
      * 数据表主键
@@ -60,7 +64,7 @@ class TenantPlan extends BaseModel
      * 模型名称
      * @var string
      */
-    protected $name = 'tenant_plan';
+    protected $name = 'ai_usage_log';
 
     /**
      * 时间字段为int时间戳且由服务层显式写入，全局auto_timestamp会按SQL timestamp类型格式化int值导致TypeError
@@ -69,13 +73,37 @@ class TenantPlan extends BaseModel
     protected $autoWriteTimestamp = false;
 
     /**
-     * 套餐定义为平台级数据，豁免租户隔离
+     * 用量流水为平台级成本数据，需跨租户聚合对账，豁免租户隔离
      * @var bool
      */
     protected $tenantScoped = false;
 
     /**
-     * 状态搜索器
+     * 租户搜索器
+     * @param Model $query
+     * @param $value
+     */
+    public function searchTenantIdAttr($query, $value)
+    {
+        if ($value) {
+            $query->where('tenant_id', $value);
+        }
+    }
+
+    /**
+     * 应用搜索器
+     * @param Model $query
+     * @param $value
+     */
+    public function searchAppidAttr($query, $value)
+    {
+        if ($value) {
+            $query->where('appid', $value);
+        }
+    }
+
+    /**
+     * 调用状态搜索器
      * @param Model $query
      * @param $value
      */
@@ -87,24 +115,14 @@ class TenantPlan extends BaseModel
     }
 
     /**
-     * 是否删除搜索器
+     * 调用时间区间搜索器
      * @param Model $query
      * @param $value
      */
-    public function searchIsDeleteAttr($query, $value)
+    public function searchCreateTimeBetweenAttr($query, $value)
     {
-        $query->where('is_delete', $value);
-    }
-
-    /**
-     * 套餐名称搜索器
-     * @param Model $query
-     * @param $value
-     */
-    public function searchNameLikeAttr($query, $value)
-    {
-        if ($value) {
-            $query->whereLike('name', '%' . $value . '%');
+        if (is_array($value) && count($value) == 2 && $value[0] && $value[1]) {
+            $query->whereBetween('create_time', [$value[0], $value[1]]);
         }
     }
 }

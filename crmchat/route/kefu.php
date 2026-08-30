@@ -76,6 +76,8 @@ Route::group('api', function () {
                 Route::get('speechcraft', 'Service/getSpeechcraftList')->name('getSpeechcraftList');//客服话术
                 Route::post('transfer', 'Service/transfer')->name('transfer');//客服转接
                 Route::get('transfer_list', 'Service/getServiceList')->name('getServiceList');//客服转接
+                Route::get('ai_sessions', 'Service/getAiSessions')->name('getAiSessions');//AI接待中的会话
+                Route::post('ai_take_over', 'Service/takeOverAiSession')->name('takeOverAiSession');//接管AI会话
                 Route::get('cate', 'Service/getCateList')->name('getCateList');//分类列表
                 Route::post('cate', 'Service/saveCate')->name('saveCate');//保存分类
                 Route::put('cate/:id', 'Service/editCate')->name('editCate');//编辑分类

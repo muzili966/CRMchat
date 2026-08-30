@@ -39,6 +39,33 @@ class SwooleTaskListen implements ListenerInterface
         return;
     }
 
+    /**
+     * AI回复任务：LLM调用耗时秒级，放在task进程执行避免阻塞ws worker事件循环
+     *
+     * 投递方 SwooleTaskService::instance('aiReply')->data($payload)->push()，
+     * 故业务载荷位于 $data['data']['data']，租户随任务数据传递（task进程无协程上下文）
+     * @param array $data
+     * @return void
+     */
+    public function aiReply(array $data)
+    {
+        $payload = $data['data']['data'] ?? [];
+        $tenantId = isset($data['tenant_id']) && !is_null($data['tenant_id']) ? (int)$data['tenant_id'] : 0;
+        if (!$payload || !$tenantId) {
+            Log::error('AI回复任务参数缺失');
+            return;
+        }
+        try {
+            \crmeb\services\tenant\TenantContext::runAs($tenantId, function () use ($payload) {
+                /** @var \app\services\ai\AiReplyServices $services */
+                $services = app()->make(\app\services\ai\AiReplyServices::class);
+                $services->handle($payload);
+            });
+        } catch (\Throwable $e) {
+            Log::error('AI回复任务执行失败：' . $e->getMessage());
+        }
+    }
+
     public function message(array $data)
     {
         /** @var Server $server */

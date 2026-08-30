@@ -32,6 +32,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+      AI_BASE_URL: "${AI_BASE_URL:-https://api.deepseek.com}"
+      AI_API_KEY: "${AI_API_KEY:-}"
     volumes:
       - crmchat-uploads:/var/www/crmchat/public/uploads
       - crmchat-runtime:/var/www/crmchat/runtime

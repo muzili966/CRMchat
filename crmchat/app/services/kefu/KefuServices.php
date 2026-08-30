@@ -56,6 +56,8 @@ class KefuServices extends BaseServices
         $where['status'] = 1;
         $where['noId'] = $noId;
         $where['online'] = 1;
+        //AI坐席不作为人工转接的目标
+        $where['is_ai'] = 0;
         [$page, $limit] = $this->getPageValue();
         $list = $this->dao->getServiceList($where, $page, $limit);
         $count = $this->dao->count($where);

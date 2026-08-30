@@ -69,6 +69,12 @@ Route::group('api', function () {
         Route::group('chat', function () {
             //客服列表
             Route::get('kefu', 'Service/index')->option(['real_name' => '客服列表']);
+            //AI客服配置详情
+            Route::get('ai', 'AiConfig/index')->option(['real_name' => 'AI配置详情']);
+            //保存AI客服配置
+            Route::post('ai', 'AiConfig/save')->option(['real_name' => '保存AI配置']);
+            //AI调用用量
+            Route::get('ai/usage', 'AiConfig/usage')->option(['real_name' => 'AI用量统计']);
             //自动回复列表
             Route::get('reply', 'AutoReply/index')->option(['real_name' => '自动回复列表']);
             //获取自动回复表单

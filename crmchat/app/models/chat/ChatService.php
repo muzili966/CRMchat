@@ -157,4 +157,16 @@ class ChatService extends BaseModel
             $query->where('appid', $value);
         }
     }
+
+    /**
+     * 虚拟AI坐席搜索器
+     * @param Model $query
+     * @param $value
+     */
+    public function searchIsAiAttr($query, $value)
+    {
+        if ($value !== '') {
+            $query->where('is_ai', $value);
+        }
+    }
 }

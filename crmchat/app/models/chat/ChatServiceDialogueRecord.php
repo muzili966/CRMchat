@@ -26,6 +26,31 @@ class ChatServiceDialogueRecord extends BaseModel
     use ModelTrait;
 
     /**
+     * 消息来源：人工坐席
+     */
+    const SOURCE_HUMAN = 0;
+
+    /**
+     * 消息来源：关键词自动回复
+     */
+    const SOURCE_KEYWORD = 1;
+
+    /**
+     * 消息来源：AI正文回复
+     */
+    const SOURCE_AI = 2;
+
+    /**
+     * 消息来源：AI兜底话术（调用失败/不支持的消息类型）
+     */
+    const SOURCE_AI_FALLBACK = 3;
+
+    /**
+     * 消息来源：配额或限频降级话术
+     */
+    const SOURCE_AI_LIMITED = 4;
+
+    /**
      * 数据表主键
      * @var string
      */

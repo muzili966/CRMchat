@@ -15,6 +15,7 @@ import setting from './modules/setting'
 import app from './modules/app'
 import system from './modules/system'
 import tenant from './modules/tenant'
+import kefu from './modules/kefu'
 import BasicLayout from '@/components/main'
 import frameOut from './modules/frameOut'
 /**
@@ -107,7 +108,8 @@ const frameIn = [
     setting,
     system,
     app,
-    tenant
+    tenant,
+    kefu
 ]
 
 /**

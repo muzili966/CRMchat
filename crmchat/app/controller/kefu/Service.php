@@ -326,6 +326,36 @@ class Service extends AuthController
      * 客服转接
      * @return mixed
      */
+    /**
+     * AI正在接待的会话列表
+     * @return mixed
+     */
+    public function getAiSessions()
+    {
+        [$nickname] = $this->request->getMore([['nickname', '']], true);
+        /** @var \app\services\ai\AiTransferServices $transferServices */
+        $transferServices = app()->make(\app\services\ai\AiTransferServices::class);
+        return $this->success($transferServices->getAiSessions($this->kefuInfo['appid'], (string)$nickname));
+    }
+
+    /**
+     * 人工接管AI会话
+     * @return mixed
+     */
+    public function takeOverAiSession()
+    {
+        [$userId] = $this->request->postMore([['user_id', 0]], true);
+        if (!$userId) {
+            return $this->fail('缺少访客id');
+        }
+        /** @var \app\services\ai\AiTransferServices $transferServices */
+        $transferServices = app()->make(\app\services\ai\AiTransferServices::class);
+        if (!$transferServices->takeOver($this->kefuInfo['appid'], (int)$userId, (int)$this->kefuInfo['user_id'])) {
+            return $this->fail('接管失败，该会话可能已被处理');
+        }
+        return $this->success('接管成功');
+    }
+
     public function transfer()
     {
         [$kefuToUserId, $userId] = $this->request->postMore([

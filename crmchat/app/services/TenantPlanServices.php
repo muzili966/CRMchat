@@ -44,6 +44,12 @@ class TenantPlanServices extends BaseServices
     const MSG_COUNT_TTL = 172800;
 
     /**
+     * AI每日回复计数key前缀
+     */
+    const AI_COUNT_PREFIX = 'tenant_ai_count:';
+    const AI_COUNT_TTL = 172800;
+
+    /**
      * TenantPlanServices constructor.
      * @param TenantPlanDao $dao
      */
@@ -276,10 +282,11 @@ class TenantPlanServices extends BaseServices
         if (!$plan) {
             return;
         }
+        //虚拟AI坐席不占用套餐坐席数
         $used = TenantContext::withoutTenant(function () use ($tenantId) {
             /** @var ChatServiceDao $serviceDao */
             $serviceDao = app()->make(ChatServiceDao::class);
-            return $serviceDao->getCount(['tenant_id' => $tenantId]);
+            return $serviceDao->getCount(['tenant_id' => $tenantId, 'is_ai' => 0]);
         });
         if (self::isOverLimit((int)$used, (int)$plan['seat_limit'])) {
             throw new AdminException('客服坐席数已达套餐上限(' . $plan['seat_limit'] . '个)，请升级套餐');
@@ -365,6 +372,70 @@ class TenantPlanServices extends BaseServices
     }
 
     /**
+     * 套餐是否开通AI客服
+     *
+     * 与hasFeature的fail-open相反采用fail-closed：AI调用是平台直接付费成本，
+     * 无套餐、套餐读取异常一律拒绝，避免未绑套餐或缓存故障时无限消耗
+     * @param int $tenantId
+     * @return bool
+     */
+    public function canUseAi(int $tenantId): bool
+    {
+        if ($tenantId <= 0) {
+            return false;
+        }
+        $plan = $this->getTenantPlan($tenantId);
+        if (!$plan) {
+            return false;
+        }
+        return !empty($plan['ai_reply']);
+    }
+
+    /**
+     * AI每日回复量配额，true=允许调用（fail-closed，计数异常即拒绝）
+     * @param int $tenantId
+     * @return bool
+     */
+    public function checkDailyAi(int $tenantId): bool
+    {
+        $plan = $this->getTenantPlan($tenantId);
+        if (!$plan) {
+            return false;
+        }
+        $limit = (int)($plan['daily_ai_limit'] ?? 0);
+        if ($limit <= TenantPlan::LIMIT_UNLIMITED) {
+            return true;
+        }
+        try {
+            $cache = CacheService::redisHandler();
+            $key = self::AI_COUNT_PREFIX . $tenantId . ':' . date('Ymd');
+            $count = (int)$cache->incr($key);
+            if ($count == 1) {
+                $cache->expire($key, self::AI_COUNT_TTL);
+            }
+            return $count <= $limit;
+        } catch (\Throwable $e) {
+            \think\facade\Log::error('AI调用量计数失败：' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 当日已消耗的AI回复数（供租户端展示）
+     * @param int $tenantId
+     * @return int
+     */
+    public function getTodayAiCount(int $tenantId): int
+    {
+        try {
+            $value = CacheService::redisHandler()->get(self::AI_COUNT_PREFIX . $tenantId . ':' . date('Ymd'));
+            return (int)$value;
+        } catch (\Throwable $e) {
+            return 0;
+        }
+    }
+
+    /**
      * 按套餐保留天数清理各租户历史聊天记录（由定时任务每日触发）
      * @return void
      */
@@ -413,7 +484,7 @@ class TenantPlanServices extends BaseServices
             $serviceDao = app()->make(ChatServiceDao::class);
             return [
                 $applicationDao->getCount(['tenant_id' => $tenantId, 'is_delete' => 0]),
-                $serviceDao->getCount(['tenant_id' => $tenantId]),
+                $serviceDao->getCount(['tenant_id' => $tenantId, 'is_ai' => 0]),
             ];
         });
         return self::buildSubscriptionSummary($tenant, $plan, (int)$appCount, (int)$seatCount);

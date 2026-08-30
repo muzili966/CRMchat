@@ -51,6 +51,8 @@ class TenantPlan extends AuthController
             [['daily_msg_limit', 'd'], 0],
             [['storage_limit_mb', 'd'], 0],
             [['record_keep_days', 'd'], 0],
+            [['daily_ai_limit', 'd'], 0],
+            [['ai_reply', 'd'], 0],
             [['auto_reply', 'd'], 0],
             [['brand_custom', 'd'], 0],
             [['data_export', 'd'], 0],

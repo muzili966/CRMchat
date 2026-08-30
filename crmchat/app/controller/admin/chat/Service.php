@@ -181,6 +181,9 @@ class Service extends AuthController
      */
     public function update(ChatUserServices $services, $id)
     {
+        if ($this->isAiAgent((int)$id)) {
+            return $this->fail('AI客服由「AI客服设置」统一管理，不可在此编辑');
+        }
         $data = $this->request->postMore([
             ['appid', ''],
             ['avatar', ''],
@@ -260,6 +263,9 @@ class Service extends AuthController
      */
     public function delete($id)
     {
+        if ($this->isAiAgent((int)$id)) {
+            return $this->fail('AI客服不可删除，如需停用请到「AI客服设置」关闭');
+        }
         return $this->withPlatformScope(function () use ($id) {
             if (!$this->services->delete($id))
                 return $this->fail('删除失败,请稍候再试!');
@@ -277,6 +283,9 @@ class Service extends AuthController
     public function set_status($id, $status)
     {
         if ($status == '' || $id == 0) return $this->fail('参数错误');
+        if ($this->isAiAgent((int)$id)) {
+            return $this->fail('AI客服状态由「AI客服设置」控制');
+        }
         return $this->withPlatformScope(function () use ($id, $status) {
             $info = $this->services->get($id, ['status', 'user_id']);
             if (!$info) {
@@ -346,6 +355,9 @@ class Service extends AuthController
      */
     public function keufLogin(LoginServices $services, $id)
     {
+        if ($this->isAiAgent((int)$id)) {
+            return $this->fail('AI客服不支持登录工作台');
+        }
         return $this->withPlatformScope(function () use ($services, $id) {
             $serviceInfo = $services->get($id);
             if (!$serviceInfo) {
@@ -358,6 +370,21 @@ class Service extends AuthController
                 return $this->fail('客服帐号已被禁用');
             }
             return $this->success($services->loginByKefuInfo($serviceInfo));
+        });
+    }
+
+    /**
+     * 虚拟AI坐席不参与常规客服管理，统一由「AI客服设置」维护
+     * @param int $id 客服表主键
+     * @return bool
+     */
+    protected function isAiAgent(int $id): bool
+    {
+        if ($id <= 0) {
+            return false;
+        }
+        return (bool)$this->withPlatformScope(function () use ($id) {
+            return $this->services->value(['id' => $id], 'is_ai');
         });
     }
 }

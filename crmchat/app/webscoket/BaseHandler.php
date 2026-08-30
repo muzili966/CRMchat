@@ -13,12 +13,18 @@ namespace app\webscoket;
 
 use app\jobs\ServiceTransfer;
 use app\jobs\UniPush;
+use app\models\chat\ChatServiceDialogueRecord;
+use app\services\ai\AiAgentServices;
+use app\services\ai\AiConfigServices;
+use app\services\ai\AiReplyServices;
+use app\services\ai\AiTransferServices;
 use app\services\chat\ChatServiceAuxiliaryServices;
 use app\services\chat\ChatServiceDialogueRecordServices;
 use app\services\chat\ChatServiceRecordServices;
 use app\services\chat\ChatServiceServices;
 use app\services\chat\ChatUserServices;
 use app\services\TenantPlanServices;
+use crmeb\services\ai\AiPrompt;
 use crmeb\services\tenant\TenantContext;
 use crmeb\services\SwooleTaskService;
 use crmeb\utils\Arr;
@@ -207,6 +213,16 @@ abstract class BaseHandler
             $isBackstage = !!$kefuInfo['is_backstage'];
         }
 
+        //接收方是AI坐席：LLM调用交由task进程执行，避免阻塞ws worker事件循环
+        if ($this->dispatchAiReply($appId, $userId, $to_user_id, [
+            'msn' => $msn,
+            'msn_type' => $msn_type,
+            'other' => $other,
+            'is_tourist' => $_userInfo['is_tourist'] ?? 0,
+        ])) {
+            return $response->message('chat', $data);
+        }
+
         //开启自动回复（受套餐功能约束；Timer回调运行在新协程，wrap携带当前租户上下文）
         if ($auto_reply && $planServices->hasFeature(TenantContext::id(), 'auto_reply')) {
             $app = app();
@@ -281,6 +297,80 @@ abstract class BaseHandler
      * @param $kfuUserId
      * @return bool
      */
+    /**
+     * 接收方为AI坐席时接管本条消息
+     *
+     * ws worker内只做轻量判定（准入/转人工关键词/精确关键词），
+     * 耗时的LLM调用投递到task进程，其阻塞不影响本worker上的其他连接
+     * @param string $appId
+     * @param int $userId 访客chat_user id
+     * @param int $toUserId 接收方chat_user id
+     * @param array $message msn/msn_type/other/is_tourist
+     * @return bool true=已由AI接管，调用方无需继续人工链路
+     */
+    protected function dispatchAiReply(string $appId, int $userId, int $toUserId, array $message): bool
+    {
+        /** @var AiAgentServices $agentServices */
+        $agentServices = app()->make(AiAgentServices::class);
+        if (!$agentServices->isAiAgent($toUserId)) {
+            return false;
+        }
+        $ctx = [
+            'appid' => $appId,
+            'user_id' => $userId,
+            'ai_user_id' => $toUserId,
+            'msn' => $message['msn'],
+            'msn_type' => (int)$message['msn_type'],
+            'other' => is_array($message['other']) ? $message['other'] : [],
+            'is_tourist' => (int)$message['is_tourist'],
+            'tenant_id' => (int)TenantContext::id(),
+        ];
+        /** @var AiReplyServices $replyServices */
+        $replyServices = app()->make(AiReplyServices::class);
+        /** @var AiTransferServices $transferServices */
+        $transferServices = app()->make(AiTransferServices::class);
+        //已转人工的会话不再由AI应答，避免访客端未及时切换目标时被AI抢答
+        if ($transferServices->isTransferred($appId, $userId, $toUserId)) {
+            return false;
+        }
+        if ($this->transferToHuman($ctx)) {
+            return true;
+        }
+        $denied = $replyServices->checkAdmission($ctx);
+        if ($denied !== '') {
+            $replyServices->reply($ctx, $denied, ChatServiceDialogueRecord::SOURCE_AI_LIMITED);
+            return true;
+        }
+        SwooleTaskService::instance('aiReply')->data($ctx)->push();
+        return true;
+    }
+
+    /**
+     * 命中转人工关键词时把会话交还人工，无人在线则提示留言
+     * @param array $ctx
+     * @return bool true=已按转人工处理
+     */
+    protected function transferToHuman(array $ctx): bool
+    {
+        if ($ctx['msn_type'] !== ChatServiceDialogueRecordServices::MSN_TYPE_TXT) {
+            return false;
+        }
+        /** @var AiConfigServices $configServices */
+        $configServices = app()->make(AiConfigServices::class);
+        $config = $configServices->getConfig($ctx['tenant_id']);
+        $keywords = (string)($config['transfer_keywords'] ?? '');
+        if (!AiPrompt::matchTransferKeyword($ctx['msn'], $keywords)) {
+            return false;
+        }
+        /** @var AiTransferServices $transferServices */
+        $transferServices = app()->make(AiTransferServices::class);
+        $result = $transferServices->toHuman($ctx['appid'], $ctx['user_id'], $ctx['ai_user_id']);
+        /** @var AiReplyServices $replyServices */
+        $replyServices = app()->make(AiReplyServices::class);
+        $replyServices->reply($ctx, $result['message'], ChatServiceDialogueRecord::SOURCE_AI_FALLBACK);
+        return true;
+    }
+
     protected function authTransfer(Response $response, string $appid, $userId, $kfuUserId)
     {
         /** @var ChatServiceServices $services */

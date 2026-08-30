@@ -14,8 +14,13 @@ namespace app\services\chat;
 
 use app\dao\chat\ChatServiceDao;
 use app\jobs\WelcomeWords;
+use app\services\ai\AiAgentServices;
+use app\services\ai\AiConfigServices;
+use app\services\ai\AiDispatcher;
 use app\services\ApplicationServices;
 use app\services\system\config\SystemConfigServices;
+use app\services\TenantPlanServices;
+use crmeb\services\tenant\TenantContext;
 use crmeb\basic\BaseServices;
 use crmeb\exceptions\AdminException;
 use crmeb\services\DisyllabicWords;
@@ -205,48 +210,21 @@ class ChatServiceServices extends BaseServices
             }
             $userInfo = $userInfo->toArray();
         }
-        //获取当前分配客服
-        $toUserId = $this->dao->count(['appid' => $appId, 'status' => 1, 'user_id' => $toUserId]) ? $toUserId : 0;
-        if (!$toUserId && $kefuId) {
-            $toUserId = $this->dao->value(['appid' => $appId, 'status' => 1, 'id' => $kefuId], 'user_id');
+        //分配决策统一交给AiDispatcher：三条粘性路径（回传坐席/转接绑定/上次坐席）都必须服从接待模式
+        $decision = $this->decideAgent($appId, (int)$userId, [
+            'passed_id' => (int)$toUserId,
+            'kefu_id' => (int)$kefuId,
+        ]);
+        $toUserId = $decision['to_user_id'];
+        if (!$toUserId) {
+            //保留原拒客路径，访客端据此进入留言页
+            throw new ValidateException('暂无客服人员在线，请稍后联系');
         }
-        //是否为自动分配的客服
-        if ($toUserId) {
-            //查找当前用户有没有被转接,转接了使用转接人的to_user_id
+        //真人上线接回访客时解除其与AI坐席的转接绑定，否则下次进线仍会命中旧关系
+        if ($decision['switch_from_ai']) {
             /** @var ChatServiceAuxiliaryServices $transfeerService */
             $transfeerService = app()->make(ChatServiceAuxiliaryServices::class);
-            $relationId = $transfeerService->value(['appid' => $appId, 'binding_id' => $userId], 'relation_id');
-            if ($relationId) {
-                //转接客服不在线继续随机分配
-                $toUserId = $this->dao->count(['appid' => $appId, 'online' => 1, 'status' => 1, 'user_id' => $relationId]) ? $relationId : 0;
-            }
-        }
-        //对话人不再,重新查找
-        if (!$toUserId) {
-            //查找当前在线客服
-            $serviceInfoList = $this->getServiceList(['appid' => $appId, 'status' => 1, 'online' => 1]);
-            if (!count($serviceInfoList)) {
-                throw new ValidateException('暂无客服人员在线，请稍后联系');
-            }
-            $uids = array_column($serviceInfoList['list'], 'user_id');
-            if (!$uids) {
-                throw new ValidateException('暂无客服人员在线，请稍后联系');
-            }
-            /** @var ChatServiceRecordServices $recordServices */
-            $recordServices = app()->make(ChatServiceRecordServices::class);
-            //上次聊天客服优先对话
-            $toUserId = $recordServices->getLatelyMsgUid(['appid' => $appId, 'to_user_id' => $userId], 'user_id');
-            //如果上次聊天的客不在当前客服中从新
-            if (!in_array($toUserId, $uids)) {
-                $toUserId = 0;
-            }
-            if (!$toUserId) {
-                mt_srand();
-                $toUserId = $uids[array_rand($uids)] ?? 0;
-            }
-            if (!$toUserId) {
-                throw new ValidateException('暂无客服人员在线，请稍后联系');
-            }
+            $transfeerService->delete(['appid' => $appId, 'binding_id' => $userId]);
         }
         //组合数据
         $toUserInfo = $this->dao->get(['user_id' => $toUserId], ['nickname', 'avatar']);
@@ -277,6 +255,81 @@ class ChatServiceServices extends BaseServices
             Log::error($e->getMessage());
         }
         return $result;
+    }
+
+    /**
+     * 为访客选择接待坐席（收集上下文后交由纯函数决策）
+     * @param string $appId
+     * @param int $userId 访客chat_user id
+     * @param array $passed 访客端回传的坐席线索 passed_id/kefu_id
+     * @return array AiDispatcher::decide 的结果
+     * @throws DataNotFoundException
+     * @throws DbException
+     * @throws ModelNotFoundException
+     */
+    protected function decideAgent(string $appId, int $userId, array $passed): array
+    {
+        $passedId = (int)$passed['passed_id'];
+        //回传坐席仅作线索，是否可用由决策函数按模式判定
+        $passedId = $this->dao->count(['appid' => $appId, 'status' => 1, 'user_id' => $passedId]) ? $passedId : 0;
+        if (!$passedId && !empty($passed['kefu_id'])) {
+            $passedId = (int)$this->dao->value(['appid' => $appId, 'status' => 1, 'id' => (int)$passed['kefu_id']], 'user_id');
+        }
+
+        /** @var ChatServiceAuxiliaryServices $transfeerService */
+        $transfeerService = app()->make(ChatServiceAuxiliaryServices::class);
+        $boundId = (int)$transfeerService->value(['appid' => $appId, 'binding_id' => $userId], 'relation_id');
+
+        /** @var ChatServiceRecordServices $recordServices */
+        $recordServices = app()->make(ChatServiceRecordServices::class);
+        $latelyId = (int)$recordServices->getLatelyMsgUid(['appid' => $appId, 'to_user_id' => $userId], 'user_id');
+
+        //在线候选只取真人，AI坐席由决策函数按模式单独决定
+        $onlineList = $this->getServiceList(['appid' => $appId, 'status' => 1, 'online' => 1, 'is_ai' => 0]);
+        $onlineHumanIds = array_map('intval', array_column($onlineList['list'] ?? [], 'user_id'));
+
+        return AiDispatcher::decide([
+            'mode' => $this->getAiMode($appId),
+            'ai_user_id' => $this->getAiAgentUserId($appId),
+            'passed_id' => $passedId,
+            'bound_id' => $boundId,
+            'lately_id' => $latelyId,
+            'online_human_ids' => $onlineHumanIds,
+        ]);
+    }
+
+    /**
+     * 当前应用生效的AI接待模式（未开通或未启用返回空串）
+     * @param string $appId
+     * @return string
+     */
+    protected function getAiMode(string $appId): string
+    {
+        $tenantId = (int)TenantContext::id();
+        if (!$tenantId) {
+            return '';
+        }
+        /** @var TenantPlanServices $planServices */
+        $planServices = app()->make(TenantPlanServices::class);
+        if (!$planServices->canUseAi($tenantId)) {
+            return '';
+        }
+        /** @var AiConfigServices $configServices */
+        $configServices = app()->make(AiConfigServices::class);
+        $config = $configServices->getConfig($tenantId);
+        return AiConfigServices::isEffective($config) ? (string)$config['mode'] : '';
+    }
+
+    /**
+     * 当前应用的AI坐席chat_user id
+     * @param string $appId
+     * @return int
+     */
+    protected function getAiAgentUserId(string $appId): int
+    {
+        /** @var AiAgentServices $agentServices */
+        $agentServices = app()->make(AiAgentServices::class);
+        return $agentServices->getAgentUserId($appId);
     }
 
     /**

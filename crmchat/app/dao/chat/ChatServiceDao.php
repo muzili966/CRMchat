@@ -97,6 +97,7 @@ class ChatServiceDao extends BaseDao
      */
     public function getListByAccount(string $account)
     {
-        return $this->getModel()->where('account', $account)->select();
+        //仅供登录使用，虚拟AI坐席不是可登录账号
+        return $this->getModel()->where('account', $account)->where('is_ai', 0)->select();
     }
 }

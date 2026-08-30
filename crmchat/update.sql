@@ -265,3 +265,55 @@ UPDATE `eb_system_role` SET `rules` = CONCAT(`rules`, ',1240,1241,1242,1243,1244
 INSERT INTO `eb_system_menus` (`id`, `pid`, `icon`, `menu_name`, `module`, `controller`, `action`, `api_url`, `methods`, `params`, `sort`, `is_show`, `is_show_path`, `access`, `menu_path`, `path`, `auth_type`, `header`, `is_header`, `unique_auth`, `is_del`, `is_tenant`) VALUES
 (1245, 1240, '', '在售套餐展示', 'admin', '', '', 'api/admin/setting/tenant/plans', 'GET', '[]', 0, 0, 0, 1, '', '1240', 2, '', 0, '', 0, 1);
 UPDATE `eb_system_role` SET `rules` = CONCAT(`rules`, ',1245') WHERE `role_name` = '租户管理员' AND `tenant_id` > 0 AND `rules` NOT LIKE '%1245%';
+
+-- ============ AI 智能客服（2026-08-30） ============
+-- AI配置：租户级一套（多应用共用）
+CREATE TABLE IF NOT EXISTS `eb_ai_config` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID',
+  `enable` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否启用0=否,1=是',
+  `mode` varchar(20) NOT NULL DEFAULT 'standby' COMMENT '接待模式standby=值守,ai_first=AI优先',
+  `greeting` varchar(500) NOT NULL DEFAULT '' COMMENT 'AI欢迎语',
+  `system_prompt` text COMMENT '身份设定与业务介绍',
+  `faq` text COMMENT 'FAQ问答对json',
+  `transfer_keywords` varchar(500) NOT NULL DEFAULT '人工,转人工,客服,投诉' COMMENT '转人工关键词,逗号分隔',
+  `model` varchar(64) NOT NULL DEFAULT '' COMMENT '模型覆盖,空=用平台默认',
+  `create_time` int(10) NOT NULL DEFAULT '0' COMMENT '创建时间',
+  `update_time` int(10) NOT NULL DEFAULT '0' COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_tenant_id` (`tenant_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI客服配置表';
+
+-- AI调用用量流水：平台级（不受租户隔离），供成本归集与对账
+CREATE TABLE IF NOT EXISTS `eb_ai_usage_log` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '租户ID',
+  `appid` varchar(50) NOT NULL DEFAULT '' COMMENT '应用ID',
+  `user_id` int(10) NOT NULL DEFAULT '0' COMMENT '访客chat_user id',
+  `model` varchar(64) NOT NULL DEFAULT '' COMMENT '实际调用模型',
+  `prompt_tokens` int(10) NOT NULL DEFAULT '0' COMMENT '输入token',
+  `completion_tokens` int(10) NOT NULL DEFAULT '0' COMMENT '输出token',
+  `duration_ms` int(10) NOT NULL DEFAULT '0' COMMENT '耗时毫秒',
+  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '1=成功,2=失败,3=超时',
+  `error` varchar(255) NOT NULL DEFAULT '' COMMENT '失败原因',
+  `create_time` int(10) NOT NULL DEFAULT '0' COMMENT '调用时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_tenant_time` (`tenant_id`, `create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI调用用量流水表';
+
+-- 虚拟AI坐席标记：分配/配额/转接/登录/后台管理五处据此排除
+ALTER TABLE `eb_chat_service` ADD `is_ai` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否AI虚拟坐席0=否,1=是' AFTER `auto_reply`;
+-- 消息来源：为质检与统计提供依据
+ALTER TABLE `eb_chat_service_dialogue_record` ADD `source` tinyint(1) NOT NULL DEFAULT '0' COMMENT '来源0=人工,1=关键词,2=AI正文,3=AI兜底,4=超限降级' AFTER `msn_type`;
+-- 套餐AI能力：功能开关+日回复配额
+ALTER TABLE `eb_tenant_plan` ADD `ai_reply` tinyint(1) NOT NULL DEFAULT '0' COMMENT 'AI智能客服0=关闭,1=开启' AFTER `app_push`, ADD `daily_ai_limit` int(10) NOT NULL DEFAULT '0' COMMENT 'AI日回复上限,0=不限' AFTER `daily_msg_limit`;
+UPDATE `eb_tenant_plan` SET `ai_reply` = 1, `daily_ai_limit` = 200 WHERE `name` = '标准版';
+UPDATE `eb_tenant_plan` SET `ai_reply` = 1, `daily_ai_limit` = 2000 WHERE `name` = '旗舰版';
+
+-- 菜单：租户端AI客服设置（is_tenant=1）
+INSERT INTO `eb_system_menus` (`id`, `pid`, `icon`, `menu_name`, `module`, `controller`, `action`, `api_url`, `methods`, `params`, `sort`, `is_show`, `is_show_path`, `access`, `menu_path`, `path`, `auth_type`, `header`, `is_header`, `unique_auth`, `is_del`, `is_tenant`) VALUES
+(1250, 165, '', 'AI客服设置', 'admin', '', '', '', '', '[]', 5, 1, 0, 1, '/admin/chat/ai', '165', 1, 'kefu', 0, 'chat-ai-config', 0, 1),
+(1251, 1250, '', 'AI配置详情', 'admin', '', '', 'api/admin/chat/ai', 'GET', '[]', 0, 0, 0, 1, '', '165/1250', 2, '', 0, '', 0, 1),
+(1252, 1250, '', '保存AI配置', 'admin', '', '', 'api/admin/chat/ai', 'POST', '[]', 0, 0, 0, 1, '', '165/1250', 2, '', 0, '', 0, 1),
+(1253, 1250, '', 'AI用量统计', 'admin', '', '', 'api/admin/chat/ai/usage', 'GET', '[]', 0, 0, 0, 1, '', '165/1250', 2, '', 0, '', 0, 1);
+UPDATE `eb_system_role` SET `rules` = CONCAT(`rules`, ',1250,1251,1252,1253') WHERE `role_name` = '租户管理员' AND `tenant_id` > 0 AND `rules` NOT LIKE '%1250%';
