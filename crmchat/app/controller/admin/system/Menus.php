@@ -30,6 +30,8 @@ class Menus extends AuthController
     public function __construct(SystemMenusServices $services)
     {
         parent::__construct();
+        //菜单与权限规则是全平台共用的元数据，租户改动会破坏所有租户的权限体系
+        $this->mustPlatformAdmin('权限规则');
         $this->services = $services;
         $this->request->filter(['addslashes', 'trim']);
     }

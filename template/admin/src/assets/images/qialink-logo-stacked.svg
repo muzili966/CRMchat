@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="360" viewBox="0 0 300 360" role="img" aria-labelledby="title">
+  <title id="title">QiaLink 洽联上下组合标识</title>
+  <g transform="translate(54 18) scale(.75)">
+    <path d="M36 54c0-19.882 16.118-36 36-36h112c19.882 0 36 16.118 36 36v94c0 19.882-16.118 36-36 36h-58l-54 45v-45c-19.882 0-36-16.118-36-36V54Z" fill="#1677FF"/>
+    <path d="M83 82h90M83 119h57" stroke="#FFF" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="184" cy="180" r="31" fill="#6C63FF" stroke="#FFF" stroke-width="11"/>
+    <path d="m205 201 25 25" stroke="#6C63FF" stroke-width="16" stroke-linecap="round"/>
+  </g>
+  <text x="150" y="277" text-anchor="middle" fill="#14213D" font-family="Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="44" font-weight="700">QiaLink</text>
+  <text x="150" y="322" text-anchor="middle" fill="#5B6B89" font-family="'PingFang SC', 'Microsoft YaHei', Arial, sans-serif" font-size="25" font-weight="600" letter-spacing="8">洽联</text>
+</svg>
+

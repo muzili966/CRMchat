@@ -245,7 +245,7 @@ INSERT INTO `eb_system_menus` (`id`, `pid`, `icon`, `menu_name`, `module`, `cont
 
 -- ============ 访客接入安全加固 + 应用管理菜单可见性（2026-08-30） ============
 -- 应用接入模式：新应用默认签名模式（携带uid接入须验签sign=md5(appid.uid.timestamp.app_secret)），存量应用保持兼容不掉线
-ALTER TABLE `eb_application` ADD `auth_mode` tinyint(1) NOT NULL DEFAULT '1' COMMENT '接入模式0=兼容(信任uid),1=签名' AFTER `token_md5`;
+ALTER TABLE `eb_application` ADD `auth_mode` tinyint(1) NOT NULL DEFAULT '0' COMMENT '接入模式0=标准(默认),1=签名(需服务端下发签名)' AFTER `token_md5`;
 UPDATE `eb_application` SET `auth_mode` = 0;
 -- "代码获取"实为应用管理入口，改名使其可发现
 UPDATE `eb_system_menus` SET `menu_name` = '应用管理' WHERE `id` = 1011;
@@ -350,3 +350,12 @@ INSERT INTO `eb_system_menus` (`id`, `pid`, `icon`, `menu_name`, `module`, `cont
 (1261, 1260, '', '装修配置详情', 'admin', '', '', 'api/admin/chat/theme', 'GET', '[]', 0, 0, 0, 1, '', '165/1260', 2, '', 0, '', 0, 1),
 (1262, 1260, '', '保存装修配置', 'admin', '', '', 'api/admin/chat/theme', 'POST', '[]', 0, 0, 0, 1, '', '165/1260', 2, '', 0, '', 0, 1);
 UPDATE `eb_system_role` SET `rules` = CONCAT(`rules`, ',1260,1261,1262') WHERE `role_name` = '租户管理员' AND `tenant_id` > 0 AND `rules` NOT LIKE '%1260%';
+
+-- ============ 权限收口修复（2026-08-30） ============
+-- 此前用path列做子树级联失效（存量path大面积为空），改用pid递归重新标注；
+-- 平台专属：维护管理(25)/租户管理(1200)/权限规则(21) 整棵子树，但排除管理员自助与附件两棵
+UPDATE `eb_system_menus` SET `is_tenant` = 0 WHERE `id` IN (21,47,56,65,111,112,125,126,338,339,340,341,342,343,344,345,346,462,464,465,466,467,468,469,470,471,472,473,474,475,476,477,478,479,480,481,482,483,484,485,486,487,488,489,619,641,1079,1088,1090);
+-- 反向误伤修正：附件管理与管理员中心是每个管理员的自助功能，租户必须可用
+UPDATE `eb_system_menus` SET `is_tenant` = 1 WHERE `id` IN (1063,1064,1065,1066,1067,1068,1069,1070,1071,1072,1073,1074,1075,1076,1077,1078,1082,1083,1084);
+-- 重算存量租户默认角色（ensureDefaultRole仅在角色不存在时创建，不会自动纠正旧角色）
+UPDATE `eb_system_role` SET `rules` = (SELECT GROUP_CONCAT(`id`) FROM (SELECT `id` FROM `eb_system_menus` WHERE `is_tenant` = 1 AND `is_del` = 0) t) WHERE `role_name` = '租户管理员' AND `tenant_id` > 0;

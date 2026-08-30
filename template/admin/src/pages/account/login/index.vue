@@ -1,361 +1,295 @@
 <template>
-  <div class="page-account">
-    <div class="container" :class="[ fullWidth > 768 ? 'containerSamll':'containerBig']">
-      <swiper :options="swiperOption" class="swiperPross" v-if="fullWidth>768">
-        <swiper-slide class="swiperPic" v-for="(item,index) in swiperList" :key="index">
-          <img :src="item.slide">
-        </swiper-slide>
-        <div class="swiper-pagination" slot="pagination"></div>
-      </swiper>
-      <div class="index_from page-account-container">
-        <div class="page-account-top ">
-          <div class="page-account-top-logo">
-            <img :src="login_logo" alt="logo" style="width:auto;height:74px;">
-          </div>
+  <div class="login-page">
+    <section class="visual-panel">
+      <header class="visual-panel__header">
+        <img :src="brandIcon" alt="QiaLink 洽联图标">
+        <span><strong>QiaLink</strong><small>洽联</small></span>
+      </header>
+      <div class="visual-panel__copy">
+        <h1>连接每一次沟通</h1>
+        <p>让智能服务更高效，让客户关系更长久</p>
+      </div>
+    </section>
+
+    <section class="form-panel">
+      <div class="form-panel__top">
+        <span>智能客户联络平台</span>
+        <span class="online"><i></i> 服务在线</span>
+      </div>
+      <div class="login-card">
+        <img class="login-card__logo" :src="brandLogo" alt="QiaLink 洽联">
+        <div class="login-card__heading">
+          <h2>欢迎回来</h2>
+          <p>输入您的账号和密码登录管理平台</p>
         </div>
-        <Form ref="formInline" :model="formInline" :rules="ruleInline" @keyup.enter="handleSubmit('formInline')">
+        <Form ref="formInline" :model="formInline" :rules="ruleInline" @keyup.enter.native="handleSubmit('formInline')">
           <FormItem prop="username">
-            <Input type="text" v-model="formInline.username" prefix="ios-contact-outline" placeholder="请输入用户名" size="large" />
+            <Input v-model="formInline.username" type="text" prefix="ios-person-outline" placeholder="请输入管理员账号" size="large" />
           </FormItem>
           <FormItem prop="password">
-            <Input type="password" v-model="formInline.password" prefix="ios-lock-outline" placeholder="请输入密码" size="large" />
+            <Input v-model="formInline.password" type="password" prefix="ios-lock-outline" placeholder="请输入登录密码" size="large" />
           </FormItem>
           <FormItem prop="code">
-            <div class="code">
-              <Input type="text" v-model="formInline.code" prefix="ios-keypad-outline" placeholder="请输入验证码" size="large" />
-              <img :src="imgcode" class="pictrue" @click="captchas" />
+            <div class="verify-field">
+              <Input v-model="formInline.code" type="text" prefix="ios-shield-outline" placeholder="请输入验证码" size="large" />
+              <button type="button" class="verify-image" aria-label="刷新验证码" @click="captchas">
+                <img :src="imgcode" alt="验证码">
+                <span>点击刷新</span>
+              </button>
             </div>
           </FormItem>
-          <FormItem>
-            <Button type="primary" long size="large" @click="handleSubmit('formInline')" class="btn">登录</Button>
+          <FormItem class="submit-item">
+            <Button type="primary" long size="large" class="login-button" @click="handleSubmit('formInline')">登录</Button>
           </FormItem>
         </Form>
+        <p class="login-card__hint"><Icon type="ios-lock-outline" /> 登录信息通过加密通道传输</p>
       </div>
-    </div>
+      <footer class="form-panel__footer">QiaLink 洽联 · 智能客户联络平台</footer>
+    </section>
+
     <Modal v-model="modals" scrollable footer-hide closable title="请完成安全校验" :mask-closable="false" :z-index="2" width="342">
-      <div class="captchaBox">
-        <div id="captcha" style="position: relative" ref="captcha"></div>
+      <div class="captcha-box">
+        <div id="captcha" ref="captcha"></div>
         <div id="msg"></div>
       </div>
     </Modal>
   </div>
 </template>
+
 <script>
-import { AccountLogin, loginInfoApi, captcha_pro } from '@/api/account'
-// import mixins from '../mixins'
-import Setting from '@/setting'
+import { AccountLogin, captcha_pro } from '@/api/account'
 import { setCookies } from '@/libs/util'
-import '../../../assets/js/canvas-nest.min'
+import brandLogo from '@/assets/images/qialink-logo-horizontal.svg'
+import brandIcon from '@/assets/images/qialink-logo-icon.svg'
 import '../../../assets/js/jigsaw.js'
+
+const MOBILE_BREAKPOINT = 768
+const SLIDER_THRESHOLD = 2
+
 export default {
-  // mixins: [mixins],
   data() {
     return {
-      fullWidth: document.documentElement.clientWidth,
-      swiperOption: {
-        pagination: '.swiper-pagination',
-        autoplay: true
-      },
+      brandLogo,
+      brandIcon,
       modals: false,
-      autoLogin: true,
       imgcode: '',
-      formInline: {
-        username: '',
-        password: '',
-        code: '',
-        key: ''
-      },
-      ruleInline: {
-        username: [
-          { required: true, message: '请输入用户名', trigger: 'blur' }
-        ],
-        password: [
-          { required: true, message: '请输入密码', trigger: 'blur' }
-        ],
-        code: [
-          { required: true, message: '请输入验证码', trigger: 'blur' }
-        ]
-      },
       errorNum: 0,
       jigsaw: null,
-      login_logo: '',
-      swiperList: [],
-      defaultSwiperList: require('@/assets/images/sw.jpg')
-    }
-  },
-  created() {
-    var _this = this
-    top != window && (top.location.href = location.href)
-    document.onkeydown = function(e) {
-      if(_this.$route.name === 'login') {
-        let key = window.event.keyCode
-        if(key === 13) {
-          _this.handleSubmit('formInline')
-        }
+      formInline: { username: '', password: '', code: '', key: '' },
+      ruleInline: {
+        username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+        password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+        code: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
       }
     }
-    window.addEventListener('resize', this.handleResize)
   },
-  watch: {
-    fullWidth(val) {
-      // 为了避免频繁触发resize函数导致页面卡顿，使用定时器
-      if(!this.timer) {
-        // 一旦监听到的screenWidth值改变，就将其重新赋给data里的screenWidth
-        this.screenWidth = val
-        this.timer = true
-        let that = this
-        setTimeout(function() {
-          // 打印screenWidth变化的值
-          that.timer = false
-        }, 400)
-      }
-    },
-    $route(n) {
-      this.captchas()
-    }
-  },
-  mounted: function() {
-    this.$nextTick(() => {
-      // /* eslint-disable */
-      let that = this
-      this.jigsaw = jigsaw.init({
-        el: this.$refs.captcha,
-        onSuccess() {
-          that.modals = false
-          that.closeModel()
-        },
-        onFail: this.closefail,
-        onRefresh() {
-        }
-      })
-      if(this.screenWidth < 768) {
-        document.getElementsByTagName('canvas')[0].removeAttribute('class', 'index_bg')
-      } else {
-        document.getElementsByTagName('canvas')[0].className = 'index_bg'
-      }
-      this.swiperData()
-    })
+  mounted() {
+    this.initJigsaw()
     this.captchas()
+    this.updateCanvasClass()
+    window.addEventListener('resize', this.updateCanvasClass)
+  },
+  beforeDestroy() {
+    window.removeEventListener('resize', this.updateCanvasClass)
+    this.removeCanvasClass()
   },
   methods: {
-    swiperData() {
-      loginInfoApi().then(res => {
-        let data = res.data || {}
-        this.login_logo = data.login_logo ? data.login_logo : require('@/assets/images/logo.png');
-        this.swiperList = data.slide.length ? data.slide : [{ slide: this.defaultSwiperList }];
-      }).catch(err => {
-        this.$Message.error(err)
-        this.login_logo = require('@/assets/images/logo.png')
-        this.swiperList = [{ slide: this.defaultSwiperList }]
+    initJigsaw() {
+      this.$nextTick(() => {
+        this.jigsaw = jigsaw.init({
+          el: this.$refs.captcha,
+          onSuccess: () => {
+            this.modals = false
+            this.login()
+          },
+          onFail: this.handleJigsawFail,
+          onRefresh() {}
+        })
       })
     },
-    // 关闭模态框
-    closeModel() {
-      let msg = this.$Message.loading({
-        content: '登录中...',
-        duration: 0
-      })
+    getCanvas() {
+      return document.getElementsByTagName('canvas')[0]
+    },
+    updateCanvasClass() {
+      const canvas = this.getCanvas()
+      if(!canvas) return
+      canvas.className = document.documentElement.clientWidth < MOBILE_BREAKPOINT ? '' : 'index_bg'
+    },
+    removeCanvasClass() {
+      const canvas = this.getCanvas()
+      if(canvas) canvas.removeAttribute('class')
+    },
+    resetJigsaw() {
+      if(this.jigsaw) this.jigsaw.reset()
+    },
+    getExpiresTime(expiresTime) {
+      const secondsPerDay = 60 * 60 * 24
+      return parseInt((expiresTime - Math.round(new Date() / 1000)) / secondsPerDay)
+    },
+    saveLoginData(data) {
+      const expires = this.getExpiresTime(data.expires_time)
+      setCookies('uuid', data.user_info.id)
+      setCookies('token', data.token, expires)
+      setCookies('expires_time', data.expires_time, expires)
+      this.$store.commit('userInfo/uniqueAuth', data.unique_auth)
+      this.$store.commit('userInfo/userInfo', data.user_info)
+      this.$store.commit('menus/setopenMenus', [])
+      this.$store.commit('menus/getmenusNav', data.menus)
+      this.$store.commit('userInfo/name', data.user_info.account)
+      this.$store.commit('userInfo/avatar', data.user_info.head_pic)
+      this.$store.commit('userInfo/access', data.unique_auth)
+      this.$store.commit('userInfo/logo', data.logo)
+      this.$store.commit('userInfo/logoSmall', data.logo_square)
+      this.$store.commit('userInfo/version', data.version)
+      this.$store.commit('userInfo/newOrderAudioLink', data.newOrderAudioLink)
+    },
+    login() {
+      const loading = this.$Message.loading({ content: '正在安全登录...', duration: 0 })
       AccountLogin({
         account: this.formInline.username,
         pwd: this.formInline.password,
         imgcode: this.formInline.code,
         key: this.formInline.key
-      }).then(async res => {
-        msg()
-        console.log('已登陆')
-        let data = res.data
-        let expires = this.getExpiresTime(data.expires_time)
-        // 记录用户登陆信息
-        setCookies('uuid', data.user_info.id)
-        setCookies('token', data.token,expires)
-        setCookies('expires_time', data.expires_time, expires)
-
-        this.$store.commit('userInfo/uniqueAuth', data.unique_auth)
-        this.$store.commit('userInfo/userInfo', data.user_info)
-        // 保存菜单信息
-        this.$store.commit('menus/setopenMenus', [])
-        this.$store.commit('menus/getmenusNav', data.menus)
-
-        // 记录用户信息
-        this.$store.commit('userInfo/name', data.user_info.account)
-        this.$store.commit('userInfo/avatar', data.user_info.head_pic)
-        this.$store.commit('userInfo/access', data.unique_auth)
-        this.$store.commit('userInfo/logo', data.logo)
-        this.$store.commit('userInfo/logoSmall', data.logo_square)
-        this.$store.commit('userInfo/version', data.version)
-        this.$store.commit('userInfo/newOrderAudioLink', data.newOrderAudioLink)
-
-        if(this.jigsaw) this.jigsaw.reset()
-        return this.$router.replace({ path: '/admin/home/' || '/admin/' })
-      }).catch(res => {
-        msg()
-        let data = res === undefined ? {} : res
+      }).then(res => {
+        loading()
+        this.saveLoginData(res.data)
+        this.resetJigsaw()
+        return this.$router.replace({ path: '/admin/home/' })
+      }).catch(error => {
+        loading()
         this.errorNum++
         this.captchas()
-        this.$Message.error(data.msg || '登录失败')
-        if(this.jigsaw) this.jigsaw.reset()
+        this.$Message.error((error && error.msg) || '登录失败')
+        this.resetJigsaw()
       })
     },
-    getExpiresTime(expiresTime) {
-      let nowTimeNum = Math.round(new Date() / 1000)
-      let expiresTimeNum = expiresTime - nowTimeNum
-      return parseInt(parseFloat(parseFloat(expiresTimeNum / 60) / 60) / 24)
+    handleJigsawFail() {
+      this.resetJigsaw()
+      this.$Message.error('校验错误，请重试')
     },
-    closefail() {
-      if(this.jigsaw) this.jigsaw.reset()
-      this.$Message.error('校验错误')
-    },
-    handleResize(event) {
-      this.fullWidth = document.documentElement.clientWidth
-      if(this.fullWidth < 768) {
-        document.getElementsByTagName('canvas')[0].removeAttribute('class', 'index_bg')
-      } else {
-        document.getElementsByTagName('canvas')[0].className = 'index_bg'
-      }
-    },
-    captchas: function() {
-
+    captchas() {
       captcha_pro().then(res => {
-        if(res.status == 200) {
-          this.imgcode = res.data.img;
-          this.formInline.key = res.data.key;
-        }
+        if(res.status !== 200) return
+        this.imgcode = res.data.img
+        this.formInline.key = res.data.key
+      }).catch(error => {
+        this.$Message.error((error && error.msg) || '验证码加载失败')
       })
-      //   this.imgcode = Setting.apiBaseURL + '/captcha_pro?' + Date.parse(new Date());
     },
     handleSubmit(name) {
-      this.$refs[name].validate((valid) => {
-        if(valid) {
-          if(this.errorNum >= 2) {
-            this.modals = true
-          } else {
-            this.closeModel()
-          }
+      this.$refs[name].validate(valid => {
+        if(!valid) return
+        if(this.errorNum >= SLIDER_THRESHOLD) {
+          this.modals = true
+          return
         }
+        this.login()
       })
     }
-  },
-  beforeCreate() {
-    if(this.fullWidth < 768) {
-      document.getElementsByTagName('canvas')[0].removeAttribute('class', 'index_bg')
-    } else {
-      document.getElementsByTagName('canvas')[0].className = 'index_bg'
-    }
-  },
-  beforeDestroy: function() {
-    window.removeEventListener('resize', this.handleResize)
-    document.getElementsByTagName('canvas')[0].removeAttribute('class', 'index_bg')
   }
 }
 </script>
+
 <style scoped lang="stylus">
-.page-account {
+.login-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(420px, 1fr) minmax(520px, 1fr);
+  overflow: hidden;
+  color: #14213d;
+  background: #fff;
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.login-page, .login-page * { box-sizing: border-box; }
+
+.visual-panel {
+  min-height: 100vh;
+  padding: 38px 48px 54px;
   display: flex;
-  width: 100%;
-  background-image: url('../../../assets/images/bg.jpg');
-  background-size: cover;
-  background-position: center;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  overflow: auto;
+  justify-content: space-between;
+  position: relative;
+  color: #fff;
+  background-color: #1677ff;
+  background-image: linear-gradient(180deg, rgba(11, 111, 232, .04), rgba(11, 111, 232, .2)), url('../../../assets/images/qialink-login-visual.png');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
 }
 
-.page-account .code {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.visual-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(22, 119, 255, .04) 35%, rgba(11, 91, 207, .34));
 }
 
-.page-account .code .pictrue {
-  height: 40px;
-  margin-left: 8px;
+.visual-panel__header, .visual-panel__copy { position: relative; z-index: 1; }
+.visual-panel__header { display: flex; align-items: center; gap: 12px; }
+.visual-panel__header img { width: 44px; height: 44px; object-fit: contain; }
+.visual-panel__header strong, .visual-panel__header small { display: block; }
+.visual-panel__header strong { font-size: 19px; line-height: 1.1; letter-spacing: .2px; }
+.visual-panel__header small { margin-top: 3px; color: rgba(255, 255, 255, .76); font-size: 11px; letter-spacing: 4px; }
+.visual-panel__copy { text-align: center; text-shadow: 0 2px 12px rgba(0, 65, 165, .22); }
+.visual-panel__copy h1 { margin: 0 0 10px; font-size: 28px; font-weight: 600; letter-spacing: 1px; }
+.visual-panel__copy p { margin: 0; color: rgba(255, 255, 255, .78); font-size: 14px; letter-spacing: .5px; }
+
+.form-panel {
+  min-height: 100vh;
+  padding: 34px 56px 28px;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: #fff;
 }
 
-.swiperPross {
-  border-radius: 6px 0px 0px 6px;
+.form-panel__top { display: flex; justify-content: flex-end; gap: 28px; color: #8290aa; font-size: 13px; }
+.online { display: flex; align-items: center; gap: 7px; }
+.online i { width: 7px; height: 7px; border-radius: 50%; background: #32c787; box-shadow: 0 0 0 4px rgba(50, 199, 135, .12); }
+.login-card { width: 100%; max-width: 480px; margin: auto; }
+.login-card__logo { display: none; width: 176px; height: auto; margin-bottom: 40px; }
+.login-card__heading h2 { margin: 0; color: #14213d; font-size: 34px; line-height: 1.3; }
+.login-card__heading p { margin: 10px 0 34px; color: #a0acc0; font-size: 14px; }
+.verify-field { display: grid; grid-template-columns: minmax(0, 1fr) 122px; gap: 12px; }
+.verify-field >>> .ivu-input-wrapper { min-width: 0; }
+.verify-image { height: 46px; padding: 0; overflow: hidden; position: relative; border: 1px solid #e0e6ef; border-radius: 6px; background: #f7f9fc; cursor: pointer; }
+.verify-image img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.verify-image span { position: absolute; inset: auto 0 0; padding: 2px; color: #fff; background: rgba(58, 74, 105, .58); font-size: 10px; }
+.submit-item { margin-top: 30px; }
+.login-button { height: 48px; border: 0; border-radius: 6px; background: #5b85f7 !important; box-shadow: 0 10px 22px rgba(91, 133, 247, .2); font-weight: 500; transition: background .2s, transform .2s; }
+.login-button:hover { background: #4775ef !important; transform: translateY(-1px); }
+.login-card__hint { margin-top: 20px; color: #b4becf; font-size: 12px; text-align: center; }
+.form-panel__footer { color: #c1cad9; font-size: 12px; text-align: center; }
+.captcha-box { width: 310px; }
+#msg { width: 100%; line-height: 40px; font-size: 14px; text-align: center; }
+
+.login-card >>> .ivu-form-item { margin-bottom: 22px; }
+.login-card >>> .ivu-input-large { height: 46px; padding-left: 42px; border-color: #e0e6ef; border-radius: 6px; color: #263755; font-size: 14px; box-shadow: none; }
+.login-card >>> .ivu-input-large:hover, .login-card >>> .ivu-input-large:focus { border-color: #77a1ff; box-shadow: 0 0 0 3px rgba(91, 133, 247, .09); }
+.login-card >>> .ivu-input-prefix { width: 40px; color: #a6b2c6; }
+
+@media (max-width: 960px) {
+  .login-page { grid-template-columns: 42% 58%; }
+  .visual-panel { padding: 30px 32px 42px; background-position: 58% center; }
+  .visual-panel__header img { width: 40px; height: 40px; }
+  .form-panel { padding: 30px 40px 26px; }
 }
 
-.swiperPross, .swiperPic, .swiperPic img {
-  width: 510px;
-  height: 100%;
+@media (max-width: 720px) {
+  .login-page { display: block; min-height: 100vh; padding: 22px; overflow: auto; background: linear-gradient(145deg, #eef5ff, #f8fbff); }
+  .visual-panel { display: none; }
+  .form-panel { min-height: calc(100vh - 44px); padding: 34px 28px 24px; border-radius: 18px; box-shadow: 0 20px 55px rgba(50, 82, 135, .1); }
+  .form-panel__top { display: none; }
+  .login-card { max-width: 430px; }
+  .login-card__logo { display: block; }
+  .login-card__heading h2 { font-size: 29px; }
+  .login-card__heading p { margin-bottom: 30px; }
 }
 
-.swiperPic img {
-  width: 100%;
-  height: 100%;
-}
-
-.container {
-  height: 400px !important;
-  padding: 0 !important;
-  border-radius: 6px;
-  z-index: 1;
-  display: flex;
-}
-
-.containerSamll {
-  /* width: 56% !important; */
-  background: #fff !important;
-}
-
-.containerBig {
-  width: auto !important;
-  background: #f7f7f7 !important;
-}
-
-.index_from {
-  padding: 0 40px 32px 40px;
-  height: 400px;
-  width: 380px;
-  box-sizing: border-box;
-}
-
-.page-account-top {
-  padding: 20px 0 !important;
-  box-sizing: border-box !important;
-  display: flex;
-  justify-content: center;
-}
-
-.page-account-container {
-  border-radius: 0px 6px 6px 0px;
-}
-
-.btn {
-  background: linear-gradient(90deg, rgba(25, 180, 241, 1) 0%, rgba(14, 115, 232, 1) 100%) !important;
-}
-
-.captchaBox {
-  width: 310px;
-}
-
-input {
-  display: block;
-  width: 290px;
-  line-height: 40px;
-  margin: 10px 0;
-  padding: 0 10px;
-  outline: none;
-  border: 1px solid #c8cccf;
-  border-radius: 4px;
-  color: #6a6f77;
-}
-
-#msg {
-  width: 100%;
-  line-height: 40px;
-  font-size: 14px;
-  text-align: center;
-}
-
-a:link, a:visited, a:hover, a:active {
-  margin-left: 100px;
-  color: #0366D6;
-}
-
-.index_from >>> .ivu-input-large {
-  font-size: 14px !important;
+@media (max-width: 390px) {
+  .login-page { padding: 0; }
+  .form-panel { min-height: 100vh; padding: 30px 20px 22px; border-radius: 0; }
+  .verify-field { grid-template-columns: minmax(0, 1fr) 102px; gap: 8px; }
 }
 </style>

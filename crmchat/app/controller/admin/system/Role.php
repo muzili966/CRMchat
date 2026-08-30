@@ -71,6 +71,10 @@ class Role extends AuthController
         if (!$data['role_name']) return $this->fail('请输入身份名称');
         if (!is_array($data['rules']) || !count($data['rules']))
             return $this->fail('请选择最少一个权限');
+        $illegal = $this->filterGrantableRules($data['rules']);
+        if ($illegal) {
+            return $this->fail('不能授予自身不具备的权限');
+        }
         $data['rules'] = implode(',', $data['rules']);
         if ($id) {
             if (!$this->services->update($id, $data)) return $this->fail('修改失败!');
@@ -82,6 +86,25 @@ class Role extends AuthController
             \crmeb\services\CacheService::clear();
             return $this->success('添加身份成功!');
         }
+    }
+
+    /**
+     * 找出超出授权者自身权限范围的菜单
+     *
+     * 防提权：租户管理员若能勾选平台专属菜单，即可自铸权限点越权访问平台接口。
+     * 平台超管(level=0)不受限，其余账号只能授予自己已有权限的子集
+     * @param array $rules 提交的菜单id
+     * @return array 越权的菜单id
+     */
+    protected function filterGrantableRules(array $rules): array
+    {
+        if ((int)$this->adminInfo['level'] === 0) {
+            return [];
+        }
+        /** @var SystemMenusServices $menusServices */
+        $menusServices = app()->make(SystemMenusServices::class);
+        $granted = $menusServices->getGrantableMenuIds((array)$this->adminInfo['roles']);
+        return array_values(array_diff(array_map('intval', $rules), $granted));
     }
 
     /**

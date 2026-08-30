@@ -26,7 +26,7 @@ const frameIn = [
     {
         path: '/admin/',
         meta: {
-            title: 'CRMEB'
+            title: 'QiaLink 洽联'
         },
         redirect: {
             name: 'home_index'

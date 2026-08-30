@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title">
+  <title id="title">QiaLink 洽联图标</title>
+  <path d="M36 54c0-19.882 16.118-36 36-36h112c19.882 0 36 16.118 36 36v94c0 19.882-16.118 36-36 36h-58l-54 45v-45c-19.882 0-36-16.118-36-36V54Z" fill="#1677FF"/>
+  <path d="M83 82h90M83 119h57" stroke="#FFFFFF" stroke-width="16" stroke-linecap="round"/>
+  <circle cx="184" cy="180" r="31" fill="#6C63FF" stroke="#FFFFFF" stroke-width="11"/>
+  <path d="m205 201 25 25" stroke="#6C63FF" stroke-width="16" stroke-linecap="round"/>
+</svg>
+

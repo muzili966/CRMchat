@@ -31,6 +31,8 @@ class ConfigTab extends AuthController
     public function __construct(SystemConfigTabServices $services)
     {
         parent::__construct();
+        //配置分类表无租户维度，为全平台共享
+        $this->mustPlatformAdmin('配置分类');
         $this->services = $services;
     }
 

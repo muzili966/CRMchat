@@ -132,7 +132,7 @@
     import uploadPictures from '@/components/uploadPictures'
 
     const THEME_COLOR_DEFAULT = '#2d8cf0'
-    const PLATFORM_BRAND = '技术支持 by CRMChat'
+    const PLATFORM_BRAND = '技术支持 by QiaLink 洽联'
     const BRAND_SHOW = 1
     const BRAND_HIDE = 0
     const BANNER_MAX = 5

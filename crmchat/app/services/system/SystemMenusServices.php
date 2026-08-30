@@ -86,6 +86,24 @@ class SystemMenusServices extends BaseServices
     }
 
     /**
+     * 某组角色可授出的菜单ID集合（即这些角色自身权限的并集）
+     *
+     * 用于防提权：授权者不能把自己没有的权限授予他人
+     * @param array $roles 角色id
+     * @return array
+     */
+    public function getGrantableMenuIds(array $roles): array
+    {
+        $roles = array_filter(array_map('intval', $roles));
+        if (!$roles) {
+            return [];
+        }
+        /** @var SystemRoleServices $roleServices */
+        $roleServices = app()->make(SystemRoleServices::class);
+        return array_map('intval', $roleServices->getRoleIds($roles));
+    }
+
+    /**
      * 获取后台菜单树型结构列表
      * @param array $where
      * @return array

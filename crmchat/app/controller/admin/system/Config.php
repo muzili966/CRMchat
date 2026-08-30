@@ -45,6 +45,8 @@ class Config extends AuthController
      */
     public function index()
     {
+        //配置项本身是平台级元数据（含云存储密钥等平台配置），租户只能经 save_basics 走白名单覆盖
+        $this->mustPlatformAdmin('系统配置项');
         $where = $this->request->getMore([
             ['tab_id', 0],
             ['status', -1]
@@ -65,6 +67,8 @@ class Config extends AuthController
      */
     public function create()
     {
+        //配置项本身是平台级元数据（含云存储密钥等平台配置），租户只能经 save_basics 走白名单覆盖
+        $this->mustPlatformAdmin('系统配置项');
         [$type, $tabId] = $this->request->getMore([
             [['type', 'd'], ''],
             [['tab_id', 'd'], 1]
@@ -79,6 +83,8 @@ class Config extends AuthController
      */
     public function save()
     {
+        //配置项本身是平台级元数据（含云存储密钥等平台配置），租户只能经 save_basics 走白名单覆盖
+        $this->mustPlatformAdmin('系统配置项');
         $data = $this->request->postMore([
             'menu_name',
             'type',
@@ -135,6 +141,8 @@ class Config extends AuthController
      */
     public function read($id)
     {
+        //配置项本身是平台级元数据（含云存储密钥等平台配置），租户只能经 save_basics 走白名单覆盖
+        $this->mustPlatformAdmin('系统配置项');
         if (!$id) {
             return $this->fail('参数错误，请重新打开');
         }
@@ -150,6 +158,8 @@ class Config extends AuthController
      */
     public function edit($id)
     {
+        //配置项本身是平台级元数据（含云存储密钥等平台配置），租户只能经 save_basics 走白名单覆盖
+        $this->mustPlatformAdmin('系统配置项');
         return $this->success($this->services->editConfigForm((int)$id));
     }
 
@@ -161,6 +171,8 @@ class Config extends AuthController
      */
     public function update($id)
     {
+        //配置项本身是平台级元数据（含云存储密钥等平台配置），租户只能经 save_basics 走白名单覆盖
+        $this->mustPlatformAdmin('系统配置项');
         $type = request()->post('type');
         if ($type == 'text' || $type == 'textarea' || $type == 'radio' || ($type == 'upload' && (request()->post('upload_type') == 1 || request()->post('upload_type') == 3))) {
             $value = request()->post('value');
@@ -186,6 +198,8 @@ class Config extends AuthController
      */
     public function delete($id)
     {
+        //配置项本身是平台级元数据（含云存储密钥等平台配置），租户只能经 save_basics 走白名单覆盖
+        $this->mustPlatformAdmin('系统配置项');
         if (!$this->services->delete($id))
             return $this->fail('删除失败,请稍候再试!');
         else {
@@ -202,6 +216,8 @@ class Config extends AuthController
      */
     public function set_status($id, $status)
     {
+        //配置项本身是平台级元数据（含云存储密钥等平台配置），租户只能经 save_basics 走白名单覆盖
+        $this->mustPlatformAdmin('系统配置项');
         if ($status == '' || $id == 0) {
             return $this->fail('参数错误');
         }

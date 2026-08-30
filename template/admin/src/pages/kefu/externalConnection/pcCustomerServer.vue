@@ -129,7 +129,7 @@
 
             </div>
             <div class="pc_customerServer_container_footer_copyright" @click="tolink" v-if="isShowPlatformBrand && upperData.noCanClose != '1' && upperData.windowStyle != `center`">
-              <span>CRMChat开源客服系统</span>
+              <span>QiaLink 洽联智能客服</span>
             </div>
             <!-- 相关操作结束 -->
 
@@ -149,7 +149,7 @@
             </Carousel>
             <div v-else v-html="advertisement"></div>
             <div class="copyright" @click="tolink" v-if="isShowPlatformBrand">
-              <span>CRMChat开源客服系统</span>
+              <span>QiaLink 洽联智能客服</span>
             </div>
           </div>
         </div>

@@ -76,10 +76,10 @@ class ApplicationServices extends BaseServices
                 ->icon('ios-image')->width('950px')->height('420px')->col(13)->required(),
             FormBuilder::input('name', '应用名称', $data['name'] ?? '')->required(),
             FormBuilder::textarea('introduce', '应用简介', $data['introduce'] ?? ''),
-            FormBuilder::radio('auth_mode', '接入模式', (int)($data['auth_mode'] ?? \app\models\Application::AUTH_MODE_SIGN))
+            FormBuilder::radio('auth_mode', '接入模式', (int)($data['auth_mode'] ?? \app\models\Application::AUTH_MODE_COMPAT))
                 ->options([
-                    ['value' => \app\models\Application::AUTH_MODE_SIGN, 'label' => '签名模式(推荐,携带uid须验签)'],
-                    ['value' => \app\models\Application::AUTH_MODE_COMPAT, 'label' => '兼容模式(信任前端uid,不安全)'],
+                    ['value' => \app\models\Application::AUTH_MODE_COMPAT, 'label' => '标准接入(默认，自带客服窗口与嵌入代码均可直接使用)'],
+                    ['value' => \app\models\Application::AUTH_MODE_SIGN, 'label' => '签名接入(更安全，需贵司服务端下发签名，自带窗口不适用)'],
                 ]),
         ];
     }

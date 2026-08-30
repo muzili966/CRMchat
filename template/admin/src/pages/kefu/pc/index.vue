@@ -114,7 +114,7 @@
         <div class="right_menu">
           <rightMenu :isTourist="tourist" :uid="userActive.to_user_id" :webType="userActive.type" @bindPush="bindPush"></rightMenu>
           <div class="crmchat_link" @click="tolink">
-            <span>CRMChat开源客服系统</span>
+            <span>QiaLink 洽联智能客服</span>
           </div>
         </div>
       </div>

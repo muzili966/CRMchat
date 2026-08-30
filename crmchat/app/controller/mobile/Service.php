@@ -92,8 +92,25 @@ class Service extends AuthController
     {
         /** @var CacheServices $cache */
         $cache = app()->make(CacheServices::class);
-        $value = $cache->getDbCache($key, []);
+        $value = $cache->getDbCache($this->visitorCacheKey($key), []);
         return $this->success(compact('value'));
+    }
+
+    /**
+     * 访客侧缓存key
+     *
+     * 该接口无需登录且key由前端任意指定，若直接透传会读写到平台或其他租户的缓存行；
+     * 强制加租户与应用前缀，把可写范围限制在本应用自己的命名空间内
+     * @param string $key
+     * @return string
+     */
+    protected function visitorCacheKey(string $key): string
+    {
+        $key = preg_replace('/[^a-zA-Z0-9_\-]/', '', $key);
+        if ($key === '') {
+            throw new \think\exception\ValidateException('key格式不正确');
+        }
+        return 'visitor:' . (int)TenantContext::id() . ':' . $this->request->appId() . ':' . mb_substr($key, 0, 64);
     }
 
     /**
@@ -111,7 +128,7 @@ class Service extends AuthController
         }
         /** @var CacheServices $cache */
         $cache = app()->make(CacheServices::class);
-        $cache->setDbCache($key, $value, 600);
+        $cache->setDbCache($this->visitorCacheKey($key), $value, 600);
         return $this->success('ok');
     }
 

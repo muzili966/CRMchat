@@ -31,6 +31,8 @@ class GroupData extends AuthController
     public function __construct(SystemGroupDataServices $services)
     {
         parent::__construct();
+        //组合数据表无租户维度，为全平台共享
+        $this->mustPlatformAdmin('组合数据');
         $this->services = $services;
     }
 

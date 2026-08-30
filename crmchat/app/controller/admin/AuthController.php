@@ -93,6 +93,21 @@ abstract class AuthController
     }
 
     /**
+     * 平台专属功能的硬守卫
+     *
+     * 菜单不可见只是隐藏入口，租户仍可直接构造请求；
+     * 涉及平台级资源（权限规则、系统配置、组合数据等）的控制器必须在构造函数调用本方法
+     * @param string $scene 用于提示的功能名
+     * @return void
+     */
+    protected function mustPlatformAdmin(string $scene = '该功能')
+    {
+        if (!SystemAdmin::isPlatformAdmin($this->adminInfo)) {
+            throw new \crmeb\exceptions\AdminException($scene . '仅平台管理员可操作');
+        }
+    }
+
+    /**
      * 数据验证
      * @param array $data
      * @param $validate

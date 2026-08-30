@@ -3,7 +3,7 @@
  * 因此本混入必须与 socketServer 一起使用；后端未下发 theme 时全部退化为组件内置的默认外观。
  */
 const DEFAULT_THEME_COLOR = '#3875ea';
-const PLATFORM_BRAND_TEXT = '技术支持 by CRMChat';
+const PLATFORM_BRAND_TEXT = '技术支持 by QiaLink 洽联';
 const BRAND_HIDDEN = 0; // show_platform_brand = 0 表示白标
 const BUBBLE_TEXT_COLOR = '#fff';
 const BANNER_AUTOPLAY_SPEED = 4000;
