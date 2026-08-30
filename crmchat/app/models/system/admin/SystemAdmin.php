@@ -27,12 +27,13 @@ class SystemAdmin extends BaseModel
     use JwtAuthModelTrait;
 
     /**
-     * 平台超级管理员
+     * 归属平台侧的管理员。admin_type仅表达归属边界（数据可见范围），
+     * 权限大小仍由level/roles决定：平台侧同样可以有仅授权部分菜单的普通运营人员
      */
     const TYPE_PLATFORM = 1;
 
     /**
-     * 租户管理员
+     * 归属租户侧的管理员，数据访问锁定在所属租户内
      */
     const TYPE_TENANT = 2;
 
