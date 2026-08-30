@@ -4,8 +4,8 @@
       <side-menu accordion ref="sideMenu" :active-name="$route.path" :collapsed="collapsed" @on-select="turnToPage" :menu-list="menuList">
         <!-- 需要放在菜单上面的内容，如Logo，写在side-menu标签内部，如下 -->
         <div class="logo-con">
-          <img v-show="!collapsed" :src="maxLogo" key="max-logo" />
-          <img v-show="collapsed" :src="minLogo" key="min-logo" />
+          <img v-show="!collapsed" :src="maxLogo" class="logo-con__image logo-con__image--wide" key="max-logo" alt="QiaLink 洽联" @error="handleLogoError('max')" />
+          <img v-show="collapsed" :src="minLogo" class="logo-con__image logo-con__image--compact" key="min-logo" alt="QiaLink 洽联图标" @error="handleLogoError('min')" />
         </div>
       </side-menu>
     </Sider>
@@ -58,9 +58,11 @@ import { mapMutations, mapActions, mapGetters, mapState } from 'vuex'
 import { getNewTagList, routeEqual, getMenuopen, getCookies, setCookies } from '@/libs/util'
 import { getLogo } from '@/api/common';
 import routers from '@/router/routers'
-import minLogo from '@/assets/images/logo-small.png'
-import maxLogo from '@/assets/images/logo2.png'
+import defaultMinLogo from '@/assets/images/qialink-logo-icon.png'
+import defaultMaxLogo from '@/assets/images/qialink-logo-horizontal.png'
 import './main.less'
+
+const isValidLogo = logo => typeof logo === 'string' && logo.trim().length > 0
 export default {
   name: 'Main',
   components: {
@@ -79,8 +81,8 @@ export default {
   data() {
     return {
       collapsed: JSON.parse(getCookies('collapsed') || 'false'),
-      minLogo,
-      maxLogo,
+      minLogo: defaultMinLogo,
+      maxLogo: defaultMaxLogo,
       isFullscreen: false,
       reload: true,
       screenWidth: '',
@@ -189,14 +191,27 @@ export default {
       this.turnToPage(item)
     },
     getLogo() {
-      let logo = this.$store.state.userInfo.logo
-      let logoSmall = this.$store.state.userInfo.logoSmall
-      this.maxLogo = logo || this.maxLogo
-      this.minLogo = logoSmall || this.minLogo
-      getLogo().then(res => {
-        this.minLogo = res.data.logo_square;
-        this.maxLogo = res.data.logo;
+      this.applyLogo({
+        logo: this.$store.state.userInfo.logo,
+        logoSmall: this.$store.state.userInfo.logoSmall
       })
+      getLogo().then(res => {
+        if(!res || !res.data) return
+        this.applyLogo({ logo: res.data.logo, logoSmall: res.data.logo_square })
+      }).catch(error => {
+        console.warn('[QiaLink] 获取导航栏 Logo 失败，继续使用品牌默认资源', error)
+      })
+    },
+    applyLogo({ logo, logoSmall }) {
+      if(isValidLogo(logo)) this.maxLogo = logo.trim()
+      if(isValidLogo(logoSmall)) this.minLogo = logoSmall.trim()
+    },
+    handleLogoError(type) {
+      if(type === 'max') {
+        this.maxLogo = defaultMaxLogo
+        return
+      }
+      this.minLogo = defaultMinLogo
     },
     handleReload() {
       this.reload = false
@@ -269,8 +284,9 @@ export default {
 }
 .main .logo-con img {
   width: auto;
-  height: 45px;
-  max-width: 187px;
+  max-width: 100%;
+  max-height: 42px;
+  object-fit: contain;
 }
 .main .tag-nav-wrapper {
   background: unset;

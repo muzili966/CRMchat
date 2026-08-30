@@ -218,8 +218,9 @@ class Captcha
         }
 
         return $api ? [
-            'img' => $this->processDataUrl($content),
-            'key' => $generator['key'],
+            'img'        => $this->processDataUrl($content),
+            'key'        => $generator['key'],
+            'expires_in' => $this->expire,
         ] : response($content, 200)->contentType('image/png');
     }
 

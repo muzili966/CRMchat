@@ -5,6 +5,9 @@
         <img :src="brandIcon" alt="QiaLink 洽联图标">
         <span><strong>QiaLink</strong><small>洽联</small></span>
       </header>
+      <div class="visual-panel__art" aria-hidden="true">
+        <img :src="loginIllustration" alt="">
+      </div>
       <div class="visual-panel__copy">
         <h1>连接每一次沟通</h1>
         <p>让智能服务更高效，让客户关系更长久</p>
@@ -31,10 +34,10 @@
           </FormItem>
           <FormItem prop="code">
             <div class="verify-field">
-              <Input v-model="formInline.code" type="text" prefix="ios-shield-outline" placeholder="请输入验证码" size="large" />
+              <Input v-model="formInline.code" type="text" prefix="ios-key-outline" placeholder="请输入验证码" size="large" />
               <button type="button" class="verify-image" aria-label="刷新验证码" @click="captchas">
                 <img :src="imgcode" alt="验证码">
-                <span>点击刷新</span>
+                <span v-if="isCaptchaExpired" class="verify-image__expired"><Icon type="ios-refresh" /> 已过期</span>
               </button>
             </div>
           </FormItem>
@@ -59,20 +62,25 @@
 <script>
 import { AccountLogin, captcha_pro } from '@/api/account'
 import { setCookies } from '@/libs/util'
-import brandLogo from '@/assets/images/qialink-logo-horizontal.svg'
-import brandIcon from '@/assets/images/qialink-logo-icon.svg'
+import brandLogo from '@/assets/images/qialink-logo-horizontal.png'
+import brandIcon from '@/assets/images/qialink-logo-icon.png'
+import loginIllustration from '@/assets/images/qialink-login-illustration.png'
 import '../../../assets/js/jigsaw.js'
 
 const MOBILE_BREAKPOINT = 768
 const SLIDER_THRESHOLD = 2
+const DEFAULT_CAPTCHA_EXPIRES_IN = 1800
 
 export default {
   data() {
     return {
       brandLogo,
       brandIcon,
+      loginIllustration,
       modals: false,
       imgcode: '',
+      isCaptchaExpired: false,
+      captchaTimer: null,
       errorNum: 0,
       jigsaw: null,
       formInline: { username: '', password: '', code: '', key: '' },
@@ -91,6 +99,7 @@ export default {
   },
   beforeDestroy() {
     window.removeEventListener('resize', this.updateCanvasClass)
+    window.clearTimeout(this.captchaTimer)
     this.removeCanvasClass()
   },
   methods: {
@@ -167,12 +176,26 @@ export default {
       this.resetJigsaw()
       this.$Message.error('校验错误，请重试')
     },
+    startCaptchaTimer(expiresIn) {
+      window.clearTimeout(this.captchaTimer)
+      const seconds = Number(expiresIn) || DEFAULT_CAPTCHA_EXPIRES_IN
+      this.captchaTimer = window.setTimeout(() => {
+        this.isCaptchaExpired = true
+      }, seconds * 1000)
+    },
     captchas() {
+      this.isCaptchaExpired = false
       captcha_pro().then(res => {
-        if(res.status !== 200) return
+        if(res.status !== 200) {
+          this.isCaptchaExpired = true
+          this.$Message.error(res.msg || '验证码加载失败')
+          return
+        }
         this.imgcode = res.data.img
         this.formInline.key = res.data.key
+        this.startCaptchaTimer(res.data.expires_in)
       }).catch(error => {
+        this.isCaptchaExpired = true
         this.$Message.error((error && error.msg) || '验证码加载失败')
       })
     },
@@ -206,13 +229,12 @@ export default {
 .visual-panel {
   min-height: 100vh;
   padding: 38px 48px 54px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   position: relative;
   color: #fff;
   background-color: #1677ff;
-  background-image: linear-gradient(180deg, rgba(11, 111, 232, .04), rgba(11, 111, 232, .2)), url('../../../assets/images/qialink-login-visual.png');
+  background-image: linear-gradient(180deg, rgba(11, 111, 232, .02), rgba(11, 111, 232, .1)), url('../../../assets/images/qialink-login-background.png');
   background-repeat: no-repeat;
   background-position: center;
   background-size: cover;
@@ -226,12 +248,14 @@ export default {
   background: linear-gradient(180deg, rgba(22, 119, 255, .04) 35%, rgba(11, 91, 207, .34));
 }
 
-.visual-panel__header, .visual-panel__copy { position: relative; z-index: 1; }
+.visual-panel__header, .visual-panel__art, .visual-panel__copy { position: relative; z-index: 1; }
 .visual-panel__header { display: flex; align-items: center; gap: 12px; }
-.visual-panel__header img { width: 44px; height: 44px; object-fit: contain; }
+.visual-panel__header img { width: 44px; height: 44px; object-fit: contain; filter: brightness(0) invert(1) drop-shadow(0 0 8px rgba(255, 255, 255, .42)); }
 .visual-panel__header strong, .visual-panel__header small { display: block; }
 .visual-panel__header strong { font-size: 19px; line-height: 1.1; letter-spacing: .2px; }
 .visual-panel__header small { margin-top: 3px; color: rgba(255, 255, 255, .76); font-size: 11px; letter-spacing: 4px; }
+.visual-panel__art { min-height: 0; display: flex; align-items: center; justify-content: center; padding: 20px 0 12px; }
+.visual-panel__art img { display: block; width: min(88%, 620px); max-height: 62vh; object-fit: contain; filter: drop-shadow(0 22px 32px rgba(0, 70, 177, .18)); }
 .visual-panel__copy { text-align: center; text-shadow: 0 2px 12px rgba(0, 65, 165, .22); }
 .visual-panel__copy h1 { margin: 0 0 10px; font-size: 28px; font-weight: 600; letter-spacing: 1px; }
 .visual-panel__copy p { margin: 0; color: rgba(255, 255, 255, .78); font-size: 14px; letter-spacing: .5px; }
@@ -255,7 +279,7 @@ export default {
 .verify-field >>> .ivu-input-wrapper { min-width: 0; }
 .verify-image { height: 46px; padding: 0; overflow: hidden; position: relative; border: 1px solid #e0e6ef; border-radius: 6px; background: #f7f9fc; cursor: pointer; }
 .verify-image img { width: 100%; height: 100%; display: block; object-fit: cover; }
-.verify-image span { position: absolute; inset: auto 0 0; padding: 2px; color: #fff; background: rgba(58, 74, 105, .58); font-size: 10px; }
+.verify-image__expired { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 4px; color: #fff; background: rgba(45, 58, 82, .72); font-size: 12px; }
 .submit-item { margin-top: 30px; }
 .login-button { height: 48px; border: 0; border-radius: 6px; background: #5b85f7 !important; box-shadow: 0 10px 22px rgba(91, 133, 247, .2); font-weight: 500; transition: background .2s, transform .2s; }
 .login-button:hover { background: #4775ef !important; transform: translateY(-1px); }
@@ -267,12 +291,14 @@ export default {
 .login-card >>> .ivu-form-item { margin-bottom: 22px; }
 .login-card >>> .ivu-input-large { height: 46px; padding-left: 42px; border-color: #e0e6ef; border-radius: 6px; color: #263755; font-size: 14px; box-shadow: none; }
 .login-card >>> .ivu-input-large:hover, .login-card >>> .ivu-input-large:focus { border-color: #77a1ff; box-shadow: 0 0 0 3px rgba(91, 133, 247, .09); }
-.login-card >>> .ivu-input-prefix { width: 40px; color: #a6b2c6; }
+.login-card >>> .ivu-input-prefix { top: 0; width: 42px; height: 46px; display: flex; align-items: center; justify-content: center; color: #a6b2c6; line-height: 1; }
+.login-card >>> .ivu-input-prefix i { display: block; font-size: 17px; line-height: 1; }
 
 @media (max-width: 960px) {
   .login-page { grid-template-columns: 42% 58%; }
-  .visual-panel { padding: 30px 32px 42px; background-position: 58% center; }
+  .visual-panel { padding: 30px 32px 42px; }
   .visual-panel__header img { width: 40px; height: 40px; }
+  .visual-panel__art img { width: 96%; max-height: 58vh; }
   .form-panel { padding: 30px 40px 26px; }
 }
 
