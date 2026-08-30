@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>租户控制台（临时）</title>
+<style>
+:root{--ink:#1c2b33;--muted:#5c6e78;--line:#dbe4e8;--bg:#f4f7f8;--card:#fff;--accent:#0f6b7d;--accent-soft:#e1eef1;--ok:#1a7f4b;--ok-soft:#e3f2e9;--warn:#9a6700;--warn-soft:#faf1dd;--crit:#b42318;--crit-soft:#fbeae8}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.7 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--ink)}
+.wrap{max-width:1100px;margin:0 auto;padding:24px 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:20px}
+h1{font-size:18px;margin:0}
+.tip{color:var(--muted);font-size:12.5px}
+/* login */
+#login{max-width:360px;margin:80px auto}
+#login .row{margin-bottom:12px}
+input,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:14px;background:#fff;color:var(--ink)}
+label{font-size:12.5px;color:var(--muted)}
+button{padding:8px 16px;border:none;border-radius:6px;background:var(--accent);color:#fff;font-size:13.5px;cursor:pointer}
+button:hover{opacity:.9}
+button.ghost{background:var(--accent-soft);color:var(--accent)}
+button.mini{padding:3px 10px;font-size:12.5px}
+button.danger{background:var(--crit-soft);color:var(--crit)}
+#captchaImg{height:40px;cursor:pointer;vertical-align:middle;border:1px solid var(--line);border-radius:4px}
+/* app */
+#app{display:none}
+.topbar{display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap}
+.topbar .sp{flex:1}
+.tabs{display:flex;gap:4px;margin-bottom:14px;border-bottom:2px solid var(--line)}
+.tabs button{background:none;color:var(--muted);border-radius:6px 6px 0 0;padding:8px 16px}
+.tabs button.on{background:var(--card);color:var(--accent);font-weight:700;border:1px solid var(--line);border-bottom:2px solid var(--card);margin-bottom:-2px}
+.table-scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;background:var(--card);font-size:13.5px}
+th{background:#ecf1f3;text-align:left;padding:8px 12px;font-size:12px;color:var(--muted);white-space:nowrap}
+td{padding:8px 12px;border-top:1px solid var(--line);vertical-align:top}
+.pill{display:inline-block;font-size:11.5px;font-weight:700;border-radius:999px;padding:1px 10px;white-space:nowrap}
+.pill.ok{color:var(--ok);background:var(--ok-soft)}.pill.warn{color:var(--warn);background:var(--warn-soft)}.pill.crit{color:var(--crit);background:var(--crit-soft)}.pill.mut{color:var(--muted);background:#ecf1f3}
+.bar{display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
+/* modal */
+#mask{display:none;position:fixed;inset:0;background:rgba(20,35,40,.45)}
+#modal{display:none;position:fixed;top:12vh;left:50%;transform:translateX(-50%);width:400px;max-width:92vw;background:var(--card);border-radius:8px;padding:20px;z-index:10}
+#modal h3{margin:0 0 12px;font-size:15px}
+#modal .row{margin-bottom:10px}
+#modal .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+.num{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- 登录 -->
+  <div id="login" class="card">
+    <h1>租户控制台</h1>
+    <p class="tip">临时管理页 · 正式页面由前端仓库开发中</p>
+    <div class="row"><label>账号</label><input id="acc" autocomplete="username"></div>
+    <div class="row"><label>密码</label><input id="pwd" type="password" autocomplete="current-password"></div>
+    <div class="row"><label>验证码（点图刷新）</label>
+      <div style="display:flex;gap:8px"><input id="code" style="flex:1"><img id="captchaImg" title="点击刷新" alt="验证码"></div>
+    </div>
+    <button style="width:100%" onclick="doLogin()">登 录</button>
+  </div>
+
+  <!-- 主界面 -->
+  <div id="app">
+    <div class="topbar">
+      <h1>租户控制台</h1>
+      <span class="tip" id="who"></span>
+      <span class="sp"></span>
+      <label style="width:auto">租户视角</label>
+      <select id="viewTenant" style="width:180px" onchange="reloadTab()"><option value="">平台全局</option></select>
+      <button class="ghost mini" onclick="logout()">退出</button>
+    </div>
+    <div class="tabs" id="tabs"></div>
+    <div class="bar" id="toolbar"></div>
+    <div class="card table-scroll" id="content">加载中…</div>
+  </div>
+</div>
+
+<div id="mask" onclick="closeModal()"></div>
+<div id="modal"></div>
+
+<script>
+const API = '/api/admin';
+let token = sessionStorage.getItem('tc_token') || '';
+let curTab = 'tenant';
+const TABS = [['tenant','租户'],['plan','套餐'],['orders','对账'],['invoice','发票'],['notice','通知']];
+
+function headers(){ return token ? {'Authori-zation': token, 'Content-Type':'application/json'} : {'Content-Type':'application/json'}; }
+function viewParam(sep){ const t = document.getElementById('viewTenant').value; return t ? (sep||'?')+'tenant_id='+t : ''; }
+async function req(method, path, body){
+  const r = await fetch(API+path, {method, headers: headers(), body: body?JSON.stringify(body):undefined});
+  const j = await r.json().catch(()=>({status:500,msg:'响应解析失败'}));
+  if(j.status === 110002 || j.status === 110003 || j.status === 410000){ logout(); throw new Error('登录已失效'); }
+  if(j.status !== 200){ alert(j.msg || ('请求失败('+j.status+')')); throw new Error(j.msg); }
+  return j.data;
+}
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function ts(t){ return t? new Date(t*1000).toLocaleString('zh-CN',{hour12:false}) : '—'; }
+function expireText(t){ return t>0 ? new Date(t*1000).toLocaleDateString('zh-CN') : '永久'; }
+
+/* ---------- 登录 ---------- */
+let capKey = '';
+async function refreshCaptcha(){
+  const d = await req('GET','/captcha_pro');
+  capKey = d.key; document.getElementById('captchaImg').src = d.img;
+}
+async function doLogin(){
+  try{
+    const d = await req('POST','/login',{account:acc.value.trim(), pwd:pwd.value, imgcode:code.value.trim(), key:capKey});
+    token = d.token; sessionStorage.setItem('tc_token', token);
+    document.getElementById('who').textContent = d.user_info ? ('当前：'+d.user_info.account) : '';
+    enter();
+  }catch(e){ refreshCaptcha(); }
+}
+function logout(){ token=''; sessionStorage.removeItem('tc_token'); location.reload(); }
+async function enter(){
+  document.getElementById('login').style.display='none';
+  document.getElementById('app').style.display='block';
+  renderTabs();
+  try{
+    const opts = await req('GET','/setting/tenant/view_switch');
+    const sel = document.getElementById('viewTenant');
+    (opts||[]).forEach(o=>{ const op=document.createElement('option'); op.value=o.value; op.textContent=o.label; sel.appendChild(op); });
+  }catch(e){ /* 无切换权限时保持平台/自身视角 */ }
+  loadTab('tenant');
+}
+
+/* ---------- 框架 ---------- */
+function renderTabs(){
+  document.getElementById('tabs').innerHTML = TABS.map(([k,n])=>
+    `<button class="${k===curTab?'on':''}" onclick="loadTab('${k}')">${n}</button>`).join('');
+}
+function reloadTab(){ loadTab(curTab); }
+function loadTab(k){ curTab=k; renderTabs(); document.getElementById('content').innerHTML='加载中…'; LOADERS[k](); }
+function setToolbar(html){ document.getElementById('toolbar').innerHTML = html||''; }
+function setContent(html){ document.getElementById('content').innerHTML = html; }
+function openModal(title, rowsHtml, okText, onOk){
+  document.getElementById('modal').innerHTML =
+    `<h3>${title}</h3>${rowsHtml}<div class="acts"><button class="ghost" onclick="closeModal()">取消</button><button id="mOk">${okText}</button></div>`;
+  document.getElementById('mask').style.display='block';
+  document.getElementById('modal').style.display='block';
+  document.getElementById('mOk').onclick = onOk;
+}
+function closeModal(){ document.getElementById('mask').style.display='none'; document.getElementById('modal').style.display='none'; }
+function fRow(id,label,type,val,extra){ return `<div class="row"><label>${label}</label><input id="${id}" type="${type||'text'}" value="${esc(val||'')}" ${extra||''}></div>`; }
+function v(id){ return document.getElementById(id).value; }
+
+/* ---------- 各页签 ---------- */
+const LOADERS = {
+  async tenant(){
+    setToolbar(`<button class="mini" onclick="tenantCreate()">＋ 创建租户</button>`);
+    const d = await req('GET','/setting/tenant'+viewParam());
+    const plans = await planMap();
+    setContent(tbl(['ID','名称','套餐','到期','状态','备注','操作'], (d.list||[]).map(t=>[
+      t.id, esc(t.name), esc(plans[t.plan_id]||('#'+t.plan_id)), t._expire_time||expireText(t.expire_time),
+      t.status==1?'<span class="pill ok">正常</span>':'<span class="pill crit">禁用</span>', esc(t.remark),
+      `<button class="mini" onclick="tenantSubscribe(${t.id},'${esc(t.name)}')">开通/续费</button>
+       <button class="mini ghost" onclick="tenantAdmin(${t.id},'${esc(t.name)}')">建管理员</button>
+       <button class="mini ${t.status==1?'danger':''}" onclick="tenantStatus(${t.id},${t.status==1?0:1})">${t.status==1?'禁用':'启用'}</button>`
+    ])));
+  },
+  async plan(){
+    setToolbar('');
+    const d = await req('GET','/setting/tenant/plan'+viewParam());
+    setContent(tbl(['名称','月价','应用','坐席','日消息','存储','记录保留','功能','在用租户','状态','操作'], (d.list||[]).map(p=>[
+      esc(p.name), '¥'+p.price, lim(p.app_limit,'个'), lim(p.seat_limit,'个'), lim(p.daily_msg_limit,'条'),
+      lim(p.storage_limit_mb,'MB'), p.record_keep_days>0?p.record_keep_days+'天':'永久',
+      ['auto_reply','brand_custom','data_export','app_push'].map((f,i)=>p[f]?['回复','品牌','导出','推送'][i]:null).filter(Boolean).join('/')||'—',
+      p.tenant_count??'—',
+      p.status==1?'<span class="pill ok">在售</span>':'<span class="pill mut">停售</span>',
+      `<button class="mini ${p.status==1?'danger':''}" onclick="planStatus(${p.id},${p.status==1?0:1})">${p.status==1?'停售':'上架'}</button>`
+    ])));
+  },
+  async orders(){
+    setToolbar(`<button class="mini ghost" onclick="ordersExport()">导出CSV</button>`);
+    const d = await req('GET','/setting/tenant/orders'+viewParam());
+    setContent(tbl(['对账单号','租户','套餐','月数','金额','方式','状态','订购后到期','备注','时间'], (d.list||[]).map(o=>[
+      `<span class="num">${esc(o.order_no)}</span>`, esc(o.tenant_name||o.tenant_id), esc(o.plan_name), o.months,
+      '<span class="num">¥'+o.amount+'</span>', o.pay_type==1?'后台开通':'线下转账',
+      o.status==1?'<span class="pill ok">已生效</span>':'<span class="pill mut">已作废</span>',
+      o._expire_after||expireText(o.expire_after), esc(o.remark), o._create_time||ts(o.create_time)
+    ])));
+  },
+  async invoice(){
+    setToolbar('');
+    const d = await req('GET','/setting/tenant/invoice'+viewParam());
+    const st = {0:'<span class="pill warn">待开具</span>',1:'<span class="pill ok">已开具</span>',2:'<span class="pill crit">已驳回</span>'};
+    setContent(tbl(['抬头','税号','类型','金额','关联单号','状态','发票号/驳回原因','申请时间','操作'], (d.list||[]).map(i=>[
+      esc(i.title), esc(i.tax_no)||'—', i.type==2?'专票':'普票', '<span class="num">¥'+i.amount+'</span>',
+      `<span class="num">${esc(i.order_no)}</span>`, st[i.status]||i.status, esc(i.invoice_no||i.remark)||'—',
+      i._create_time||ts(i.create_time),
+      i.status==0?`<button class="mini" onclick="invoiceIssue(${i.id})">开具</button> <button class="mini danger" onclick="invoiceReject(${i.id})">驳回</button>`:'—'
+    ])));
+  },
+  async notice(){
+    setToolbar('');
+    const d = await req('GET','/setting/tenant/notice'+viewParam());
+    const tp = {expire_warn:'<span class="pill warn">即将到期</span>',expired:'<span class="pill crit">已到期</span>',renew:'<span class="pill ok">续费成功</span>'};
+    setContent(tbl(['租户','类型','内容','状态','时间','操作'], (d.list||[]).map(n=>[
+      n.tenant_id, tp[n.type]||esc(n.type), esc(n.content),
+      n.is_read==1?'<span class="pill mut">已读</span>':'<span class="pill warn">未读</span>',
+      n._create_time||ts(n.create_time),
+      n.is_read==0?`<button class="mini ghost" onclick="noticeRead(${n.id})">标记已读</button>`:'—'
+    ])));
+  }
+};
+function tbl(heads, rows){
+  if(!rows.length) return '<p class="tip">暂无数据</p>';
+  return `<table><tr>${heads.map(h=>'<th>'+h+'</th>').join('')}</tr>${rows.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')}</table>`;
+}
+function lim(x,u){ return x>0 ? x+u : '不限'; }
+let _planCache=null;
+async function planMap(){
+  if(_planCache) return _planCache;
+  try{ const d = await req('GET','/setting/tenant/plan/all'); _planCache={}; (d||[]).forEach(p=>_planCache[p.id]=p.name); }catch(e){ _planCache={}; }
+  return _planCache;
+}
+
+/* ---------- 动作 ---------- */
+function tenantCreate(){
+  openModal('创建租户', fRow('tName','租户名称')+fRow('tRemark','备注'), '创建', async ()=>{
+    await req('POST','/setting/tenant',{name:v('tName'),remark:v('tRemark'),plan:'',expire_time:0,domain:''});
+    closeModal(); reloadTab();
+  });
+}
+async function tenantSubscribe(id,name){
+  const plans = await req('GET','/setting/tenant/plan/all');
+  const opts = (plans||[]).map(p=>`<option value="${p.id}">${esc(p.name)} ¥${p.price}/月</option>`).join('');
+  openModal('开通/续费 · '+name,
+    `<div class="row"><label>套餐</label><select id="sPlan">${opts}</select></div>`+
+    fRow('sMonths','月数','number',1)+
+    `<div class="row"><label>支付方式</label><select id="sPay"><option value="1">后台开通</option><option value="2">线下转账</option></select></div>`+
+    fRow('sRemark','备注'),
+    '确认开通', async ()=>{
+      await req('POST','/setting/tenant/subscribe',{tenant_id:id,plan_id:+v('sPlan'),months:+v('sMonths'),pay_type:+v('sPay'),remark:v('sRemark')});
+      closeModal(); reloadTab();
+    });
+}
+function tenantAdmin(id,name){
+  openModal('创建租户管理员 · '+name,
+    fRow('aAcc','账号')+fRow('aPwd','密码','password')+fRow('aPwd2','确认密码','password')+fRow('aName','姓名'),
+    '创建', async ()=>{
+      await req('POST','/setting/tenant/admin',{tenant_id:id,account:v('aAcc'),pwd:v('aPwd'),conf_pwd:v('aPwd2'),real_name:v('aName'),roles:[]});
+      closeModal(); alert('创建成功');
+    });
+}
+async function tenantStatus(id,st){ await req('PUT',`/setting/tenant/set_status/${id}/${st}`); reloadTab(); }
+async function planStatus(id,st){ await req('PUT',`/setting/tenant/plan/set_status/${id}/${st}`); _planCache=null; reloadTab(); }
+async function ordersExport(){ const d = await req('GET','/setting/tenant/orders/export'+viewParam()); if(d.url) window.open(d.url,'_blank'); }
+function invoiceIssue(id){
+  openModal('开具发票', fRow('iNo','发票号码'), '开具', async ()=>{
+    await req('PUT','/setting/tenant/invoice/audit/'+id,{status:1,invoice_no:v('iNo'),remark:''});
+    closeModal(); reloadTab();
+  });
+}
+function invoiceReject(id){
+  openModal('驳回发票', fRow('iRemark','驳回原因'), '驳回', async ()=>{
+    await req('PUT','/setting/tenant/invoice/audit/'+id,{status:2,invoice_no:'',remark:v('iRemark')});
+    closeModal(); reloadTab();
+  });
+}
+async function noticeRead(id){ await req('PUT','/setting/tenant/notice/read/'+id); reloadTab(); }
+
+/* ---------- 启动 ---------- */
+document.getElementById('captchaImg').onclick = refreshCaptcha;
+if(token){ enter(); } else { refreshCaptcha(); }
+</script>
+</body>
+</html>
