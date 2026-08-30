@@ -66,7 +66,7 @@ class TenantPlan extends AuthController
     public function index()
     {
         $where = $this->request->getMore([
-            ['name', '', 'name_like'],
+            ['name', '', '', 'name_like'],
             ['status', ''],
         ]);
         return $this->success($this->services->getPlanList($where));
