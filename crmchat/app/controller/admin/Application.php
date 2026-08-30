@@ -110,6 +110,7 @@ class Application extends AuthController
             ['name', ''],
             ['introduce', ''],
             [['tenant_id', 'd'], 0],
+            [['auth_mode', 'd'], \app\models\Application::AUTH_MODE_SIGN],
         ]);
         //租户管理员创建的应用固定归属自身租户，忽略传入值
         if (TenantContext::id()) {
@@ -191,6 +192,7 @@ class Application extends AuthController
             ['name', ''],
             ['introduce', ''],
             [['tenant_id', 'd'], 0],
+            [['auth_mode', 'd'], \app\models\Application::AUTH_MODE_SIGN],
         ]);
 
         if (!$data['icon']) {

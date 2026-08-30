@@ -97,6 +97,8 @@ class UserHandler extends BaseHandler
             'phone' => $data['phone'] ?? '',
             'openid' => $data['openid'] ?? '',
             'type' => $data['type'] ?? 0,
+            'sign' => $data['sign'] ?? '',
+            'timestamp' => $data['timestamp'] ?? 0,
         ];
         if (!$user['uid']) {
             return $response->fail('缺少UID');

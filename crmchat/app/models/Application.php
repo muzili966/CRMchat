@@ -23,6 +23,21 @@ class Application extends BaseModel
 {
 
     /**
+     * 接入模式：兼容模式，信任前端传入uid（存量应用）
+     */
+    const AUTH_MODE_COMPAT = 0;
+
+    /**
+     * 接入模式：签名模式，携带uid接入须验签（新应用默认）
+     */
+    const AUTH_MODE_SIGN = 1;
+
+    /**
+     * 签名有效期（秒）
+     */
+    const SIGN_TTL = 300;
+
+    /**
      * 表名
      * @var string
      */

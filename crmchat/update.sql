@@ -242,3 +242,10 @@ UPDATE `eb_system_menus` SET `path` = '1205', `is_tenant` = 1 WHERE `id` = 1228;
 -- 发送通知接口权限（平台专属）
 INSERT INTO `eb_system_menus` (`id`, `pid`, `icon`, `menu_name`, `module`, `controller`, `action`, `api_url`, `methods`, `params`, `sort`, `is_show`, `is_show_path`, `access`, `menu_path`, `path`, `auth_type`, `header`, `is_header`, `unique_auth`, `is_del`, `is_tenant`) VALUES
 (1230, 1205, '', '发送通知', 'admin', '', '', 'api/admin/setting/tenant/notice', 'POST', '[]', 0, 0, 0, 1, '', '1205', 2, '', 0, '', 0, 0);
+
+-- ============ 访客接入安全加固 + 应用管理菜单可见性（2026-08-30） ============
+-- 应用接入模式：新应用默认签名模式（携带uid接入须验签sign=md5(appid.uid.timestamp.app_secret)），存量应用保持兼容不掉线
+ALTER TABLE `eb_application` ADD `auth_mode` tinyint(1) NOT NULL DEFAULT '1' COMMENT '接入模式0=兼容(信任uid),1=签名' AFTER `token_md5`;
+UPDATE `eb_application` SET `auth_mode` = 0;
+-- "代码获取"实为应用管理入口，改名使其可发现
+UPDATE `eb_system_menus` SET `menu_name` = '应用管理' WHERE `id` = 1011;

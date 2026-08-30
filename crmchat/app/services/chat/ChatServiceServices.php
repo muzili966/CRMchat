@@ -185,7 +185,8 @@ class ChatServiceServices extends BaseServices
         if (!$uid || !$userInfo) {
             /** @var ApplicationServices $appService */
             $appService = app()->make(ApplicationServices::class);
-            $userInfo = $appService->createUser($appId, $user);
+            //客服端已认证上下文中代建客户档案，无需用户签名
+            $userInfo = $appService->createUser($appId, $user, false);
             $uid = $userInfo['uid'];
             $userId = $userInfo['id'];
         } else {

@@ -76,6 +76,11 @@ class ApplicationServices extends BaseServices
                 ->icon('ios-image')->width('950px')->height('420px')->info($data['desc'])->col(13)->required(),
             FormBuilder::input('name', '应用名称', $data['name'] ?? '')->required(),
             FormBuilder::textarea('introduce', '应用简介', $data['introduce'] ?? ''),
+            FormBuilder::radio('auth_mode', '接入模式', (int)($data['auth_mode'] ?? \app\models\Application::AUTH_MODE_SIGN))
+                ->options([
+                    ['value' => \app\models\Application::AUTH_MODE_SIGN, 'label' => '签名模式(推荐,携带uid须验签)'],
+                    ['value' => \app\models\Application::AUTH_MODE_COMPAT, 'label' => '兼容模式(信任前端uid,不安全)'],
+                ]),
         ];
     }
 
@@ -126,8 +131,49 @@ class ApplicationServices extends BaseServices
      * @return array|mixed
      * @throws InvalidArgumentException
      */
-    public function createUser(string $appid, array $userData = [])
+    /**
+     * 签名接入模式下校验客户身份签名，防止知道应用token的人冒充任意uid
+     * sign = md5(appid . uid . timestamp . app_secret)，app_secret仅存在于企业服务端
+     * @param array $appData 应用数据（须含appid/app_secret/auth_mode）
+     * @param array $userData 接入数据（uid/sign/timestamp）
+     * @return void
+     */
+    public static function verifyUserSign(array $appData, array $userData)
     {
+        if ((int)($appData['auth_mode'] ?? \app\models\Application::AUTH_MODE_COMPAT) !== \app\models\Application::AUTH_MODE_SIGN) {
+            return;
+        }
+        $uid = $userData['uid'] ?? 0;
+        //游客由服务端生成随机uid，无冒充面，无需签名
+        if (!$uid) {
+            return;
+        }
+        $sign = strtolower((string)($userData['sign'] ?? ''));
+        $timestamp = (int)($userData['timestamp'] ?? 0);
+        if (!$sign || !$timestamp) {
+            throw new AuthException('签名模式下携带uid接入必须提供sign与timestamp');
+        }
+        if (abs(time() - $timestamp) > \app\models\Application::SIGN_TTL) {
+            throw new AuthException('签名已过期');
+        }
+        $expect = md5($appData['appid'] . $uid . $timestamp . $appData['app_secret']);
+        if (!hash_equals($expect, $sign)) {
+            throw new AuthException('用户签名校验失败');
+        }
+    }
+
+    public function createUser(string $appid, array $userData = [], bool $verifySign = true)
+    {
+        //验签须在缓存命中之前，否则首个合法接入落缓存后即可被无签名冒充
+        if ($verifySign) {
+            $appData = TenantContext::withoutTenant(function () use ($appid) {
+                return $this->dao->get(['appid' => $appid, 'is_delete' => 0]);
+            });
+            if (!$appData) {
+                throw new AuthException('应用不存在');
+            }
+            self::verifyUserSign($appData->toArray(), $userData);
+        }
         $uid = $userData['uid'] ?? 0;
         $nickname = $userData['nickname'] ?? '';
         $avatar = $userData['avatar'] ?? '';
