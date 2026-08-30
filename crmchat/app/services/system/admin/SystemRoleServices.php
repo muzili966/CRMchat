@@ -116,6 +116,39 @@ class SystemRoleServices extends BaseServices
     }
 
     /**
+     * 校验角色是否拥有指定接口权限。
+     * 用于非当前路由的虚拟权限点（如平台运营人员切换租户视角），
+     * 与verifiAuth共享同一份角色权限数据与缓存
+     * @param array $roles
+     * @param string $apiUrl
+     * @param string $method
+     * @return bool
+     */
+    public function hasApiAuth(array $roles, string $apiUrl, string $method = 'GET'): bool
+    {
+        return self::matchApiAuth($this->getRolesByAuth($roles, 2), $apiUrl, $method);
+    }
+
+    /**
+     * 在权限清单中匹配接口（大小写与空白不敏感，与verifiAuth规则一致）
+     * @param array $auth [['api_url'=>..,'methods'=>..]]
+     * @param string $apiUrl
+     * @param string $method
+     * @return bool
+     */
+    public static function matchApiAuth(array $auth, string $apiUrl, string $method): bool
+    {
+        $apiUrl = trim(strtolower($apiUrl));
+        $method = trim(strtolower($method));
+        foreach ($auth as $item) {
+            if (trim(strtolower($item['api_url'] ?? '')) === $apiUrl && trim(strtolower($item['methods'] ?? '')) === $method) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * 获取指定权限
      * @param array $rules
      * @param int $type

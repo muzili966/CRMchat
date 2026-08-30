@@ -37,10 +37,18 @@ class AdminAuthTokenMiddleware implements MiddlewareInterface
         //parseToken内部完成token寻址逃逸、租户可用性校验与上下文建立
         $adminInfo = $service->parseToken($token);
 
-        //平台超管可携带query参数tenant_id切换租户视角；仅读query，避免与POST数据字段冲突
+        //平台侧管理员可携带query参数tenant_id切换租户视角；仅读query，避免与POST数据字段冲突。
+        //切换视角是独立权限点：level=0免校验，普通运营人员需角色授予对应权限行
         if (SystemAdmin::isPlatformAdmin($adminInfo)) {
             $viewTenantId = (int)$request->get('tenant_id', 0);
             if ($viewTenantId > 0) {
+                if (!empty($adminInfo['level'])) {
+                    /** @var \app\services\system\admin\SystemRoleServices $roleServices */
+                    $roleServices = app()->make(\app\services\system\admin\SystemRoleServices::class);
+                    if (!$roleServices->hasApiAuth($adminInfo['roles'] ?? [], SystemAdmin::VIEW_SWITCH_AUTH)) {
+                        throw new \crmeb\exceptions\AuthException(\crmeb\utils\ApiErrorCode::ERR_AUTH);
+                    }
+                }
                 /** @var TenantServices $tenantServices */
                 $tenantServices = app()->make(TenantServices::class);
                 $tenantServices->mustExists($viewTenantId);

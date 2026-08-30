@@ -48,6 +48,12 @@ class SystemAdmin extends BaseModel
     const STATUS_NORMAL = 1;
 
     /**
+     * 切换租户视角的虚拟权限点（对应system_menus中auth_type=2的权限行，
+     * 同时也是租户下拉数据接口的真实路由；level=0免校验，其余需角色授予）
+     */
+    const VIEW_SWITCH_AUTH = 'api/admin/setting/tenant/view_switch';
+
+    /**
      * 数据表主键
      * @var string
      */

@@ -47,6 +47,15 @@ class Tenant extends AuthController
     }
 
     /**
+     * 租户视角切换下拉数据（此路由同时是切换视角的权限点，见SystemAdmin::VIEW_SWITCH_AUTH）
+     * @return mixed
+     */
+    public function viewSwitch()
+    {
+        return $this->success($this->services->getTenantOptions());
+    }
+
+    /**
      * 租户列表
      * @return mixed
      */

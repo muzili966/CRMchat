@@ -328,6 +328,8 @@ Route::group('api', function () {
                     'delete' => '删除权限菜单接口'
                 ]
             ]);
+            //租户视角切换下拉（该路由同时作为切换视角的权限点）
+            Route::get('tenant/view_switch', 'system.Tenant/viewSwitch')->option(['real_name' => '切换租户视角']);
             //租户列表
             Route::get('tenant', 'system.Tenant/index')->option(['real_name' => '租户列表']);
             //创建租户
