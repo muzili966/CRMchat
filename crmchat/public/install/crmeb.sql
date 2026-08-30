@@ -1381,3 +1381,10 @@ INSERT INTO `eb_system_config` (`tenant_id`, `menu_name`, `type`, `input_type`, 
 (0, 'platform_ad_html', 'textarea', 'textarea', 69, '', 0, '', 100, 6, '""', '平台默认广告HTML', '选填。未配置广告图时展示此内容，支持HTML（会做安全清洗）', 7, 1);
 
 UPDATE `eb_system_role` SET `rules` = (SELECT GROUP_CONCAT(`id`) FROM (SELECT `id` FROM `eb_system_menus` WHERE `is_tenant` = 1 AND `is_del` = 0) t) WHERE `role_name` = '租户管理员' AND `tenant_id` > 0;
+
+-- 配置分类隔离与独立域名（与update.sql保持一致）
+-- 独立域名：访客入口寻址依据，属高阶套餐能力
+ALTER TABLE `eb_tenant_plan` ADD `custom_domain` tinyint(1) NOT NULL DEFAULT '0' COMMENT '独立域名0=否,1=是' AFTER `custom_ad`;
+UPDATE `eb_tenant_plan` SET `custom_domain` = 1 WHERE `name` = '旗舰版';
+-- 说明：系统设置的分类可见性不再依赖硬编码，改为按"分类下是否含租户可覆盖配置项"动态判定
+-- （见 SystemConfigServices::filterTenantTabs），新增配置项时可见性自动跟随，无需再改数据

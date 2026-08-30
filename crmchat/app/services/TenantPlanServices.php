@@ -509,6 +509,9 @@ class TenantPlanServices extends BaseServices
                 'expire_time' => $expireTime,
                 '_expire_time' => $expireTime ? date('Y-m-d H:i:s', $expireTime) : '永久',
                 'is_expired' => $expireTime > 0 && $expireTime < time(),
+                //独立域名属高阶套餐能力，前端据此决定是否开放编辑
+                'domain' => $tenant['domain'] ?? '',
+                'can_custom_domain' => !empty($plan['custom_domain']),
             ],
             'plan' => $plan ?: null,
             'usage' => [

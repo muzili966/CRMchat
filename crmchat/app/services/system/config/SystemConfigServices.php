@@ -20,6 +20,7 @@ use crmeb\exceptions\AdminException;
 use crmeb\services\FileService;
 use crmeb\services\FormBuilder;
 use crmeb\services\SystemConfigService;
+use app\models\system\admin\SystemAdmin;
 use crmeb\services\tenant\TenantContext;
 use think\exception\ValidateException;
 use think\facade\Log;
@@ -348,6 +349,83 @@ class SystemConfigServices extends BaseServices
      * 表单中需要打掩码的密钥类字段
      */
     const SECRET_FIELDS = ['ai_api_key'];
+
+    /**
+     * 过滤掉租户无权配置的分类
+     *
+     * 判定依据是"该分类下是否存在租户可覆盖的配置项"，不硬编码分类ID，
+     * 这样以后增删配置项时可见性自动跟着走，不会再出现"看得见点进去报错"
+     * @param array $tabs 配置分类列表
+     * @param array $adminInfo
+     * @return array
+     */
+    public function filterTenantTabs(array $tabs, array $adminInfo): array
+    {
+        if (SystemAdmin::isPlatformAdmin($adminInfo)) {
+            return $tabs;
+        }
+        return self::pruneTabs($tabs, $this->tenantVisibleTabIds());
+    }
+
+    /**
+     * 递归裁剪分类树
+     *
+     * 分类是树形结构，父分类自身可能不含配置项（如"文件上传配置"），
+     * 因此只要子孙里还有可配置项就保留父节点，否则整枝剪掉
+     * @param array $tabs
+     * @param array $allowed
+     * @return array
+     */
+    protected static function pruneTabs(array $tabs, array $allowed): array
+    {
+        $kept = [];
+        foreach ($tabs as $tab) {
+            $children = isset($tab['children']) && is_array($tab['children'])
+                ? self::pruneTabs($tab['children'], $allowed) : [];
+            $selfAllowed = in_array((int)($tab['id'] ?? 0), $allowed, true);
+            if (!$selfAllowed && !$children) {
+                continue;
+            }
+            if (isset($tab['children'])) {
+                $tab['children'] = $children;
+            }
+            $kept[] = $tab;
+        }
+        return $kept;
+    }
+
+    /**
+     * 当前身份能否访问该配置分类
+     * @param int $tabId
+     * @param array $adminInfo
+     * @return bool
+     */
+    public function canTenantAccessTab(int $tabId, array $adminInfo): bool
+    {
+        if (SystemAdmin::isPlatformAdmin($adminInfo)) {
+            return true;
+        }
+        return in_array($tabId, $this->tenantVisibleTabIds(), true);
+    }
+
+    /**
+     * 含租户可覆盖配置项的分类ID
+     * @return array
+     */
+    protected function tenantVisibleTabIds(): array
+    {
+        $whitelist = \crmeb\services\SystemConfigService::TENANT_OVERRIDABLE;
+        if (!$whitelist) {
+            return [];
+        }
+        return TenantContext::withoutTenant(function () use ($whitelist) {
+            $ids = $this->dao->getColumn([
+                ['tenant_id', '=', 0],
+                ['menu_name', 'IN', $whitelist],
+            ], 'config_tab_id');
+            return array_values(array_unique(array_map('intval', $ids)));
+        });
+    }
 
     /**
      * 把密钥类字段的值替换为掩码

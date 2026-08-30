@@ -345,6 +345,8 @@ Route::group('api', function () {
 
             Route::get('tenant/plans', 'system.TenantSubscription/plans')->option(['real_name' => '在售套餐展示']);
 
+            Route::post('tenant/domain', 'system.TenantSubscription/saveDomain')->option(['real_name' => '设置独立域名']);
+
             Route::get('tenant', 'system.Tenant/index')->option(['real_name' => '租户列表']);
             //创建租户
             Route::post('tenant', 'system.Tenant/save')->option(['real_name' => '创建租户']);

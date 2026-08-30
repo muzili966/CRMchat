@@ -235,8 +235,8 @@ class Config extends AuthController
         if (!$tabId) {
             return $this->fail('参数错误');
         }
-        //含平台密钥的配置分类禁止租户读取，且密钥本身只回显掩码
-        if (in_array($tabId, SystemConfigServices::PLATFORM_ONLY_TABS, true)) {
+        //页签已按可配置性过滤，此处再校验一次防止直接构造tab_id绕过（云存储密钥等均在此拦下）
+        if (!$this->services->canTenantAccessTab($tabId, $this->adminInfo)) {
             $this->mustPlatformAdmin('该配置分类');
         }
         $url = $request->baseUrl();
@@ -323,6 +323,8 @@ class Config extends AuthController
         } else {
             $config_tab = $services->getConfigTab($pid);
         }
+        //租户只应看到自己能改的分类，否则点进去要么空白要么报错
+        $config_tab = $this->services->filterTenantTabs($config_tab, $this->adminInfo);
         return $this->success(compact('config_tab'));
     }
 

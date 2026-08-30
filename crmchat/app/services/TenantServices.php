@@ -109,6 +109,67 @@ class TenantServices extends BaseServices
     }
 
     /**
+     * 独立域名的套餐能力位
+     */
+    const FEATURE_CUSTOM_DOMAIN = 'custom_domain';
+
+    /**
+     * 设置租户独立域名
+     *
+     * 域名是访客入口的寻址依据，必须全局唯一，否则无法反查归属租户
+     * @param int $tenantId
+     * @param string $domain 空串表示解绑
+     * @return bool
+     */
+    public function saveDomain(int $tenantId, string $domain): bool
+    {
+        $domain = self::normalizeDomain($domain);
+        if ($domain !== '' && !self::isValidDomain($domain)) {
+            throw new AdminException('域名格式不正确，请填写如 kefu.example.com 的形式');
+        }
+        return (bool)TenantContext::withoutTenant(function () use ($tenantId, $domain) {
+            $owners = $domain === '' ? [] : $this->dao->getColumn([
+                ['domain', '=', $domain],
+                ['is_delete', '=', 0],
+            ], 'id');
+            $occupied = array_diff(array_map('intval', $owners), [$tenantId]);
+            if ($occupied) {
+                throw new AdminException('该域名已被其他租户使用');
+            }
+            return $this->dao->update($tenantId, ['domain' => $domain, 'update_time' => time()]);
+        });
+    }
+
+    /**
+     * 规整域名：去协议、去路径、转小写
+     * @param string $domain
+     * @return string
+     */
+    public static function normalizeDomain(string $domain): string
+    {
+        $domain = trim($domain);
+        if ($domain === '') {
+            return '';
+        }
+        $domain = preg_replace('#^https?://#i', '', $domain);
+        $domain = explode('/', $domain)[0];
+        return strtolower(trim($domain));
+    }
+
+    /**
+     * 域名合法性：仅允许字母数字与连字符组成的多级域名
+     * @param string $domain
+     * @return bool
+     */
+    public static function isValidDomain(string $domain): bool
+    {
+        if (mb_strlen($domain) > 100) {
+            return false;
+        }
+        return (bool)preg_match('/^(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/', $domain);
+    }
+
+    /**
      * 确保租户拥有默认管理员角色（权限=全部租户侧可用菜单），返回角色ID
      * @param int $tenantId
      * @return int

@@ -55,4 +55,24 @@ class TenantSubscription extends AuthController
     {
         return $this->success($this->services->getOptions());
     }
+
+    /**
+     * 设置独立域名（高阶套餐能力，租户自助）
+     * @return mixed
+     */
+    public function saveDomain()
+    {
+        $tenantId = (int)TenantContext::id();
+        if (!$tenantId) {
+            return $this->fail('平台账号请切换到租户视角后设置');
+        }
+        if (!$this->services->hasFeature($tenantId, \app\services\TenantServices::FEATURE_CUSTOM_DOMAIN)) {
+            return $this->fail('当前套餐不支持独立域名，请升级套餐');
+        }
+        [$domain] = $this->request->postMore([['domain', '']], true);
+        /** @var \app\services\TenantServices $tenantServices */
+        $tenantServices = app()->make(\app\services\TenantServices::class);
+        $tenantServices->saveDomain($tenantId, (string)$domain);
+        return $this->success('保存成功，请将该域名解析到平台服务器后生效');
+    }
 }
