@@ -388,4 +388,62 @@ class TenantPlanServices extends BaseServices
             });
         }
     }
+
+    /**
+     * 租户端订阅概览：租户信息 + 当前套餐 + 配额用量
+     * @param int $tenantId
+     * @return array
+     */
+    public function getMySubscription(int $tenantId): array
+    {
+        $tenant = TenantContext::withoutTenant(function () use ($tenantId) {
+            /** @var TenantDao $tenantDao */
+            $tenantDao = app()->make(TenantDao::class);
+            $row = $tenantDao->get(['id' => $tenantId, 'is_delete' => 0]);
+            return $row ? $row->toArray() : [];
+        });
+        if (!$tenant) {
+            throw new AdminException('租户不存在');
+        }
+        $plan = $this->getTenantPlan($tenantId);
+        [$appCount, $seatCount] = TenantContext::withoutTenant(function () use ($tenantId) {
+            /** @var ApplicationDao $applicationDao */
+            $applicationDao = app()->make(ApplicationDao::class);
+            /** @var ChatServiceDao $serviceDao */
+            $serviceDao = app()->make(ChatServiceDao::class);
+            return [
+                $applicationDao->getCount(['tenant_id' => $tenantId, 'is_delete' => 0]),
+                $serviceDao->getCount(['tenant_id' => $tenantId]),
+            ];
+        });
+        return self::buildSubscriptionSummary($tenant, $plan, (int)$appCount, (int)$seatCount);
+    }
+
+    /**
+     * 组装订阅概览（纯函数，便于测试）
+     * @param array $tenant
+     * @param array $plan
+     * @param int $appCount
+     * @param int $seatCount
+     * @return array
+     */
+    public static function buildSubscriptionSummary(array $tenant, array $plan, int $appCount, int $seatCount): array
+    {
+        $expireTime = (int)($tenant['expire_time'] ?? 0);
+        return [
+            'tenant' => [
+                'id' => (int)($tenant['id'] ?? 0),
+                'name' => $tenant['name'] ?? '',
+                'status' => (int)($tenant['status'] ?? 0),
+                'expire_time' => $expireTime,
+                '_expire_time' => $expireTime ? date('Y-m-d H:i:s', $expireTime) : '永久',
+                'is_expired' => $expireTime > 0 && $expireTime < time(),
+            ],
+            'plan' => $plan ?: null,
+            'usage' => [
+                'app_count' => $appCount,
+                'seat_count' => $seatCount,
+            ],
+        ];
+    }
 }

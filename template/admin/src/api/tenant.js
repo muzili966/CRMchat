@@ -223,3 +223,25 @@ export function noticeSendApi(data) {
         data
     })
 }
+
+/**
+ * @description 租户端--我的订阅概览
+ */
+export function mySubscriptionApi() {
+    return request({
+        url: 'setting/tenant/my',
+        method: 'get'
+    })
+}
+
+/**
+ * @description 租户端--申请开票
+ * @param {Object} param data {Object} order_id/title/tax_no/type/email
+ */
+export function invoiceApplyApi(data) {
+    return request({
+        url: 'setting/tenant/invoice',
+        method: 'post',
+        data
+    })
+}

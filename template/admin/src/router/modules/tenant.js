@@ -68,6 +68,15 @@ export default {
         title: '通知管理'
       },
       component: () => import('@/pages/tenant/notice/index')
+    },
+    {
+      path: 'subscription',
+      name: `${pre}subscription`,
+      meta: {
+        auth: ['tenant-subscription'],
+        title: '我的订阅'
+      },
+      component: () => import('@/pages/tenant/subscription/index')
     }
   ]
 }

@@ -1213,3 +1213,11 @@ INSERT INTO `eb_system_menus` (`id`, `pid`, `icon`, `menu_name`, `module`, `cont
 -- 访客接入安全加固与应用管理菜单命名（与update.sql保持一致；全新安装种子应用同样走签名模式）
 ALTER TABLE `eb_application` ADD `auth_mode` tinyint(1) NOT NULL DEFAULT '1' COMMENT '接入模式0=兼容(信任uid),1=签名' AFTER `token_md5`;
 UPDATE `eb_system_menus` SET `menu_name` = '应用管理' WHERE `id` = 1011;
+
+-- 租户端我的订阅菜单（与update.sql保持一致）
+INSERT INTO `eb_system_menus` (`id`, `pid`, `icon`, `menu_name`, `module`, `controller`, `action`, `api_url`, `methods`, `params`, `sort`, `is_show`, `is_show_path`, `access`, `menu_path`, `path`, `auth_type`, `header`, `is_header`, `unique_auth`, `is_del`, `is_tenant`) VALUES
+(1240, 0, 'md-card', '我的订阅', 'admin', '', '', '', '', '[]', 0, 1, 0, 1, '/admin/tenant/subscription', '', 1, 'subscription', 1, 'tenant-subscription', 0, 1),
+(1241, 1240, '', '我的订阅概览', 'admin', '', '', 'api/admin/setting/tenant/my', 'GET', '[]', 0, 0, 0, 1, '', '1240', 2, '', 0, '', 0, 1),
+(1242, 1240, '', '我的订阅订单', 'admin', '', '', 'api/admin/setting/tenant/orders', 'GET', '[]', 0, 0, 0, 1, '', '1240', 2, '', 0, '', 0, 1),
+(1243, 1240, '', '我的发票列表', 'admin', '', '', 'api/admin/setting/tenant/invoice', 'GET', '[]', 0, 0, 0, 1, '', '1240', 2, '', 0, '', 0, 1),
+(1244, 1240, '', '申请开票', 'admin', '', '', 'api/admin/setting/tenant/invoice', 'POST', '[]', 0, 0, 0, 1, '', '1240', 2, '', 0, '', 0, 1);

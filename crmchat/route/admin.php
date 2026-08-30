@@ -331,6 +331,8 @@ Route::group('api', function () {
             //租户视角切换下拉（该路由同时作为切换视角的权限点）
             Route::get('tenant/view_switch', 'system.Tenant/viewSwitch')->option(['real_name' => '切换租户视角']);
             //租户列表
+            Route::get('tenant/my', 'system.TenantSubscription/my')->option(['real_name' => '我的订阅概览']);
+
             Route::get('tenant', 'system.Tenant/index')->option(['real_name' => '租户列表']);
             //创建租户
             Route::post('tenant', 'system.Tenant/save')->option(['real_name' => '创建租户']);
