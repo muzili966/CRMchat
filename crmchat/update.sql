@@ -359,3 +359,11 @@ UPDATE `eb_system_menus` SET `is_tenant` = 0 WHERE `id` IN (21,47,56,65,111,112,
 UPDATE `eb_system_menus` SET `is_tenant` = 1 WHERE `id` IN (1063,1064,1065,1066,1067,1068,1069,1070,1071,1072,1073,1074,1075,1076,1077,1078,1082,1083,1084);
 -- 重算存量租户默认角色（ensureDefaultRole仅在角色不存在时创建，不会自动纠正旧角色）
 UPDATE `eb_system_role` SET `rules` = (SELECT GROUP_CONCAT(`id`) FROM (SELECT `id` FROM `eb_system_menus` WHERE `is_tenant` = 1 AND `is_del` = 0) t) WHERE `role_name` = '租户管理员' AND `tenant_id` > 0;
+
+-- ============ 替换失效的外链资源（2026-08-30） ============
+-- 官方演示站已下线导致全站破图，改用仓库自带的本地资源
+UPDATE `eb_system_config` SET `value` = '["\/statics\/avatar\/tourist-1.svg","\/statics\/avatar\/tourist-2.svg","\/statics\/avatar\/tourist-3.svg","\/statics\/avatar\/tourist-4.svg"]' WHERE `menu_name` = 'tourist_avatar';
+UPDATE `eb_system_config` SET `value` = '""' WHERE `menu_name` IN ('site_logo','site_logo_square','login_logo') AND `value` LIKE '%crmeb.net%';
+UPDATE `eb_application` SET `icon` = '/statics/avatar/tourist-1.svg' WHERE `icon` LIKE '%crmeb.net%';
+UPDATE `eb_chat_service` SET `avatar` = '/statics/avatar/tourist-1.svg' WHERE `avatar` LIKE '%crmeb.net%';
+UPDATE `eb_chat_user` SET `avatar` = '/statics/avatar/tourist-1.svg' WHERE `avatar` LIKE '%crmeb.net%';

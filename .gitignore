@@ -20,3 +20,9 @@ bin-release/
 
 # Claude Code 个人本地配置
 .claude/settings.local.json
+
+# Playwright 调试产物（本地排障用，不入库）
+.playwright-cli/
+**/.playwright-cli/
+playwright-report/
+test-results/
