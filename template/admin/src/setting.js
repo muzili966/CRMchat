@@ -1,7 +1,9 @@
 // 请求接口地址 如果没有配置自动获取当前网址路径
 
 const VUE_APP_API_URL = process.env.VUE_APP_API_URL || `${location.origin}/api/admin`
-const VUE_APP_WS_ADMIN_URL = process.env.VUE_APP_WS_ADMIN_URL || `ws:${location.hostname}`
+// 用host而非hostname：非标准端口部署（如内网 ip:20118）时必须带上端口，否则会连到80导致握手被拒
+const VUE_APP_WS_ADMIN_URL = process.env.VUE_APP_WS_ADMIN_URL ||
+    `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}`
 
 
 const Setting = {
