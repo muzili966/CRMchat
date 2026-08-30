@@ -69,6 +69,18 @@
                 <FormItem label="备注：">
                     <Input v-model="tenantForm.remark" type="textarea" :rows="3" placeholder="选填"/>
                 </FormItem>
+                <template v-if="!tenantForm.id">
+                    <Divider orientation="left" size="small">初始管理员</Divider>
+                    <FormItem label="管理员账号：" prop="admin_account">
+                        <Input v-model="tenantForm.admin_account" placeholder="登录账号，全局唯一"/>
+                    </FormItem>
+                    <FormItem label="管理员密码：" prop="admin_pwd">
+                        <Input v-model="tenantForm.admin_pwd" type="password" placeholder="登录密码"/>
+                    </FormItem>
+                    <FormItem label="确认密码：" prop="admin_conf_pwd">
+                        <Input v-model="tenantForm.admin_conf_pwd" type="password" placeholder="再次输入密码"/>
+                    </FormItem>
+                </template>
             </Form>
             <div slot="footer">
                 <Button @click="tenantModal = false">取消</Button>
@@ -131,7 +143,7 @@
     import { mapState } from 'vuex'
     import { tenantListApi, tenantSaveApi, tenantUpdateApi, tenantSetStatusApi, tenantCreateAdminApi, tenantSubscribeApi, planAllApi } from '@/api/tenant'
 
-    const emptyTenantForm = () => ({ id: 0, name: '', domain: '', remark: '' })
+    const emptyTenantForm = () => ({ id: 0, name: '', domain: '', remark: '', admin_account: '', admin_pwd: '', admin_conf_pwd: '' })
     const emptySubscribeForm = () => ({ tenant_id: 0, plan_id: '', months: 1, pay_type: 1, remark: '' })
     const emptyAdminForm = () => ({ tenant_id: 0, account: '', real_name: '', pwd: '', conf_pwd: '' })
 
@@ -155,7 +167,10 @@
                 subscribeForm: emptySubscribeForm(),
                 adminForm: emptyAdminForm(),
                 tenantRules: {
-                    name: [{ required: true, message: '请输入租户名称', trigger: 'blur' }]
+                    name: [{ required: true, message: '请输入租户名称', trigger: 'blur' }],
+                    admin_account: [{ required: true, message: '请输入管理员账号', trigger: 'blur' }],
+                    admin_pwd: [{ required: true, message: '请输入管理员密码', trigger: 'blur' }],
+                    admin_conf_pwd: [{ required: true, message: '请再次输入密码', trigger: 'blur' }]
                 },
                 subscribeRules: {
                     plan_id: [{ required: true, type: 'number', message: '请选择套餐', trigger: 'change' }]
@@ -246,6 +261,9 @@
             saveTenant () {
                 this.$refs.tenantForm.validate(valid => {
                     if (!valid) return
+                    if (!this.tenantForm.id && this.tenantForm.admin_pwd !== this.tenantForm.admin_conf_pwd) {
+                        return this.$Message.error('两次输入的管理员密码不一致')
+                    }
                     this.submitting = true
                     const { id, ...data } = this.tenantForm
                     const req = id ? tenantUpdateApi(id, data) : tenantSaveApi(data)

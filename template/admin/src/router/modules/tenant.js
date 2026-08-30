@@ -65,7 +65,7 @@ export default {
       name: `${pre}notice`,
       meta: {
         auth: ['tenant-notice'],
-        title: '租户通知'
+        title: '通知管理'
       },
       component: () => import('@/pages/tenant/notice/index')
     }

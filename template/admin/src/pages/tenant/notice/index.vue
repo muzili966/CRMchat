@@ -12,6 +12,7 @@
                         <FormItem label="类型：" label-for="type">
                             <Select v-model="type" placeholder="请选择" @on-change="userSearchs" clearable>
                                 <Option value="all">全部</Option>
+                                <Option value="announce">平台公告</Option>
                                 <Option value="expire_warn">即将到期</Option>
                                 <Option value="expired">已到期</Option>
                                 <Option value="renew">续费成功</Option>
@@ -26,6 +27,11 @@
                                 <Option value="1">已读</Option>
                             </Select>
                         </FormItem>
+                    </Col>
+                </Row>
+                <Row type="flex">
+                    <Col v-bind="grid">
+                        <Button type="primary" icon="md-send" @click="openSend">发送通知</Button>
                     </Col>
                 </Row>
             </Form>
@@ -49,15 +55,33 @@
                 <Page :total="total" :current="searchWhere.page" show-elevator show-total @on-change="pageChange" :page-size="searchWhere.limit"/>
             </div>
         </Card>
+
+        <!-- 发送通知 -->
+        <Modal v-model="sendModal" title="发送通知" :closable="false">
+            <Form ref="sendForm" :model="sendForm" :rules="sendRules" :label-width="90">
+                <FormItem label="目标租户：">
+                    <Select v-model="sendForm.tenant_ids" multiple placeholder="不选则发送给全部正常租户">
+                        <Option v-for="(name, id) in tenantMap" :value="Number(id)" :key="id">{{ name }}</Option>
+                    </Select>
+                </FormItem>
+                <FormItem label="通知内容：" prop="content">
+                    <Input v-model="sendForm.content" type="textarea" :rows="4" placeholder="请输入通知内容"/>
+                </FormItem>
+            </Form>
+            <div slot="footer">
+                <Button @click="sendModal = false">取消</Button>
+                <Button type="primary" :loading="submitting" @click="saveSend">发送</Button>
+            </div>
+        </Modal>
     </div>
 </template>
 
 <script>
     import { mapState } from 'vuex'
-    import { noticeListApi, noticeReadApi, tenantListApi } from '@/api/tenant'
+    import { noticeListApi, noticeReadApi, noticeSendApi, tenantListApi } from '@/api/tenant'
 
-    const TYPE_TEXT = { expire_warn: '即将到期', expired: '已到期', renew: '续费成功' }
-    const TYPE_COLOR = { expire_warn: 'orange', expired: 'red', renew: 'green' }
+    const TYPE_TEXT = { announce: '平台公告', expire_warn: '即将到期', expired: '已到期', renew: '续费成功' }
+    const TYPE_COLOR = { announce: 'blue', expire_warn: 'orange', expired: 'red', renew: 'green' }
 
     export default {
         name: 'tenant_notice',
@@ -65,12 +89,18 @@
             return {
                 grid: { xl: 7, lg: 7, md: 12, sm: 24, xs: 24 },
                 loading: false,
+                submitting: false,
                 total: 0,
                 type: '',
                 isRead: '',
                 searchWhere: { type: '', is_read: '', page: 1, limit: 20 },
                 list: [],
                 tenantMap: {},
+                sendModal: false,
+                sendForm: { tenant_ids: [], content: '' },
+                sendRules: {
+                    content: [{ required: true, message: '请输入通知内容', trigger: 'blur' }]
+                },
                 columns: [
                     { title: 'ID', key: 'id', width: 70 },
                     { title: '租户', slot: 'tenant', minWidth: 120 },
@@ -136,6 +166,25 @@
                     row.is_read = 1
                 }).catch(res => {
                     this.$Message.error(res.msg)
+                })
+            },
+            openSend () {
+                this.sendForm = { tenant_ids: [], content: '' }
+                this.sendModal = true
+            },
+            saveSend () {
+                this.$refs.sendForm.validate(valid => {
+                    if (!valid) return
+                    this.submitting = true
+                    noticeSendApi(this.sendForm).then(res => {
+                        this.submitting = false
+                        this.sendModal = false
+                        this.$Message.success(res.msg)
+                        this.getList()
+                    }).catch(res => {
+                        this.submitting = false
+                        this.$Message.error(res.msg)
+                    })
                 })
             }
         }

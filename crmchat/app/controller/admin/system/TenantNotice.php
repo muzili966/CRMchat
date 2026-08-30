@@ -49,6 +49,23 @@ class TenantNotice extends AuthController
     }
 
     /**
+     * 平台发送公告通知
+     * @return mixed
+     */
+    public function send()
+    {
+        if (!\app\models\system\admin\SystemAdmin::isPlatformAdmin($this->adminInfo)) {
+            return $this->fail('仅平台管理员可以发送通知');
+        }
+        $data = $this->request->postMore([
+            [['tenant_ids', 'a'], []],
+            ['content', ''],
+        ]);
+        $count = $this->services->sendNotice(array_map('intval', (array)$data['tenant_ids']), (string)$data['content']);
+        return $this->success('已发送' . $count . '条通知');
+    }
+
+    /**
      * 标记已读
      * @param $id
      * @return mixed

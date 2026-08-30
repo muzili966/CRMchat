@@ -80,6 +80,9 @@ class Tenant extends AuthController
             [['expire_time', 'd'], 0],
             ['domain', ''],
             ['remark', ''],
+            ['admin_account', ''],
+            ['admin_pwd', ''],
+            ['admin_conf_pwd', ''],
         ]);
         $this->services->create($data);
         return $this->success('租户创建成功');

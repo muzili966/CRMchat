@@ -553,7 +553,8 @@ CREATE TABLE IF NOT EXISTS `eb_system_menus` (
   `header` varchar(10) NOT NULL DEFAULT '' COMMENT '顶部菜单标示',
   `is_header` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否顶部菜单1是0否',
   `unique_auth` varchar(255) NOT NULL DEFAULT '' COMMENT '前台唯一标识',
-  `is_del` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否删除'
+  `is_del` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否删除',
+  `is_tenant` tinyint(1) NOT NULL DEFAULT '1' COMMENT '租户侧可用1=可用,0=平台专属'
 ) ENGINE=InnoDB AUTO_INCREMENT=1094 DEFAULT CHARSET=utf8mb4 COMMENT='菜单表';
 
 --
@@ -1200,3 +1201,11 @@ INSERT INTO `eb_system_menus` (`id`, `pid`, `icon`, `menu_name`, `module`, `cont
 -- 切换租户视角权限点（与update.sql保持一致）
 INSERT INTO `eb_system_menus` (`id`, `pid`, `icon`, `menu_name`, `module`, `controller`, `action`, `api_url`, `methods`, `params`, `sort`, `is_show`, `is_show_path`, `access`, `menu_path`, `path`, `auth_type`, `header`, `is_header`, `unique_auth`, `is_del`) VALUES
 (1229, 1200, '', '切换租户视角', 'admin', '', '', 'api/admin/setting/tenant/view_switch', 'GET', '[]', 0, 0, 0, 1, '', '1200', 2, '', 0, '', 0);
+
+-- RBAC多租户适配：维护管理树与租户管理树为平台专属，通知管理独立为顶级通用菜单（与update.sql保持一致）
+UPDATE `eb_system_menus` SET `is_tenant` = 0 WHERE `id` IN (25, 1200) OR `path` = '25' OR `path` LIKE '25/%' OR `path` = '1200' OR `path` LIKE '1200/%';
+UPDATE `eb_system_menus` SET `pid` = 0, `icon` = 'md-notifications', `menu_name` = '通知管理', `path` = '', `header` = 'notice', `is_header` = 1, `is_tenant` = 1, `sort` = 1 WHERE `id` = 1205;
+UPDATE `eb_system_menus` SET `path` = '1205', `is_tenant` = 1, `menu_name` = '通知列表' WHERE `id` = 1227;
+UPDATE `eb_system_menus` SET `path` = '1205', `is_tenant` = 1 WHERE `id` = 1228;
+INSERT INTO `eb_system_menus` (`id`, `pid`, `icon`, `menu_name`, `module`, `controller`, `action`, `api_url`, `methods`, `params`, `sort`, `is_show`, `is_show_path`, `access`, `menu_path`, `path`, `auth_type`, `header`, `is_header`, `unique_auth`, `is_del`, `is_tenant`) VALUES
+(1230, 1205, '', '发送通知', 'admin', '', '', 'api/admin/setting/tenant/notice', 'POST', '[]', 0, 0, 0, 1, '', '1205', 2, '', 0, '', 0, 0);

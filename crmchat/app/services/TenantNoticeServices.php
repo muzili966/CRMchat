@@ -109,6 +109,34 @@ class TenantNoticeServices extends BaseServices
     }
 
     /**
+     * 平台向租户批量发送公告通知
+     * @param array $tenantIds 目标租户ID，空数组表示全部正常租户
+     * @param string $content
+     * @return int 发送条数
+     */
+    public function sendNotice(array $tenantIds, string $content): int
+    {
+        $content = trim($content);
+        if ($content === '') {
+            throw new \crmeb\exceptions\AdminException('请输入通知内容');
+        }
+        /** @var \app\dao\TenantDao $tenantDao */
+        $tenantDao = app()->make(\app\dao\TenantDao::class);
+        $validIds = array_map('intval', $tenantDao->getColumn([
+            'status' => \app\models\Tenant::STATUS_NORMAL,
+            'is_delete' => 0,
+        ], 'id'));
+        $targets = $tenantIds ? array_values(array_intersect(array_map('intval', $tenantIds), $validIds)) : $validIds;
+        if (!$targets) {
+            throw new \crmeb\exceptions\AdminException('没有可发送的租户');
+        }
+        foreach ($targets as $tenantId) {
+            $this->addNotice($tenantId, TenantNotice::TYPE_ANNOUNCE, $content);
+        }
+        return count($targets);
+    }
+
+    /**
      * 写入租户通知并向该租户在线管理员推送
      * @param int $tenantId
      * @param string $type

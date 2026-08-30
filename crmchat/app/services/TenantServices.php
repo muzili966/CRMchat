@@ -29,6 +29,11 @@ class TenantServices extends BaseServices
 {
 
     /**
+     * 租户默认管理员角色名
+     */
+    const DEFAULT_ROLE_NAME = '租户管理员';
+
+    /**
      * TenantServices constructor.
      * @param TenantDao $dao
      */
@@ -77,10 +82,60 @@ class TenantServices extends BaseServices
             $planServices = app()->make(TenantPlanServices::class);
             $data['plan_id'] = $planServices->getDefaultPlanId();
         }
+        $admin = [
+            'account' => $data['admin_account'] ?? '',
+            'pwd' => $data['admin_pwd'] ?? '',
+            'conf_pwd' => $data['admin_conf_pwd'] ?? '',
+        ];
+        unset($data['admin_account'], $data['admin_pwd'], $data['admin_conf_pwd']);
         $data['status'] = Tenant::STATUS_NORMAL;
         $data['create_time'] = time();
         $data['update_time'] = time();
-        return $this->dao->save($data);
+        return $this->transaction(function () use ($data, $admin) {
+            $tenant = $this->dao->save($data);
+            $this->ensureDefaultRole((int)$tenant->id);
+            if ($admin['account']) {
+                $this->createTenantAdmin([
+                    'tenant_id' => (int)$tenant->id,
+                    'account' => $admin['account'],
+                    'pwd' => $admin['pwd'],
+                    'conf_pwd' => $admin['conf_pwd'],
+                    'real_name' => $data['name'] . '管理员',
+                    'roles' => [],
+                ]);
+            }
+            return $tenant;
+        });
+    }
+
+    /**
+     * 确保租户拥有默认管理员角色（权限=全部租户侧可用菜单），返回角色ID
+     * @param int $tenantId
+     * @return int
+     */
+    public function ensureDefaultRole(int $tenantId): int
+    {
+        /** @var \app\services\system\admin\SystemRoleServices $roleServices */
+        $roleServices = app()->make(\app\services\system\admin\SystemRoleServices::class);
+        return (int)TenantContext::runAs($tenantId, function () use ($roleServices) {
+            $exist = $roleServices->get(['role_name' => self::DEFAULT_ROLE_NAME]);
+            if ($exist) {
+                return $exist->id;
+            }
+            /** @var \app\services\system\SystemMenusServices $menusServices */
+            $menusServices = app()->make(\app\services\system\SystemMenusServices::class);
+            $rules = $menusServices->getTenantMenuIds();
+            if (!$rules) {
+                throw new AdminException('缺少租户侧可用菜单数据，无法初始化租户角色');
+            }
+            $role = $roleServices->save([
+                'role_name' => self::DEFAULT_ROLE_NAME,
+                'rules' => implode(',', $rules),
+                'level' => SystemAdmin::TENANT_ADMIN_LEVEL,
+                'status' => 1,
+            ]);
+            return $role->id;
+        });
     }
 
     /**
@@ -202,6 +257,10 @@ class TenantServices extends BaseServices
             throw new AdminException('请填写管理员账号和密码');
         }
         $roles = array_map('intval', $data['roles'] ?? []);
+        //未指定角色时绑定租户默认角色，杜绝level=0导致租户管理员越权看到平台菜单
+        if (!$roles) {
+            $roles = [$this->ensureDefaultRole($tenantId)];
+        }
         /** @var \app\services\system\admin\SystemAdminServices $adminServices */
         $adminServices = app()->make(\app\services\system\admin\SystemAdminServices::class);
         return TenantContext::runAs($tenantId, function () use ($adminServices, $data, $roles) {
@@ -212,7 +271,7 @@ class TenantServices extends BaseServices
                 'conf_pwd' => $data['conf_pwd'],
                 'real_name' => $data['real_name'] ?: $data['account'],
                 'roles' => $roles,
-                'level' => $roles ? SystemAdmin::TENANT_ADMIN_LEVEL : 0,
+                'level' => SystemAdmin::TENANT_ADMIN_LEVEL,
                 'status' => SystemAdmin::STATUS_NORMAL,
             ]);
         });

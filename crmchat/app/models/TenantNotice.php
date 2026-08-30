@@ -41,6 +41,11 @@ class TenantNotice extends BaseModel
     const TYPE_RENEW = 'renew';
 
     /**
+     * 通知类型：平台公告
+     */
+    const TYPE_ANNOUNCE = 'announce';
+
+    /**
      * 未读
      */
     const UNREAD = 0;

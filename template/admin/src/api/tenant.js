@@ -211,3 +211,15 @@ export function noticeReadApi(id) {
         method: 'put'
     })
 }
+
+/**
+ * @description 通知--平台发送公告
+ * @param {Object} param data {Object} tenant_ids与content
+ */
+export function noticeSendApi(data) {
+    return request({
+        url: 'setting/tenant/notice',
+        method: 'post',
+        data
+    })
+}

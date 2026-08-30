@@ -77,6 +77,15 @@ class SystemMenusServices extends BaseServices
     }
 
     /**
+     * 租户侧可用菜单ID集合（租户默认角色的权限全集）
+     * @return array
+     */
+    public function getTenantMenuIds(): array
+    {
+        return array_map('intval', $this->dao->getColumn(['is_tenant' => 1, 'is_del' => 0], 'id'));
+    }
+
+    /**
      * 获取后台菜单树型结构列表
      * @param array $where
      * @return array
@@ -149,6 +158,7 @@ class SystemMenusServices extends BaseServices
         $field[] = Form::radio('auth_type', '类型', $formData['auth_type'] ?? 1)->options([['value' => 2, 'label' => '接口'], ['value' => 1, 'label' => '菜单(菜单只显示三级)']]);
         $field[] = Form::radio('is_show', '状态', $formData['is_show'] ?? 1)->options([['value' => 0, 'label' => '关闭'], ['value' => 1, 'label' => '开启']]);
         $field[] = Form::radio('is_show_path', '是否为前端隐藏菜单', $formData['is_show_path'] ?? 0)->options([['value' => 1, 'label' => '是'], ['value' => 0, 'label' => '否']]);
+        $field[] = Form::radio('is_tenant', '租户侧可用', $formData['is_tenant'] ?? 1)->options([['value' => 1, 'label' => '可用'], ['value' => 0, 'label' => '平台专属']]);
         [$menuList, $data] = $this->getFormCascaderMenus((int)($formData['pid'] ?? 0));
         $field[] = Form::cascader('menu_list', '父级id', $data)->data($menuList)->filterable(true);
         return $field;

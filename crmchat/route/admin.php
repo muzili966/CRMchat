@@ -365,7 +365,9 @@ Route::group('api', function () {
             //开具驳回发票
             Route::put('tenant/invoice/audit/:id', 'system.TenantInvoice/audit')->option(['real_name' => '开具驳回发票']);
             //租户通知列表
-            Route::get('tenant/notice', 'system.TenantNotice/index')->option(['real_name' => '租户通知列表']);
+            Route::get('tenant/notice', 'system.TenantNotice/index')->option(['real_name' => '通知列表']);
+
+            Route::post('tenant/notice', 'system.TenantNotice/send')->option(['real_name' => '发送通知']);
             //租户通知已读
             Route::put('tenant/notice/read/:id', 'system.TenantNotice/read')->option(['real_name' => '租户通知已读']);
             //管理员资源路由

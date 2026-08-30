@@ -84,6 +84,7 @@ class Menus extends AuthController
             ['access', 1],
             ['is_show', 0],
             ['is_show_path', 0],
+            ['is_tenant', 1],
         ]);
 
         if (!$data['menu_name'])
@@ -152,6 +153,7 @@ class Menus extends AuthController
             ['access', 1],
             ['is_show', 0],
             ['is_show_path', 0],
+            ['is_tenant', 1],
         ]);
         if (!$data['menu_name'])
             return $this->fail('请输入按钮名称');

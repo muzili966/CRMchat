@@ -229,3 +229,16 @@ CREATE TABLE IF NOT EXISTS `eb_tenant_notice` (
 ALTER TABLE `eb_tenant` ADD `plan_id` int(10) NOT NULL DEFAULT '0' COMMENT '当前套餐ID,0=未订购(不限制)' AFTER `plan`;
 -- 存量租户按旗舰版兜底，避免升级后被配额限制影响现网
 UPDATE `eb_tenant` SET `plan_id` = 4 WHERE `plan_id` = 0;
+
+-- ============ RBAC多租户适配 + 通知管理通用化（2026-08-30） ============
+-- 菜单增加租户侧可用标记：租户默认角色的权限全集 = is_tenant=1 的菜单
+ALTER TABLE `eb_system_menus` ADD `is_tenant` tinyint(1) NOT NULL DEFAULT '1' COMMENT '租户侧可用1=可用,0=平台专属' AFTER `is_show_path`;
+-- 维护管理树与租户管理树为平台专属
+UPDATE `eb_system_menus` SET `is_tenant` = 0 WHERE `id` IN (25, 1200) OR `path` = '25' OR `path` LIKE '25/%' OR `path` = '1200' OR `path` LIKE '1200/%';
+-- 通知管理独立为顶级通用菜单（平台看全部/发送公告，租户看自己的）
+UPDATE `eb_system_menus` SET `pid` = 0, `icon` = 'md-notifications', `menu_name` = '通知管理', `path` = '', `header` = 'notice', `is_header` = 1, `is_tenant` = 1, `sort` = 1 WHERE `id` = 1205;
+UPDATE `eb_system_menus` SET `path` = '1205', `is_tenant` = 1, `menu_name` = '通知列表' WHERE `id` = 1227;
+UPDATE `eb_system_menus` SET `path` = '1205', `is_tenant` = 1 WHERE `id` = 1228;
+-- 发送通知接口权限（平台专属）
+INSERT INTO `eb_system_menus` (`id`, `pid`, `icon`, `menu_name`, `module`, `controller`, `action`, `api_url`, `methods`, `params`, `sort`, `is_show`, `is_show_path`, `access`, `menu_path`, `path`, `auth_type`, `header`, `is_header`, `unique_auth`, `is_del`, `is_tenant`) VALUES
+(1230, 1205, '', '发送通知', 'admin', '', '', 'api/admin/setting/tenant/notice', 'POST', '[]', 0, 0, 0, 1, '', '1205', 2, '', 0, '', 0, 0);

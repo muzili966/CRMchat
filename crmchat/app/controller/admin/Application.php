@@ -48,7 +48,7 @@ class Application extends AuthController
     public function index()
     {
         $where = $this->request->getMore([
-            ['name', '', 'name_like'],
+            ['name', '', '', 'name_like'],
         ]);
 
         return $this->success($this->withPlatformScope(function () use ($where) {
