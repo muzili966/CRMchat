@@ -115,9 +115,13 @@ class ApplicationThemeTest extends TestCase
     {
         $theme = ApplicationThemeServices::defaultTheme();
         $this->assertSame(
-            ['title', 'logo', 'theme_color', 'pc_icon', 'mobile_icon', 'banners', 'custom_html', 'show_platform_brand'],
+            ['title', 'logo', 'theme_color', 'pc_icon', 'mobile_icon', 'banners', 'custom_html', 'show_platform_brand',
+                'tourist_avatar', 'service_feedback'],
             array_keys($theme)
         );
+        //这两项空值代表继承租户全局设置，不能给默认内容
+        $this->assertSame([], $theme['tourist_avatar']);
+        $this->assertSame('', $theme['service_feedback']);
         $this->assertSame('', $theme['title']);
         $this->assertSame('', $theme['custom_html']);
         $this->assertSame(ApplicationTheme::DEFAULT_THEME_COLOR, $theme['theme_color']);
@@ -138,5 +142,21 @@ class ApplicationThemeTest extends TestCase
         $this->assertSame('', $theme['banners'][0]['link']);
         $this->assertSame(ApplicationTheme::BRAND_HIDE, $theme['show_platform_brand']);
         $this->assertSame('', $theme['logo']);
+    }
+
+    public function testNormalizeAvatarsAcceptsStringsAndObjects()
+    {
+        $this->assertSame(['/a.png', '/b.png'], ApplicationThemeServices::normalizeAvatars(['/a.png', ['url' => '/b.png']]));
+    }
+
+    public function testNormalizeAvatarsParsesJsonAndDedupes()
+    {
+        $this->assertSame(['/a.png'], ApplicationThemeServices::normalizeAvatars('["/a.png","/a.png"," "]'));
+    }
+
+    public function testNormalizeAvatarsRejectsGarbage()
+    {
+        $this->assertSame([], ApplicationThemeServices::normalizeAvatars('not-json'));
+        $this->assertSame([], ApplicationThemeServices::normalizeAvatars(null));
     }
 }

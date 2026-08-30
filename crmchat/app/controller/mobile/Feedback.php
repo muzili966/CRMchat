@@ -61,6 +61,9 @@ class Feedback extends AuthController
      */
     public function getFeedbackInfo()
     {
-        return $this->success(['feedback' => sys_config('service_feedback')]);
+        //按应用取文案，应用未单独配置时回落租户全局设置
+        $theme = app()->make(\app\services\ApplicationThemeServices::class)->getTheme($this->request->appId());
+        $feedback = \app\services\ApplicationThemeServices::inheritGlobal($theme)['service_feedback'] ?? '';
+        return $this->success(['feedback' => $feedback]);
     }
 }

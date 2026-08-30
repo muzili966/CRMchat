@@ -75,6 +75,8 @@ class AppTheme extends AuthController
             //富文本广告位，服务层会剥离脚本后入库
             ['custom_html', ''],
             [['show_platform_brand', 'd'], ApplicationTheme::BRAND_SHOW],
+            [['tourist_avatar', 'a'], []],
+            ['service_feedback', ''],
         ]);
         $appid = (string)$data['appid'];
         if ($error = $this->checkAppOwner($appid) ?: $this->checkPlan($data)) {

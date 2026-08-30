@@ -213,7 +213,9 @@ class ApplicationServices extends BaseServices
                 $nickname = '游客' . $uid;
             }
             if (!$avatar) {
-                $touristAvatar = sys_config('tourist_avatar');
+                //按应用取头像池，应用未单独配置时服务内部回落租户全局设置
+                $theme = app()->make(ApplicationThemeServices::class)->getTheme($appid);
+                $touristAvatar = ApplicationThemeServices::inheritGlobal($theme)['tourist_avatar'] ?? [];
                 $avatar = Arr::getArrayRandKey(is_array($touristAvatar) ? $touristAvatar : []);
                 $avatar = link_url($avatar);
             }

@@ -1388,3 +1388,11 @@ ALTER TABLE `eb_tenant_plan` ADD `custom_domain` tinyint(1) NOT NULL DEFAULT '0'
 UPDATE `eb_tenant_plan` SET `custom_domain` = 1 WHERE `name` = '旗舰版';
 -- 说明：系统设置的分类可见性不再依赖硬编码，改为按"分类下是否含租户可覆盖配置项"动态判定
 -- （见 SystemConfigServices::filterTenantTabs），新增配置项时可见性自动跟随，无需再改数据
+
+-- 客服端配置的全局默认与应用级覆盖（与update.sql保持一致）
+-- 游客头像与客服反馈原为租户级单份，现支持按应用差异化：
+-- 应用未单独配置时留空，读取时回落「系统设置-客服端配置」里的租户全局值，
+-- 与"平台默认+租户覆盖"是同一套两层模型，单应用租户只需配一次
+ALTER TABLE `eb_application_theme`
+  ADD `tourist_avatar` text COMMENT '游客头像池,空=继承租户全局' AFTER `custom_html`,
+  ADD `service_feedback` varchar(255) NOT NULL DEFAULT '' COMMENT '客服反馈文案,空=继承租户全局' AFTER `tourist_avatar`;

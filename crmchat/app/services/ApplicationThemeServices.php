@@ -163,6 +163,8 @@ class ApplicationThemeServices extends BaseServices
         if (!$planServices->hasFeature($tenantId, self::FEATURE_CUSTOM_AD)) {
             $theme = self::applyPlatformAd($theme);
         }
+        //应用未单独配置的项回落租户全局设置
+        $theme = self::inheritGlobal($theme);
         return array_diff_key($theme, array_flip(self::INTERNAL_FIELDS));
     }
 
@@ -216,7 +218,30 @@ class ApplicationThemeServices extends BaseServices
             'banners' => [],
             'custom_html' => '',
             'show_platform_brand' => ApplicationTheme::BRAND_SHOW,
+            //空值表示继承「客服端配置」里的租户全局设置，避免多应用租户重复配置
+            'tourist_avatar' => [],
+            'service_feedback' => '',
         ];
+    }
+
+    /**
+     * 补齐继承自租户全局设置的项
+     *
+     * 采用与"平台默认+租户覆盖"一致的两层模型：应用未单独配置时回落到全局，
+     * 单应用租户只需在「客服端配置」配一次，多应用租户可按应用差异化
+     * @param array $theme
+     * @return array
+     */
+    public static function inheritGlobal(array $theme): array
+    {
+        if (empty($theme['tourist_avatar'])) {
+            $avatar = sys_config('tourist_avatar', []);
+            $theme['tourist_avatar'] = is_array($avatar) ? $avatar : [];
+        }
+        if (trim((string)$theme['service_feedback']) === '') {
+            $theme['service_feedback'] = (string)sys_config('service_feedback', '');
+        }
+        return $theme;
     }
 
     /**
@@ -232,6 +257,8 @@ class ApplicationThemeServices extends BaseServices
             'banners' => self::normalizeBanners($theme['banners'] ?? []),
             'custom_html' => self::sanitizeHtml(self::stringValue($theme, 'custom_html')),
             'show_platform_brand' => self::normalizeBrand($theme['show_platform_brand'] ?? ApplicationTheme::BRAND_SHOW),
+            'tourist_avatar' => self::normalizeAvatars($theme['tourist_avatar'] ?? []),
+            'service_feedback' => self::stringValue($theme, 'service_feedback'),
         ]);
     }
 
@@ -300,7 +327,34 @@ class ApplicationThemeServices extends BaseServices
             'banners' => json_encode(self::normalizeBanners($data['banners'] ?? []), JSON_UNESCAPED_UNICODE),
             'custom_html' => self::sanitizeHtml(self::stringValue($data, 'custom_html')),
             'show_platform_brand' => self::normalizeBrand($data['show_platform_brand'] ?? ApplicationTheme::BRAND_SHOW),
+            //留空即继承租户全局设置，不写死当前全局值，避免全局改动后应用不跟随
+            'tourist_avatar' => json_encode(self::normalizeAvatars($data['tourist_avatar'] ?? []), JSON_UNESCAPED_UNICODE),
+            'service_feedback' => self::stringValue($data, 'service_feedback'),
         ];
+    }
+
+    /**
+     * 规整游客头像列表
+     * @param mixed $avatars
+     * @return array
+     */
+    public static function normalizeAvatars($avatars): array
+    {
+        if (is_string($avatars)) {
+            $avatars = json_decode($avatars, true);
+        }
+        if (!is_array($avatars)) {
+            return [];
+        }
+        $list = [];
+        foreach ($avatars as $item) {
+            $url = is_array($item) ? (string)($item['url'] ?? '') : (string)$item;
+            $url = trim($url);
+            if ($url !== '') {
+                $list[] = $url;
+            }
+        }
+        return array_values(array_unique($list));
     }
 
     /**
