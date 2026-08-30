@@ -8,9 +8,9 @@
                 <div class="fenlei">
                 <p class="font-w">1、一般网页中引入一下代码</p>
                 <div class="code-content-wrap">
-                    <textarea id="NormalCodeTextareakaifa1" class="code" rows="1">
-<script src="{{siteUrl}}/customerServer.js"></script>
-                    </textarea>
+                    <!-- 结束标签紧贴内容，避免多出一行空白把单行内容挤出可视区 -->
+                    <textarea id="NormalCodeTextareakaifa1" class="code" rows="2">
+<script src="{{siteUrl}}/customerServer.js"></script></textarea>
                     <div class="other-wrap">
                         <a @click="getCopy('NormalCodeTextareakaifa1')" class="btn btn-blue btn-large" href="javascript:void(0);"><span>复制代码</span></a>
                     </div>
@@ -28,8 +28,7 @@
         var s = document.getElementsByTagName("script")[0];
         s.parentNode.insertBefore(hm, s);
     })()
-</script>
-                    </textarea>
+</script></textarea>
                     <div class="other-wrap">
                     <a @click="getCopy('NormalCodeTextarea2')" class="btn btn-blue btn-large" href="javascript:void(0);"><span>复制代码</span></a>
                     </div>
@@ -40,7 +39,8 @@
         <div  class="fenlei">
             <p class="font-w">在所需使用crmChat服务的文件中，实例化 initCustomerServer 对象, 调用对象的 init 方法，开始加载crmChat服务</p>
             <div class="code-content-wrap">
-                <textarea id="NormalCodeTextareakaifa2" class="code" rows="45">
+                <!-- rows需覆盖42行原文+insertDomNode等长注释软换行多出的行 -->
+                <textarea id="NormalCodeTextareakaifa2" class="code" rows="48">
 var option = {
     openUrl: "{{siteUrl}}", // 打开客服聊天框的地址，即：部署后台管理系统的地址，若未填写，则自动获取当前服务器的地址
     token: {{tokeninfo.token_md5}}, // token,与后台交互的凭证
@@ -82,9 +82,7 @@ canCustomerServer.setStyleOfCustomerServer(this.canCustomerServer.connentServerD
             left:'50%'
         });
 // 调用打开客服弹窗的方法，如果isShowTip为false，就使用这个函数，当然也可以使用A链接
-canCustomerServer.getCustomeServer();
-
-                </textarea>
+canCustomerServer.getCustomeServer();</textarea>
 
                 
                 <div class="other-wrap">

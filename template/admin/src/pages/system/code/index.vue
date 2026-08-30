@@ -47,7 +47,7 @@
     </Card>
 
     <!-- 接入代码：按选中的应用生成，多应用互不串用 -->
-    <Modal v-model="codeModal" :title="`接入代码 - ${current.name || ''}`" width="900" footer-hide class="code-modal">
+    <Modal v-model="codeModal" :title="`接入代码 - ${current.name || ''}`" width="1040" footer-hide class="code-modal">
       <div class="getCode_container">
         <Tabs value="name1" v-if="current.token">
           <TabPane label="网页内嵌" name="name1">
@@ -231,9 +231,17 @@ export default {
 <!-- 接入代码三个子组件的样式原本挂在页面根节点上，改为弹窗后需在此提供；不加scoped以便作用到子组件 -->
 <style lang="less">
 .code-modal {
+  .ivu-modal {
+    // 窄屏时不超出视口
+    max-width: 94vw;
+  }
+
   .ivu-modal-body {
-    max-height: 68vh;
-    overflow-y: auto;
+    // 三个Tab内容高度差很大，固定高度避免切Tab时弹窗上下跳动
+    height: 70vh;
+    // 滚动条常驻，否则切到没有滚动条的Tab时内容宽度会突变
+    overflow-y: scroll;
+    overflow-x: hidden;
   }
 
   .getCode_container {
@@ -242,6 +250,8 @@ export default {
 
     .content {
       width: 100%;
+      // 项目无全局border-box重置，width:100%叠加padding会横向溢出
+      box-sizing: border-box;
       background: #ffffff;
       padding: 4px 2px;
     }
@@ -268,6 +278,16 @@ export default {
     }
 
     // 弹窗内空间有限，压缩原全屏布局的留白
+    .ivu-divider-horizontal {
+      margin: 14px 0;
+    }
+
+    // 定制开发页存在fenlei嵌套，内层再叠一层边框会明显变窄
+    .fenlei .fenlei {
+      margin: 8px 0;
+      padding: 10px 12px;
+    }
+
     .fenlei {
       margin: 10px 0;
       border: 1px solid #eee;
@@ -285,8 +305,11 @@ export default {
 
     .code,
     .textarea {
+      display: block;
       border: none;
       width: 100%;
+      // 含padding计算宽度，否则width:100%会撑出父容器
+      box-sizing: border-box;
       outline: 0;
       resize: vertical;
       background-color: #f8f8f8;
@@ -295,15 +318,17 @@ export default {
       color: #323437;
       line-height: 20px;
       text-align: left;
-      // 代码块过长时自身滚动，避免把弹窗撑高
-      max-height: 320px;
+      // textarea默认软换行，改成pre会把长行横向截断
+      white-space: pre-wrap;
+      word-break: break-all;
+      overflow-x: hidden;
+      // 高度交给rows撑开且不限高，避免与弹窗body形成双滚动条；auto仅作兜底
       overflow-y: auto;
-      white-space: pre;
-      overflow-x: auto;
+      min-height: 34px;
     }
 
     .other-wrap {
-      margin: 8px 0 0;
+      margin: 10px 0 0;
       text-align: right;
     }
 
@@ -318,6 +343,9 @@ export default {
       cursor: pointer;
       outline: 0;
       text-decoration: none;
+      // 窄屏下按钮组会折行，禁止按钮内文字被拆开并补足行间距
+      white-space: nowrap;
+      margin-bottom: 4px;
     }
 
     .btn.btn-blue {

@@ -7,7 +7,8 @@
 
     <div class="fenlei">
       <div class="code-content-wrap">
-        <textarea id="NormalCodeTextarea1" class="code" rows="18">
+        <!-- rows需覆盖21行原文+长注释软换行后多出的行，否则内容会被截 -->
+        <textarea id="NormalCodeTextarea1" class="code" rows="24">
 <script>
   (function() {
   _s = document.createElement('script');
@@ -28,8 +29,7 @@
   }
   document.head.appendChild(_s)
   })();
-</script>
-            </textarea>
+</script></textarea>
         <div class="other-wrap">
           <a class="btn btn-blue btn-large mr10" @click="jiazai" href="javascript:void(0);">点击体验</a>
           <a @click="getCopy('NormalCodeTextarea1')" class="btn btn-blue btn-large" href="javascript:void(0);"><span>复制代码</span></a>
