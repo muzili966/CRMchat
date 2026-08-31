@@ -44,10 +44,8 @@
                     </div>
                 </template>
                 <template slot-scope="{ row }" slot="features">
-                    <Tag :color="row.auto_reply ? 'green' : 'default'">自动回复</Tag>
-                    <Tag :color="row.brand_custom ? 'green' : 'default'">品牌定制</Tag>
-                    <Tag :color="row.data_export ? 'green' : 'default'">数据导出</Tag>
-                    <Tag :color="row.app_push ? 'green' : 'default'">应用推送</Tag>
+                    <Tag v-for="field in featureFields" :key="field"
+                         :color="row[field] ? 'green' : 'default'">{{ featureText(field).name }}</Tag>
                 </template>
                 <template slot-scope="{ row }" slot="status">
                     <i-switch v-model="row.status" :value="row.status" :true-value="1" :false-value="0" @on-change="onchangeIsShow(row)" size="large">
@@ -80,29 +78,9 @@
                 </Row>
                 <Divider orientation="left" size="small">配额（0 表示不限）</Divider>
                 <Row :gutter="16">
-                    <Col span="12">
-                        <FormItem label="应用数上限：">
-                            <InputNumber v-model="planForm.app_limit" :min="0" style="width: 100%"/>
-                        </FormItem>
-                    </Col>
-                    <Col span="12">
-                        <FormItem label="坐席数上限：">
-                            <InputNumber v-model="planForm.seat_limit" :min="0" style="width: 100%"/>
-                        </FormItem>
-                    </Col>
-                    <Col span="12">
-                        <FormItem label="日消息上限：">
-                            <InputNumber v-model="planForm.daily_msg_limit" :min="0" style="width: 100%"/>
-                        </FormItem>
-                    </Col>
-                    <Col span="12">
-                        <FormItem label="存储上限(MB)：">
-                            <InputNumber v-model="planForm.storage_limit_mb" :min="0" style="width: 100%"/>
-                        </FormItem>
-                    </Col>
-                    <Col span="12">
-                        <FormItem label="记录保留(天)：">
-                            <InputNumber v-model="planForm.record_keep_days" :min="0" style="width: 100%"/>
+                    <Col span="12" v-for="item in quotaFields" :key="item.key">
+                        <FormItem :label="item.label + '：'">
+                            <InputNumber v-model="planForm[item.key]" :min="0" style="width: 100%"/>
                         </FormItem>
                     </Col>
                     <Col span="12">
@@ -113,24 +91,12 @@
                 </Row>
                 <Divider orientation="left" size="small">功能开关</Divider>
                 <Row :gutter="16">
-                    <Col span="12">
-                        <FormItem label="自动回复：">
-                            <i-switch v-model="planForm.auto_reply" :true-value="1" :false-value="0"/>
-                        </FormItem>
-                    </Col>
-                    <Col span="12">
-                        <FormItem label="品牌定制：">
-                            <i-switch v-model="planForm.brand_custom" :true-value="1" :false-value="0"/>
-                        </FormItem>
-                    </Col>
-                    <Col span="12">
-                        <FormItem label="数据导出：">
-                            <i-switch v-model="planForm.data_export" :true-value="1" :false-value="0"/>
-                        </FormItem>
-                    </Col>
-                    <Col span="12">
-                        <FormItem label="应用推送：">
-                            <i-switch v-model="planForm.app_push" :true-value="1" :false-value="0"/>
+                    <Col span="12" v-for="field in featureFields" :key="field">
+                        <FormItem :label="featureText(field).name + '：'">
+                            <i-switch v-model="planForm[field]" :true-value="1" :false-value="0"/>
+                            <Tooltip :content="featureText(field).desc" max-width="260" placement="top">
+                                <Icon type="ios-information-circle-outline" class="ml5" size="15"/>
+                            </Tooltip>
                         </FormItem>
                     </Col>
                 </Row>
@@ -146,22 +112,13 @@
 <script>
     import { mapState } from 'vuex'
     import { planListApi, planSaveApi, planUpdateApi, planSetStatusApi } from '@/api/tenant'
+    import { PLAN_FEATURE_FIELDS, PLAN_QUOTA_FIELDS, planEditableFields, getPlanFeatureText } from '@/config/planFeatures'
 
-    const emptyPlanForm = () => ({
-        id: 0,
-        name: '',
-        price: 0,
-        app_limit: 0,
-        seat_limit: 0,
-        daily_msg_limit: 0,
-        storage_limit_mb: 0,
-        record_keep_days: 0,
-        auto_reply: 0,
-        brand_custom: 0,
-        data_export: 0,
-        app_push: 0,
-        sort: 0
-    })
+    //按配置生成，新增能力或配额时无需再改这里
+    const emptyPlanForm = () => planEditableFields().reduce((form, key) => {
+        form[key] = 0
+        return form
+    }, { name: '' })
 
     export default {
         name: 'tenant_plan',
@@ -193,6 +150,12 @@
             }
         },
         computed: {
+            featureFields () {
+                return PLAN_FEATURE_FIELDS
+            },
+            quotaFields () {
+                return PLAN_QUOTA_FIELDS
+            },
             ...mapState('media', ['isMobile']),
             labelWidth () {
                 return this.isMobile ? undefined : 50
@@ -205,6 +168,9 @@
             this.getList()
         },
         methods: {
+            featureText (field) {
+                return getPlanFeatureText(field)
+            },
             limitText (value, unit = '') {
                 return value > 0 ? `${value}${unit}` : '不限'
             },
@@ -234,9 +200,14 @@
                 this.planForm = emptyPlanForm()
                 this.planModal = true
             },
+            //必须回填全部字段：后端按整份数据覆盖，漏掉的字段会被写成默认值0，
+            //曾因此出现"只改了个价格，AI客服与独立域名等能力被静默清零"
             edit (row) {
-                const { id, name, price, app_limit, seat_limit, daily_msg_limit, storage_limit_mb, record_keep_days, auto_reply, brand_custom, data_export, app_push, sort } = row
-                this.planForm = { id, name, price: Number(price), app_limit, seat_limit, daily_msg_limit, storage_limit_mb, record_keep_days, auto_reply, brand_custom, data_export, app_push, sort }
+                this.planForm = planEditableFields().reduce((form, key) => {
+                    form[key] = key === 'price' ? Number(row[key] || 0) : (row[key] === undefined || row[key] === null ? 0 : row[key])
+                    return form
+                }, {})
+                this.planForm.name = row.name
                 this.planModal = true
             },
             savePlan () {

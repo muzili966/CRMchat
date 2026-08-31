@@ -46,3 +46,43 @@ export const PLAN_FEATURE_TEXT = {
 export const getPlanFeatureText = feature => (
   PLAN_FEATURE_TEXT[feature] || { name: '该功能', desc: '' }
 )
+
+/**
+ * 能力展示顺序：套餐卡片、平台端标签与开关表单都按这一份渲染
+ *
+ * 曾经这三处各写一份，新增能力时只更新了后端与业务逻辑，展示层全部漏改：
+ * 租户看不到新能力，平台端编辑套餐时未提交的字段还会被后端按默认值清零。
+ * 今后新增能力只需在 PLAN_FEATURE_TEXT 里补一条并加进本数组。
+ */
+export const PLAN_FEATURE_FIELDS = [
+  'auto_reply',
+  'brand_custom',
+  'ai_reply',
+  'custom_ad',
+  'data_export',
+  'app_push',
+  'white_label',
+  'custom_domain'
+]
+
+/**
+ * 配额类字段，zeroText 为 0 值时的说法（0 一律表示不限制）
+ */
+export const PLAN_QUOTA_FIELDS = [
+  { key: 'app_limit', label: '接入应用', unit: '个' },
+  { key: 'seat_limit', label: '客服坐席', unit: '个' },
+  { key: 'daily_msg_limit', label: '日消息量', unit: '条' },
+  { key: 'daily_ai_limit', label: 'AI日回复', unit: '次' },
+  { key: 'storage_limit_mb', label: '存储空间', unit: 'MB' },
+  { key: 'record_keep_days', label: '记录保留', unit: '天', zeroText: '永久' }
+]
+
+/**
+ * 套餐上与能力、配额相关的全部字段，用于编辑回填避免漏字段被清零
+ * @returns {string[]}
+ */
+export const planEditableFields = () => [
+  'id', 'name', 'price', 'sort',
+  ...PLAN_QUOTA_FIELDS.map(item => item.key),
+  ...PLAN_FEATURE_FIELDS
+]

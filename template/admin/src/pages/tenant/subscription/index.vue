@@ -135,18 +135,20 @@
                             <span class="plan-card-unit">/月</span>
                         </div>
                         <ul class="plan-card-quota">
-                            <li>接入应用：{{ limitText(item.app_limit, '个') }}</li>
-                            <li>客服坐席：{{ limitText(item.seat_limit, '个') }}</li>
-                            <li>日消息量：{{ limitText(item.daily_msg_limit, '条') }}</li>
-                            <li>存储空间：{{ limitText(item.storage_limit_mb, 'MB') }}</li>
-                            <li>记录保留：{{ item.record_keep_days > 0 ? item.record_keep_days + '天' : '永久' }}</li>
+                            <li v-for="q in quotaFields" :key="q.key">
+                                {{ q.label }}：{{ quotaText(item, q) }}
+                            </li>
                         </ul>
-                        <div class="plan-card-features">
-                            <Tag size="small" :color="item.auto_reply ? 'green' : 'default'">自动回复</Tag>
-                            <Tag size="small" :color="item.brand_custom ? 'green' : 'default'">品牌定制</Tag>
-                            <Tag size="small" :color="item.data_export ? 'green' : 'default'">数据导出</Tag>
-                            <Tag size="small" :color="item.app_push ? 'green' : 'default'">应用推送</Tag>
-                        </div>
+                        <ul class="plan-card-features">
+                            <!-- 悬停给出能力说明，标签本身说不清"自定义广告位"到底能做什么 -->
+                            <li v-for="field in featureFields" :key="field"
+                                :class="{ 'feature-off': !item[field] }">
+                                <Tooltip :content="featureText(field).desc" max-width="240" placement="right">
+                                    <Icon :type="item[field] ? 'md-checkmark-circle' : 'md-close-circle'"/>
+                                    <span>{{ featureText(field).name }}</span>
+                                </Tooltip>
+                            </li>
+                        </ul>
                         <Button long :type="isCurrentPlan(item) ? 'default' : 'primary'" @click="contactUpgrade(item)">
                             {{ isCurrentPlan(item) ? '联系客户经理续费' : '联系客户经理升级' }}
                         </Button>
@@ -191,6 +193,7 @@
 
 <script>
     import { mySubscriptionApi, orderListApi, invoiceListApi, invoiceApplyApi, tenantPlansApi } from '@/api/tenant'
+    import { PLAN_FEATURE_FIELDS, PLAN_QUOTA_FIELDS, getPlanFeatureText } from '@/config/planFeatures'
 
     const INVOICE_STATUS_TEXT = { 0: '待开具', 1: '已开具', 2: '已驳回' }
     const INVOICE_STATUS_COLOR = { 0: 'orange', 1: 'green', 2: 'red' }
@@ -243,6 +246,12 @@
             }
         },
         computed: {
+            featureFields () {
+                return PLAN_FEATURE_FIELDS
+            },
+            quotaFields () {
+                return PLAN_QUOTA_FIELDS
+            },
             effectiveOrders () {
                 return this.orderList.filter(item => item.status === 1)
             }
@@ -253,6 +262,15 @@
             this.getInvoices()
         },
         methods: {
+            featureText (field) {
+                return getPlanFeatureText(field)
+            },
+            //0 一律表示不限制，记录保留等字段另有说法
+            quotaText (plan, quota) {
+                const value = Number(plan[quota.key] || 0)
+                if (value > 0) return value + quota.unit
+                return quota.zeroText || '不限'
+            },
             limitText (value, unit = '') {
                 return value > 0 ? `${value}${unit}` : '不限'
             },
@@ -420,5 +438,29 @@
     }
     .plan-card-features {
         min-height: 50px;
+        margin-bottom: 14px;
+        text-align: left;
+    }
+
+    .plan-card-features li {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 0;
+        font-size: 13px;
+        color: #17233d;
+    }
+
+    .plan-card-features li i {
+        color: #19be6b;
+    }
+
+    /* 未包含的能力保留但置灰，让租户看清升级能多拿什么 */
+    .plan-card-features li.feature-off {
+        color: #c5c8ce;
+    }
+
+    .plan-card-features li.feature-off i {
+        color: #dcdee2;
     }
 </style>
