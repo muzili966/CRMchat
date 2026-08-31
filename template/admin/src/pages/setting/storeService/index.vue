@@ -332,13 +332,8 @@ export default {
           setCookies('kefu_uuid', res.data.kefuInfo.uid, expires);
           setCookies('kefu_expires_time', res.data.exp_time, expires);
           setCookies('kefuInfo', res.data.kefuInfo, expires);
-          console.log(this.$store.state.media.isMobile, 'this.$store.state.media.isMobile');
-
-          if(this.$store.state.media.isMobile) {
-            url = window.location.protocol + "//" + window.location.host + '/kefu/mobile_list';
-          } else {
-            url = window.location.protocol + "//" + window.location.host + '/kefu/workspace';
-          }
+          //工作台已按视口自适应，无需按终端分流
+          url = window.location.origin + '/kefu/workspace';
 
 
           window.open(url, '_blank');
