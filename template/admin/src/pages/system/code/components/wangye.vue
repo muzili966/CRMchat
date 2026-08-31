@@ -61,7 +61,7 @@ export default {
   },
   methods: {
       jiazai(){
-          window.open(`${location.origin}/chat/index?token=${this.tokeninfo.token_md5}&noCanClose=1`)
+          window.open(`${location.origin}/chat?token=${this.tokeninfo.token_md5}&noCanClose=1`)
       },
     getCopy(id) {
       this.$emit('cgetCopy', id);

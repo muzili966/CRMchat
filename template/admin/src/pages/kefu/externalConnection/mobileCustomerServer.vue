@@ -887,144 +887,53 @@ export default {
   width: 100% !important;
 }
 
-.pc_customerServer_container.chat-bubble-clean {
-  .chart_list_item_text,
-  .right-box .chart_list_item_text {
-    border-radius: 6px;
-    box-shadow: none;
-  }
-}
-
-.pc_customerServer_container.chat-bubble-pill {
-  .chart_list_item_text,
-  .right-box .chart_list_item_text {
-    padding-right: 16px;
-    padding-left: 16px;
-    border-radius: 22px;
-  }
-}
-
-.pc_customerServer_container.chat-bubble-outline {
-  .chart_list_item_text,
-  .right-box .chart_list_item_text {
-    background: transparent;
-    border: 1px solid var(--chat-border);
-    border-radius: 12px;
-    box-shadow: none;
-  }
-}
-
-.pc_customerServer_container.chat-bubble-card {
-  .chart_list_item_text,
-  .right-box .chart_list_item_text {
-    border-radius: 12px;
-    box-shadow: 0 7px 18px rgba(31, 45, 61, .14);
-  }
-}
-
-.pc_customerServer_container.chat-layout-minimal {
+/* 预设数值统一由 @/config/chatThemes.js 下发，这里只声明移动版基准尺寸再乘密度倍率 */
+.pc_customerServer_container {
   .pc_customerServer_container_header {
-    min-height: 50px;
-    padding-top: ~"calc(4px + env(safe-area-inset-top))";
-    padding-bottom: 4px;
+    justify-content: var(--chat-header-justify, space-between);
 
     &_title img {
-      width: 32px;
-      height: 32px;
+      display: var(--chat-header-logo, block);
+      width: ~"calc(34px * var(--chat-avatar-scale, 1))";
+      height: ~"calc(34px * var(--chat-avatar-scale, 1))";
     }
   }
 
   .pc_customerServer_container_content .scroll_content {
-    padding-top: 7px;
-
     .chart_list_item_content {
-      padding-top: 4px;
-      padding-bottom: 4px;
+      padding-top: ~"calc(7px * var(--chat-density, 1))";
+      padding-bottom: ~"calc(7px * var(--chat-density, 1))";
     }
 
     .chart_list_item_avatar {
-      width: 30px;
-      height: 30px;
+      display: var(--chat-avatar-display, block);
+      width: ~"calc(36px * var(--chat-avatar-scale, 1))";
+      height: ~"calc(36px * var(--chat-avatar-scale, 1))";
+    }
+
+    .chart_list_item_text,
+    .right-box .chart_list_item_text {
+      max-width: ~"calc((78% - 46px) * var(--chat-bubble-width-scale, 1))";
+      padding-right: var(--chat-bubble-pad-x, 13px);
+      padding-left: var(--chat-bubble-pad-x, 13px);
+      border-width: var(--chat-bubble-border-width, 1px);
+      box-shadow: var(--chat-bubble-shadow, none);
     }
 
     .chart_list_item_text {
-      padding: 7px 10px;
-      font-size: 14px;
+      background: var(--chat-bubble-fill, var(--chat-incoming));
+      border-radius: var(--chat-bubble-radius-in, 16px 16px 16px 5px);
+    }
+
+    .right-box .chart_list_item_text {
+      border-radius: var(--chat-bubble-radius-out, 16px 16px 5px 16px);
     }
   }
 
   .mobel_customerServer_container_footer {
-    min-height: 56px;
-    padding-top: 6px;
-  }
-}
-
-.pc_customerServer_container.chat-layout-soft {
-  .pc_customerServer_container_header {
-    min-height: 66px;
-
-    &_title img {
-      width: 42px;
-      height: 42px;
-    }
-  }
-
-  .pc_customerServer_container_content .scroll_content {
-    padding: 18px 12px 28px;
-
-    .chart_list_item_content {
-      padding-top: 10px;
-      padding-bottom: 10px;
-    }
-
-    .chart_list_item_avatar {
-      width: 40px;
-      height: 40px;
-    }
-
-    .chart_list_item_text {
-      padding: 12px 15px;
-    }
-  }
-
-  .mobel_customerServer_container_footer {
-    min-height: 72px;
-    padding-top: 12px;
-  }
-}
-
-.pc_customerServer_container.chat-layout-midnight {
-  .pc_customerServer_container_header {
-    position: relative;
-    justify-content: center;
-
-    &_title img {
-      display: none;
-    }
-
-    &_handle {
-      position: absolute;
-      right: 12px;
-    }
-  }
-
-  .pc_customerServer_container_content .scroll_content {
-    padding-right: 12px;
-    padding-left: 12px;
-
-    .chart_list_item_avatar {
-      display: none;
-    }
-
-    .chart_list_item_content,
-    .right-box {
-      padding-right: 0;
-      padding-left: 0;
-    }
-
-    .chart_list_item_text {
-      max-width: 86%;
-    }
+    min-height: ~"calc(64px * var(--chat-density, 1))";
+    padding-top: ~"calc(8px * var(--chat-density, 1))";
+    padding-bottom: ~"calc(8px * var(--chat-density, 1))";
   }
 }
 

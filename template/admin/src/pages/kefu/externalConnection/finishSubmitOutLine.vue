@@ -51,7 +51,7 @@ export default {
     closeIframe() {
       parent.postMessage({ type: 'closeWindow' }, "*");
       this.$router.push({
-        name: 'customerServerRedirect',
+        name: 'customerServer',
         query: this.$route.query
       })
       parent.postMessage({ type: 'reload' }, "*");

@@ -544,119 +544,54 @@ export default {
   }
 }
 
-.pc_customerServer_container.chat-bubble-clean {
-  .pc_customerServer_container_content .scroll_content .chart_list_item_text,
-  .pc_customerServer_container_content .scroll_content .right-box .chart_list_item_text {
-    border-radius: 6px;
-    box-shadow: none;
-  }
-}
-
-.pc_customerServer_container.chat-bubble-pill {
-  .pc_customerServer_container_content .scroll_content .chart_list_item_text,
-  .pc_customerServer_container_content .scroll_content .right-box .chart_list_item_text {
-    padding-right: 17px;
-    padding-left: 17px;
-    border-radius: 22px;
-  }
-}
-
-.pc_customerServer_container.chat-bubble-outline {
-  .pc_customerServer_container_content .scroll_content .chart_list_item_text,
-  .pc_customerServer_container_content .scroll_content .right-box .chart_list_item_text {
-    background: transparent;
-    border: 1px solid var(--chat-border);
-    border-radius: 12px;
-    box-shadow: none;
-  }
-}
-
-.pc_customerServer_container.chat-bubble-card {
-  .pc_customerServer_container_content .scroll_content .chart_list_item_text,
-  .pc_customerServer_container_content .scroll_content .right-box .chart_list_item_text {
-    border-radius: 12px;
-    box-shadow: 0 7px 18px rgba(31, 45, 61, .14);
-  }
-}
-
-.pc_customerServer_container.chat-layout-minimal {
-  max-height: 600px;
-
+/* 预设的具体数值来自 @/config/chatThemes.js，此处只声明桌面版的基准尺寸并乘以密度倍率，
+   移动版与后台预览用同一套变量各自换算，改预设只需改那一个文件 */
+.pc_customerServer_container {
   .pc_customerServer_container_header {
-    height: 50px;
-    padding-top: 10px;
-    padding-bottom: 10px;
+    justify-content: var(--chat-header-justify, space-between);
+
+    &_title img {
+      display: var(--chat-header-logo, block);
+      width: ~"calc(30px * var(--chat-avatar-scale, 1))";
+      height: ~"calc(30px * var(--chat-avatar-scale, 1))";
+    }
   }
 
-  .pc_customerServer_container_content .chart_list_item_content {
-    padding-top: 5px;
-    padding-bottom: 5px;
-  }
+  .pc_customerServer_container_content {
+    .chart_list_item_content {
+      padding-top: ~"calc(8px * var(--chat-density, 1))";
+      padding-bottom: ~"calc(8px * var(--chat-density, 1))";
+    }
 
-  .pc_customerServer_container_content .chart_list_item_avatar {
-    width: 30px;
-    height: 30px;
+    .chart_list_item_avatar {
+      display: var(--chat-avatar-display, block);
+      width: ~"calc(33px * var(--chat-avatar-scale, 1))";
+      height: ~"calc(33px * var(--chat-avatar-scale, 1))";
+    }
+
+    .scroll_content .chart_list_item_text,
+    .scroll_content .right-box .chart_list_item_text {
+      max-width: ~"calc(60% * var(--chat-bubble-width-scale, 1))";
+      padding-right: var(--chat-bubble-pad-x, 14px);
+      padding-left: var(--chat-bubble-pad-x, 14px);
+      border-width: var(--chat-bubble-border-width, 1px);
+      box-shadow: var(--chat-bubble-shadow, none);
+    }
+
+    .scroll_content .chart_list_item_text {
+      background: var(--chat-bubble-fill, var(--chat-incoming));
+      border-radius: var(--chat-bubble-radius-in, 14px 14px 14px 4px);
+    }
+
+    .scroll_content .right-box .chart_list_item_text {
+      border-radius: var(--chat-bubble-radius-out, 14px 14px 4px 14px);
+    }
   }
 
   .pc_customerServer_container_footer {
-    min-height: 150px;
-    padding-top: 10px;
-    padding-bottom: 10px;
-  }
-}
-
-.pc_customerServer_container.chat-layout-soft {
-  .pc_customerServer_container_header {
-    height: 64px;
-
-    &_title img {
-      width: 38px;
-      height: 38px;
-    }
-  }
-
-  .pc_customerServer_container_content .chart_list_item_content {
-    padding-top: 12px;
-    padding-bottom: 12px;
-  }
-
-  .pc_customerServer_container_content .chart_list_item_avatar {
-    width: 38px;
-    height: 38px;
-  }
-
-  .pc_customerServer_container_footer {
-    min-height: 200px;
-    padding: 18px 22px;
-  }
-}
-
-.pc_customerServer_container.chat-layout-midnight {
-  .pc_customerServer_container_header {
-    position: relative;
-    justify-content: center;
-
-    &_title img {
-      display: none;
-    }
-
-    &_handle {
-      position: absolute;
-      right: 14px;
-    }
-  }
-
-  .pc_customerServer_container_content .chart_list_item_avatar {
-    display: none;
-  }
-
-  .pc_customerServer_container_content .chart_list_item_content {
-    padding-right: 18px;
-    padding-left: 18px;
-  }
-
-  .pc_customerServer_container_content .chart_list_item_text {
-    max-width: 78%;
+    min-height: ~"calc(180px * var(--chat-density, 1))";
+    padding-top: ~"calc(14px * var(--chat-density, 1))";
+    padding-bottom: ~"calc(14px * var(--chat-density, 1))";
   }
 }
 

@@ -118,7 +118,7 @@ const customerServerStyleObject = new customerServerStyle();
 function initCustomerServer(option) {
     this.outLine = false; // 是否在离线界面
     this.settingObj = settingObj;
-    this.settingObj.openUrl = `${option.openUrl || location.origin}/chat/index`; //服务器地址加路由, 若不传入则自动获取引入应用所在服务器的域名
+    this.settingObj.openUrl = `${option.openUrl || location.origin}/chat`; //服务器地址加路由, 若不传入则自动获取引入应用所在服务器的域名
     this.settingObj.domId = option.customerServerTip || 'customerServerTip'; //浮动客服dom
     this.settingObj.insertDomNode = option.insertDomNode || 'body' // 插入的标签
     this.settingObj.token = option.token; // token为必填项

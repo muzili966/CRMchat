@@ -74,30 +74,15 @@ export default [
 		},
 		component: () => import('@/pages/kefu/appChat/mobile/feedback')
 	},
-	// 外部连接，跳转联系客服模块
+	// 访客端唯一对外地址：同一地址内按设备类型渲染桌面版或移动版，
+	// 不做跳转，接入方无需区分终端，地址栏也不会出现终端专属路径
 	{
-		path: '/chat/index',
-		name: 'customerServerRedirect',
+		path: '/chat',
+		name: 'customerServer',
 		meta: {
 			title: '联系客服'
 		},
 		component: () => import('@/pages/kefu/externalConnection/index')
-	},
-	{
-		path: '/chat/pc',
-		name: 'customerServerPc',
-		meta: {
-			title: '联系客服pc'
-		},
-		component: () => import('@/pages/kefu/externalConnection/pcCustomerServer')
-	},
-	{
-		path: '/chat/mobile',
-		name: 'customerServerMobile',
-		meta: {
-			title: '联系客服mobile'
-		},
-		component: () => import('@/pages/kefu/externalConnection/mobileCustomerServer')
 	},
 	{
 		// 客服不在线。提交反馈

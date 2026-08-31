@@ -299,14 +299,15 @@
                 return HEX_COLOR_REG.test(this.form.theme_color) ? this.form.theme_color : THEME_COLOR_DEFAULT
             },
             previewVariables () {
-                return getChatThemeVariables(this.previewColor)
+                //与访客端调用同一个函数，预设改动无需在预览里重复一遍
+                return getChatThemeVariables(
+                    this.previewColor,
+                    getChatLayout(this.form.theme_style).value,
+                    getBubbleStyle(this.form.bubble_style).value
+                )
             },
             previewClasses () {
-                return [
-                    `chat-window-${this.previewDevice}`,
-                    `chat-layout-${getChatLayout(this.form.theme_style).value}`,
-                    `chat-bubble-${getBubbleStyle(this.form.bubble_style).value}`
-                ]
+                return [`chat-window-${this.previewDevice}`]
             },
             firstBanner () {
                 return this.form.banners.find(item => item.image) || null
@@ -822,81 +823,34 @@
         justify-content: flex-end;
     }
     .chat-bubble {
-        max-width: 76%;
-        padding: 9px 12px;
-        border-radius: 14px 14px 14px 4px;
-        background: var(--chat-incoming);
+        max-width: calc(76% * var(--chat-bubble-width-scale, 1));
+        padding: calc(9px * var(--chat-density, 1)) var(--chat-bubble-pad-x, 12px);
+        border-radius: var(--chat-bubble-radius-in, 14px 14px 14px 4px);
+        border: var(--chat-bubble-border-width, 0px) solid var(--chat-border);
+        background: var(--chat-bubble-fill, var(--chat-incoming));
         color: var(--chat-text);
         font-size: 13px;
         line-height: 1.6;
-        box-shadow: 0 2px 8px rgba(31, 45, 61, .06);
+        box-shadow: var(--chat-bubble-shadow, none);
     }
     .chat-msg-self .chat-bubble {
         color: #fff;
-        border-radius: 14px 14px 4px 14px;
+        border-radius: var(--chat-bubble-radius-out, 14px 14px 4px 14px);
     }
-    .chat-bubble-clean .chat-bubble {
-        border-radius: 6px;
-        box-shadow: none;
+    /* 预设数值与访客端共用 @/config/chatThemes.js，预览只按同样的倍率换算自己的基准 */
+    .chat-header {
+        justify-content: var(--chat-header-justify, flex-start);
     }
-    .chat-bubble-pill .chat-bubble,
-    .chat-bubble-pill .chat-msg-self .chat-bubble {
-        border-radius: 22px;
-        padding-left: 15px;
-        padding-right: 15px;
+    .chat-logo {
+        display: var(--chat-header-logo, block);
+        width: calc(22px * var(--chat-avatar-scale, 1));
+        height: calc(22px * var(--chat-avatar-scale, 1));
     }
-    .chat-bubble-outline .chat-bubble {
-        background: transparent;
-        border: 1px solid var(--chat-border);
-        border-radius: 12px;
-        box-shadow: none;
+    .chat-msg {
+        padding-top: calc(5px * var(--chat-density, 1));
+        padding-bottom: calc(5px * var(--chat-density, 1));
     }
-    .chat-bubble-card .chat-bubble,
-    .chat-bubble-card .chat-msg-self .chat-bubble {
-        border-radius: 12px;
-        box-shadow: 0 6px 16px rgba(31, 45, 61, .14);
-    }
-    .chat-layout-minimal .chat-header {
-        height: 44px;
-    }
-    .chat-layout-minimal .chat-logo {
-        width: 28px;
-        height: 28px;
-    }
-    .chat-layout-minimal .chat-body {
-        padding: 10px;
-    }
-    .chat-layout-minimal .chat-msg {
-        margin-bottom: 8px;
-    }
-    .chat-layout-minimal .chat-footer {
-        padding: 8px;
-    }
-    .chat-layout-soft .chat-header {
-        height: 62px;
-    }
-    .chat-layout-soft .chat-logo {
-        width: 38px;
-        height: 38px;
-    }
-    .chat-layout-soft .chat-body {
-        padding: 24px 18px;
-    }
-    .chat-layout-soft .chat-msg {
-        margin-bottom: 17px;
-    }
-    .chat-layout-soft .chat-footer {
-        padding: 14px;
-    }
-    .chat-layout-midnight .chat-header {
-        justify-content: center;
-    }
-    .chat-layout-midnight .chat-logo {
-        display: none;
-    }
-    .chat-layout-midnight .chat-bubble {
-        max-width: 86%;
-    }
+
     .chat-footer {
         display: flex;
         align-items: center;

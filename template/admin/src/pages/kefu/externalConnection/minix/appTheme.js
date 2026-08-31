@@ -57,7 +57,7 @@ export default {
       return `chat-bubble-${this.bubbleStyle}`;
     },
     themeRootStyle() {
-      return getChatThemeVariables(this.themeColor);
+      return getChatThemeVariables(this.themeColor, this.themeStyle, this.bubbleStyle);
     },
     themeBgStyle() {
       return { background: this.themeColor };
