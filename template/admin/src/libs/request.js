@@ -12,6 +12,7 @@ import axios from 'axios'
 import { Message } from 'iview'
 import { getCookies, removeCookies, getSen, getLoc } from '@/libs/util'
 import Setting from '@/setting'
+import { getViewTenant } from '@/libs/tenantView'
 import router from '@/router';
 const service = axios.create({
     baseURL: Setting.apiBaseURL,
@@ -39,6 +40,12 @@ service.interceptors.request.use(
 
         if(token || kefuToken || mobileToken) {
             config.headers['Authori-zation'] = config.mobile ? 'Bearer ' + mobileToken : config.kefu ? 'Bearer ' + kefuToken : 'Bearer ' + token;
+        }
+        //平台账号处于租户视角时，后台请求统一带上 tenant_id；
+        //后端只读query参数，故放在params而非body，避免与业务字段冲突
+        const viewTenant = getViewTenant()
+        if(viewTenant && !config.kefu && !config.mobile) {
+            config.params = Object.assign({}, config.params, { tenant_id: viewTenant.id })
         }
         return config
     },

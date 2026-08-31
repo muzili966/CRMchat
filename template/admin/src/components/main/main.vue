@@ -20,6 +20,12 @@
           <header-search></header-search>
         </header-bar>
       </Header>
+      <!-- 租户视角横幅：平台账号很容易忘了自己正代入某个租户，改错数据代价大 -->
+      <div class="view-tenant-bar" v-if="viewTenant">
+        <Icon type="md-eye" size="16"/>
+        <span>正在以「<b>{{ viewTenant.name }}</b>」的身份查看，所有操作都作用于该租户</span>
+        <a @click="exitTenantView">退出租户视角</a>
+      </div>
       <Content class="main-content-con">
         <Layout class="main-layout-con">
           <div class="tag-nav-wrapper">
@@ -40,6 +46,8 @@
 </template>
 <script>
 import SideMenu from './components/side-menu'
+import { getViewTenant, clearViewTenant } from '@/libs/tenantView'
+import { viewAuthApi } from '@/api/setting'
 import HeaderBar from './components/header-bar'
 import TagsNav from './components/tags-nav'
 import User from './components/user'
@@ -77,6 +85,7 @@ export default {
   },
   data() {
     return {
+      viewTenant: getViewTenant(),
       collapsed: JSON.parse(getCookies('collapsed') || 'false'),
       minLogo: defaultMinLogo,
       maxLogo: defaultMaxLogo,
@@ -136,6 +145,22 @@ export default {
     }
   },
   methods: {
+    //登录时下发的权限是登录那一刻的视角；切换视角后必须重新拉，
+    //否则会出现菜单看得到但路由被拦、或反过来的错位
+    refreshViewAuth () {
+      viewAuthApi().then(res => {
+        const data = res.data || {}
+        if (!data.unique_auth) return
+        this.$store.commit('userInfo/uniqueAuth', data.unique_auth)
+        this.$store.commit('userInfo/access', data.unique_auth)
+        this.$store.commit('menus/getmenusNav', data.menus)
+      }).catch(() => {})
+    },
+    exitTenantView () {
+      clearViewTenant()
+      //权限随视角变化，整页重载确保菜单与路由权限一并刷新
+      window.location.href = '/admin'
+    },
     ...mapMutations([
       'setBreadCrumb',
       'setTagNavList',
@@ -237,6 +262,7 @@ export default {
     }
   },
   mounted() {
+    this.refreshViewAuth()
     this.screenWidth = document.body.clientWidth
     window.onresize = () => {
       return (() => {
@@ -299,5 +325,22 @@ export default {
   top: 0;
   left: 0;
   z-index: 1000;
+}
+
+.view-tenant-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #FFF7E6;
+  border-bottom: 1px solid #FFE0A3;
+  color: #8C5A00;
+  font-size: 13px;
+}
+
+.view-tenant-bar a {
+  margin-left: auto;
+  color: #E38B00;
+  text-decoration: underline;
 }
 </style>

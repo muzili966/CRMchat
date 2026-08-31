@@ -15,6 +15,8 @@ namespace app\controller\admin;
 use app\services\chat\ChatServiceRecordServices;
 use app\services\chat\ChatUserServices;
 use app\services\system\SystemMenusServices;
+use app\models\system\admin\SystemAdmin;
+use crmeb\services\tenant\TenantContext;
 
 /**
  * 首页
@@ -59,6 +61,28 @@ class Index extends AuthController
      * 获取菜单
      * @return mixed
      */
+    /**
+     * 当前视角下的菜单与权限标识
+     *
+     * 平台账号切换租户视角后，可用页面随之变化；登录时下发的那份已经过期，
+     * 前端据此重新写入，否则会出现"菜单看得到但路由被拦"或反之
+     * @return mixed
+     */
+    public function viewAuth()
+    {
+        /** @var SystemMenusServices $menusServices */
+        $menusServices = app()->make(SystemMenusServices::class);
+        $adminInfo = $this->adminInfo;
+        //已切换到租户视角时按租户口径下发，未切换则仍剔除租户专属项
+        $platformView = SystemAdmin::isPlatformAdmin($adminInfo) && !TenantContext::id();
+        [$menus, $uniqueAuth] = $menusServices->getMenusList($adminInfo['roles'], (int)$adminInfo['level'], $platformView);
+        return $this->success([
+            'menus' => $menus,
+            'unique_auth' => $uniqueAuth,
+            'tenant_id' => (int)TenantContext::id(),
+        ]);
+    }
+
     public function getMenusList()
     {
         /** @var SystemMenusServices $menusServices */

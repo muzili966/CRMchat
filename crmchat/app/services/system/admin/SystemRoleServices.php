@@ -97,7 +97,8 @@ class SystemRoleServices extends BaseServices
         $auth = $this->getRolesByAuth($request->adminInfo()['roles'], 2);
         $rule = str_replace('adminapi/', '', trim(strtolower($request->rule()->getRule())));
         $method = trim(strtolower($request->method()));
-        if (in_array($rule, ['setting/admin/logout', 'menuslist'])) {
+        //viewauth与menuslist同属"拿自己能看什么"，不能反过来被权限拦住
+        if (in_array($rule, ['setting/admin/logout', 'menuslist', 'viewauth'])) {
             return true;
         }
         //验证访问接口是否存在

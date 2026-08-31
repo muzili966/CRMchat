@@ -50,6 +50,8 @@
                     <a @click="subscribe(row)">开通续费</a>
                     <Divider type="vertical"/>
                     <a @click="createAdmin(row)">创建管理员</a>
+                    <Divider type="vertical"/>
+                    <a @click="enterTenant(row)">以该租户身份查看</a>
                 </template>
             </Table>
             <div class="acea-row row-right page">
@@ -141,6 +143,7 @@
 
 <script>
     import { mapState } from 'vuex'
+    import { setViewTenant } from '@/libs/tenantView'
     import { tenantListApi, tenantSaveApi, tenantUpdateApi, tenantSetStatusApi, tenantCreateAdminApi, tenantSubscribeApi, planAllApi } from '@/api/tenant'
 
     const emptyTenantForm = () => ({ id: 0, name: '', domain: '', remark: '', admin_account: '', admin_pwd: '', admin_conf_pwd: '' })
@@ -211,6 +214,20 @@
             this.getPlanOptions()
         },
         methods: {
+            //技术支持场景：平台需要看到租户实际配了什么。
+            //切换后所有后台请求自动带 tenant_id，可用页面随之变为该租户的
+            enterTenant (row) {
+                this.$Modal.confirm({
+                    title: '切换租户视角',
+                    content: `将以「${row.name}」的身份查看后台，期间的查看与修改都作用于该租户。可随时退出。`,
+                    okText: '进入',
+                    onOk: () => {
+                        setViewTenant({ id: row.id, name: row.name })
+                        //权限随视角变化，整页重载最省心，也避免残留的旧数据
+                        window.location.href = '/admin'
+                    }
+                })
+            },
             isExpired (row) {
                 return row.expire_time > 0 && row.expire_time * 1000 < Date.now()
             },

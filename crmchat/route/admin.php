@@ -41,6 +41,8 @@ Route::group('api', function () {
             Route::get('logo', 'Index/logo')->option(['real_name' => '获取logo']);
             Route::get('jnotice', 'Index/jnotice')->option(['real_name' => '消息通知']);
             Route::get('menusList', 'Index/getMenusList')->option(['real_name' => '获取菜单']);
+            //切换租户视角后重新拉取可用菜单与权限
+            Route::get('viewAuth', 'Index/viewAuth')->option(['real_name' => '获取当前视角权限']);
             Route::put('app/reset/:id', 'Application/reset')->option(['real_name' => '重置token']);
 
             Route::resource('app', 'Application')->option(['real_name' => [

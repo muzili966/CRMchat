@@ -841,3 +841,13 @@ export function cityCleanCacheApi() {
         method: 'get'
     })
 }
+
+/**
+ * @description 当前视角下的菜单与权限，用于平台账号切换租户视角后刷新
+ */
+export function viewAuthApi() {
+    return request({
+        url: 'viewAuth',
+        method: 'get'
+    })
+}
