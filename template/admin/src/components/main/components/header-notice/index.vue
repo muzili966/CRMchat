@@ -49,7 +49,8 @@
 }
 </style>
 <script>
-let newOrderAudioLink = new Audio(require('@/assets/video/newOrderAudioLink.mp3'));
+//系统公告与收到消息使用同一提示音，避免两种声音让人分不清发生了什么
+let newOrderAudioLink = new Audio(require('@/assets/video/notify.wav'));
 import { jnoticeRequest } from '@/api/common'
 // import {adminSocket} from '@/libs/socket';
 import { getCookies, removeCookies, setCookies } from '@/libs/util'

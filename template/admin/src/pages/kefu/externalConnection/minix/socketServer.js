@@ -3,7 +3,8 @@ import { userRecord, serviceUpload } from '@/api/kefu';
 import { setLoc, getLoc } from '@/libs/util'
 import Cookies from "js-cookie";
 
-var mp3 = require('@/assets/video/notice.wav');
+//与客服工作台、后台通知共用同一提示音
+var mp3 = require('@/assets/video/notify.wav');
 export default {
   data() {
     return {

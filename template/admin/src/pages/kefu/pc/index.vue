@@ -168,7 +168,8 @@
 
 <script>
 
-var mp3 = require('../../../assets/video/notice.wav');
+//收到消息与系统公告统一使用同一提示音
+var mp3 = require('../../../assets/video/notify.wav');
 var mp3 = new Audio(mp3);
 import Setting from '@/setting';
 import { HappyScroll } from 'vue-happy-scroll'
