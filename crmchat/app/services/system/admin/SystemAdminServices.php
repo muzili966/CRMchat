@@ -105,7 +105,9 @@ class SystemAdminServices extends BaseServices
             $tokenInfo = $this->createToken($adminInfo->id, $type, (int)($adminInfo->tenant_id ?? 0));
             /** @var SystemMenusServices $services */
             $services = app()->make(SystemMenusServices::class);
-            [$menus, $uniqueAuth] = $services->getMenusList($adminInfo->roles, (int)$adminInfo['level']);
+            //平台账号登录时不应拿到租户专属页面的权限，否则直接输网址仍进得去
+            $platformView = SystemAdmin::isPlatformAdmin($adminInfo->toArray());
+            [$menus, $uniqueAuth] = $services->getMenusList($adminInfo->roles, (int)$adminInfo['level'], $platformView);
             return [
                 'token'             => $tokenInfo['token'],
                 'expires_time'      => $tokenInfo['params']['exp'],
