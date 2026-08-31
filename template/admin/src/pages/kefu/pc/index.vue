@@ -1,14 +1,19 @@
 <template>
-  <div class="kefu-layouts">
+  <div class="kefu-layouts" :class="{ 'is-narrow': isNarrow, 'show-chat': mobileShowChat }">
     <div class="content-wrapper">
       <baseHeader :kefuInfo="kefuInfo" :online="online" @setOnline="setOnline"></baseHeader>
       <div class="container">
         <chatList ref="chatList" @setDataId="setDataId" @search="bindSearch" @changeType="changeType" :isShow="isShow" :userOnline="userOnline" :newRecored="newRecored" :searchData="searchData"></chatList>
         <div class="chat-content">
+          <!-- 窄屏为单栏，需要一个入口退回会话列表 -->
+          <div class="narrow-back" v-if="isNarrow" @click="mobileShowChat = false">
+            <Icon type="ios-arrow-back" size="20"/>
+            <span>{{ userActive && userActive.nickname ? userActive.nickname : '返回会话列表' }}</span>
+          </div>
           <div class="chat-body">
 
             <happy-scroll size="5" resize hide-horizontal :scroll-top="scrollTop" @vertical-start="scrollHandler">
-              <div style="width: 600px; padding:20px;" id="chat_scroll" ref="scrollBox">
+              <div class="chat-scroll-inner" id="chat_scroll" ref="scrollBox">
                 <Spin v-show="isLoad">
                   <Icon type="ios-loading" size=18 class="demo-spin-icon-load"></Icon>
                   <div>Loading</div>
@@ -172,6 +177,8 @@
 import Setting from '@/setting';
 import { HappyScroll } from 'vue-happy-scroll'
 import baseHeader from './components/baseHeader';
+const NARROW_WIDTH = 1100
+
 import chatList from './components/chatList'
 import rightMenu from "./components/rightMenu";
 import emojiList from "@/utils/emoji";
@@ -261,12 +268,19 @@ export default {
       aiNickname: '', // AI会话搜索名称
       aiSessionList: [],
       aiTakeId: '', // 正在接管的访客uid
+      //窄屏下单栏切换：false=会话列表，true=对话
+      mobileShowChat: false,
+      viewportWidth: typeof window !== 'undefined' ? window.innerWidth : 1280,
     }
   },
   computed: {
     ...mapState({
       socketStatus: state => state.admin.kefu.socketStatus
     }),
+    //三栏布局需要约1200px；不足则退为单栏，平板竖屏与手机都走这一路
+    isNarrow() {
+      return this.viewportWidth < NARROW_WIDTH
+    },
     disabled() {
       if(this.chatCon.length == 0) {
         return true
@@ -323,6 +337,8 @@ export default {
   mounted() {
     //Chrome需借一次用户交互解锁播放权限，否则收到消息时没有提示音
     initNotifySound()
+    this.onResize = () => { this.viewportWidth = window.innerWidth }
+    window.addEventListener('resize', this.onResize)
     let self = this
     window.addEventListener('click', function() {
       self.isEmoji = false
@@ -335,7 +351,7 @@ export default {
     console.log(this.$route);
 
     window.onbeforeunload = (e) => {
-      if(this.$route.name == "kefu_pc_list") {
+      if(this.$route.name == "kefu_workspace") {
         e = e || window.event;
         // 兼容IE8和Firefox 4之前的版本
         if(e) {
@@ -349,6 +365,10 @@ export default {
     };
 
 
+  },
+  beforeDestroy() {
+    //不解绑会随页面反复进出而不断累积
+    this.onResize && window.removeEventListener('resize', this.onResize)
   },
   methods: {
     // 建立scoket 连接
@@ -478,6 +498,8 @@ export default {
     // 获取列表用户信息
     setDataId(data) {
       this.userActive = data
+      //窄屏单栏：选中会话即切到对话视图
+      this.mobileShowChat = true
       this.chatList = []
       this.upperId = 0
       this.oldHeight = 0
@@ -711,6 +733,75 @@ export default {
 textarea.ivu-input {
   border: none;
   resize: none;
+}
+
+/* 窄屏单栏：会话列表与对话互斥展示，右侧资料栏收起 */
+.narrow-back {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  height: 44px;
+  padding: 0 12px;
+  border-bottom: 1px solid #ECECEC;
+  color: #17233d;
+  font-size: 15px;
+  cursor: pointer;
+  flex: none;
+}
+
+.chat-scroll-inner {
+  width: 600px;
+  padding: 20px;
+}
+
+.kefu-layouts.is-narrow {
+  padding-top: 0;
+  overflow: hidden;
+
+  .content-wrapper {
+    width: 100%;
+    height: 100vh;
+  }
+
+  .narrow-back {
+    display: flex;
+  }
+
+  .chat-scroll-inner {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .container {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /deep/ .chatList {
+    width: 100%;
+    border-right: 0;
+  }
+
+  .chat-content {
+    display: none;
+    width: 100%;
+    border-right: 0;
+  }
+
+  /* 资料栏在窄屏挤不下，先收起；需要时可从对话页另开入口 */
+  /deep/ .right-wrapper {
+    display: none;
+  }
+}
+
+.kefu-layouts.is-narrow.show-chat {
+  /deep/ .chatList {
+    display: none;
+  }
+
+  .chat-content {
+    display: flex;
+  }
 }
 
 .kefu-layouts {

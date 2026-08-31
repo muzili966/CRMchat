@@ -34,15 +34,21 @@ export default [
 	},
 
 
+	// 客服工作台：同一地址内按视口宽度切换三栏与单栏，不再区分终端
 	{
-		path: '/kefu/pc_list',
-		name: `${pre}pc_list`,
+		path: '/kefu/workspace',
+		name: `${pre}workspace`,
 		meta: {
 			auth: true,
 			title: '客服',
 			kefu: true
 		},
 		component: () => import('@/pages/kefu/pc/index')
+	},
+	// 旧地址：客服可能已收藏，保留跳转
+	{
+		path: '/kefu/pc_list',
+		redirect: to => ({ name: `${pre}workspace`, query: to.query })
 	},
 	{
 		path: '/kefu/appChat',

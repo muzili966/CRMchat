@@ -197,7 +197,7 @@ export default {
           return this.$router.replace({ path: this.$route.query.redirect || '/kefu/mobile_list' });
         } else {
           // pc页面
-          return this.$router.replace({ path: this.$route.query.redirect || '/kefu/pc_list' });
+          return this.$router.replace({ path: this.$route.query.redirect || '/kefu/workspace' });
         }
       }).catch(rej => {
         msg();
@@ -283,7 +283,7 @@ export default {
             return this.$router.replace({ path: this.$route.query.redirect || '/kefu/mobile_list' });
           } else {
             // pc页面
-            return this.$router.replace({ path: this.$route.query.redirect || '/kefu/pc_list' });
+            return this.$router.replace({ path: this.$route.query.redirect || '/kefu/workspace' });
           }
         }
       }).catch(error => {
