@@ -18,6 +18,7 @@ use app\services\ApplicationServices;
 use app\services\TenantServices;
 use crmeb\services\CacheService;
 use crmeb\services\tenant\TenantContext;
+use think\facade\Log;
 use Swoole\Server;
 use Swoole\Websocket\Frame;
 use think\Event;
@@ -254,8 +255,22 @@ class Manager extends Websocket
 
         $data = $result['data'] ?? [];
 
-        /** @var Response $res */
-        $res = $this->exec($info['type'], $result['type'], [$frame->fd, $result['form_type'] ?? null, $data, $this->response]);
+        try {
+            /** @var Response $res */
+            $res = $this->exec($info['type'], $result['type'], [$frame->fd, $result['form_type'] ?? null, $data, $this->response]);
+        } catch (\Throwable $e) {
+            //原先不捕获：handler一旦抛错，客户端收不到任何帧只能干等，
+            //消息其实已入库，于是表现为"发出去了但要刷新才看得到"
+            Log::error(sprintf(
+                'websocket事件[%s.%s]执行失败: %s @%s:%d',
+                $info['type'] ?? '-', $result['type'], $e->getMessage(), $e->getFile(), $e->getLine()
+            ));
+            return $this->send($frame->fd, $this->response->message('err_tip', [
+                'msg' => '消息处理失败，请重试',
+                //客服与后台是已认证的内部账号，回传原因便于定位；访客端只给通用提示
+                'reason' => in_array($info['type'] ?? '', ['kefu', 'admin'], true) ? $e->getMessage() : '',
+            ]));
+        }
         if ($res) return $this->send($frame->fd, $res);
         return true;
     }
