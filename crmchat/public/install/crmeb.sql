@@ -1438,3 +1438,15 @@ VALUES
 
 UPDATE `eb_system_role` SET `rules` = CONCAT(`rules`, ',1302')
   WHERE `tenant_id` > 0 AND CONCAT(',',`rules`,',') NOT LIKE '%,1302,%';
+
+-- 租户视角权限接口（与update.sql保持一致）
+-- 平台账号切换租户视角后，可用菜单与权限随之变化，前端需重新拉取。
+-- 注意：SystemRoleServices 里的短名白名单（menuslist等）实际匹配不上——
+-- 比对用的是 api/admin/xxx 完整形式，那是上游遗留的死分支，新接口须走菜单授权。
+INSERT INTO `eb_system_menus`
+  (`id`,`pid`,`menu_name`,`api_url`,`methods`,`is_show`,`is_tenant`,`is_platform`,`auth_type`,`is_del`,`is_show_path`,`sort`,`params`,`header`,`path`,`unique_auth`,`icon`,`module`,`controller`,`action`,`access`,`menu_path`)
+SELECT 1303,`pid`,'获取当前视角权限','api/admin/viewAuth','GET',0,1,1,2,0,0,0,'[]','',`path`,'','','admin','','',0,''
+  FROM `eb_system_menus` WHERE `id` = 1042;
+
+UPDATE `eb_system_role` SET `rules` = CONCAT(`rules`, ',1303')
+  WHERE CONCAT(',',`rules`,',') NOT LIKE '%,1303,%';

@@ -502,3 +502,15 @@ UPDATE `eb_system_role` SET `rules` = CONCAT(`rules`, ',1302')
 -- 存量数据在此归一化。各环境执行前请把域名替换成本环境实际的 site_url。
 -- UPDATE `eb_chat_user` SET `avatar` = REPLACE(`avatar`, 'http://你的站点域名/', '/') WHERE `avatar` LIKE 'http://你的站点域名/%';
 -- UPDATE `eb_chat_service_record` SET `avatar` = REPLACE(`avatar`, 'http://你的站点域名/', '/') WHERE `avatar` LIKE 'http://你的站点域名/%';
+
+-- ============ 租户视角权限接口（2026-08-31） ============
+-- 平台账号切换租户视角后，可用菜单与权限随之变化，前端需重新拉取。
+-- 注意：SystemRoleServices 里的短名白名单（menuslist等）实际匹配不上——
+-- 比对用的是 api/admin/xxx 完整形式，那是上游遗留的死分支，新接口须走菜单授权。
+INSERT INTO `eb_system_menus`
+  (`id`,`pid`,`menu_name`,`api_url`,`methods`,`is_show`,`is_tenant`,`is_platform`,`auth_type`,`is_del`,`is_show_path`,`sort`,`params`,`header`,`path`,`unique_auth`,`icon`,`module`,`controller`,`action`,`access`,`menu_path`)
+SELECT 1303,`pid`,'获取当前视角权限','api/admin/viewAuth','GET',0,1,1,2,0,0,0,'[]','',`path`,'','','admin','','',0,''
+  FROM `eb_system_menus` WHERE `id` = 1042;
+
+UPDATE `eb_system_role` SET `rules` = CONCAT(`rules`, ',1303')
+  WHERE CONCAT(',',`rules`,',') NOT LIKE '%,1303,%';
