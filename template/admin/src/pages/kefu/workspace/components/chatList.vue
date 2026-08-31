@@ -10,7 +10,8 @@
     <div class="scroll-box">
 
       <vue-scroll :ops="ops" @handle-scroll="handleScroll" v-if="userList.length>0">
-        <div class="chat-item" v-for="(item,index) in userList" :key="index" :class="{active:curId == item.id}" @click="selectUser(item,index)">
+        <div class="chat-item" v-for="(item,index) in userList" :key="index"
+             :class="{ active: curId == item.id, waiting: item.mssage_num > 0 }" @click="selectUser(item,index)">
           <div class="avatar">
             <img v-lazy="item.avatar" alt="">
             <div class="status" :class="{off:item.online == 0}"></div>
@@ -18,10 +19,6 @@
           <div class="user-info">
             <div class="hd">
               <span class="name line1">{{item.nickname}}</span>
-              <!-- 全部会话下需一眼看出谁在接待 -->
-              <span class="label ai" v-if="item.is_ai">AI接待</span>
-              <span class="label mine" v-else-if="item.is_mine && showHandler">我接待</span>
-              <span class="label handler" v-else-if="item.handler_name">{{item.handler_name}}</span>
               <template v-if="item.type == 2">
                 <span class="label">小程序</span>
               </template>
@@ -34,6 +31,17 @@
               <template v-if="item.type == 0">
                 <span class="label pc">PC端</span>
               </template>
+            </div>
+            <!-- 接待归属单独一行：与终端标签挤在名称行会换行且看不清 -->
+            <div class="handle-row" v-if="showHandler">
+              <span class="chip ai" v-if="item.is_ai">AI接待</span>
+              <span class="chip mine" v-else-if="item.is_mine">我接待</span>
+              <span class="chip other" v-else-if="item.handler_name"
+                    :class="{ off: !item.handler_online }">
+                {{item.handler_name}}<i v-if="!item.handler_online">·离线</i>
+              </span>
+              <span class="chip none" v-else>未分配</span>
+              <span class="chip wait" v-if="item.mssage_num > 0">待回复</span>
             </div>
             <div class="bd line1">
               <template v-if="item.message_type <=2">{{item.message}}</template>
@@ -376,7 +384,8 @@ export default {
       item.mssage_num = 0
       this.curId = item.id
       item.index = index;
-      this.$emit('setDataId', item)
+      //第二个参数标识是用户主动点击：自动选中不应在窄屏下跳到对话视图
+      this.$emit('setDataId', item, true)
     },
     handleScroll(vertical, horizontal, nativeEvent) {
       if(vertical.process == 1) {
@@ -441,11 +450,68 @@ export default {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 10px;
-    height: 74px;
+    padding: 10px;
+    /* 多一行接待状态，固定高度会把消息挤没 */
+    min-height: 74px;
+    height: auto;
     box-sizing: border-box;
     border-left: 3px solid transparent;
     cursor: pointer;
+
+    /* 有未读即等待处理，左侧强调条让人一眼扫到 */
+    &.waiting {
+      border-left-color: #ff9900;
+    }
+
+    .handle-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin: 2px 0 3px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 0 6px;
+      height: 18px;
+      border-radius: 9px;
+      font-size: 11px;
+      line-height: 18px;
+      white-space: nowrap;
+
+      i {
+        font-style: normal;
+        opacity: .8;
+      }
+
+      &.ai {
+        background: #FFF1DB;
+        color: #E38B00;
+      }
+
+      &.mine {
+        background: #DCF5E7;
+        color: #10893E;
+      }
+
+      &.other {
+        background: #EAF1FF;
+        color: #3875EA;
+      }
+
+      /* 接待人已离线：这条会话实际无人处理 */
+      &.other.off, &.none {
+        background: #F2F3F5;
+        color: #8A94A6;
+      }
+
+      &.wait {
+        background: #FFEDE9;
+        color: #E8380D;
+      }
+    }
 
     &.active {
       background: #EFF0F1;

@@ -496,10 +496,11 @@ export default {
       // console.log(this.tourist);
     },
     // 获取列表用户信息
-    setDataId(data) {
+    setDataId(data, fromClick = false) {
       this.userActive = data
-      //窄屏单栏：选中会话即切到对话视图
-      this.mobileShowChat = true
+      //窄屏单栏：仅用户主动点击会话才切到对话视图；
+      //切换tab、加载列表都会自动选中首条，那时不应跳走
+      if (fromClick) this.mobileShowChat = true
       this.chatList = []
       this.upperId = 0
       this.oldHeight = 0

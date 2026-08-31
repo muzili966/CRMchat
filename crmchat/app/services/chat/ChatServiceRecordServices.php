@@ -93,7 +93,7 @@ class ChatServiceRecordServices extends BaseServices
         }
         /** @var ChatServiceServices $services */
         $services = app()->make(ChatServiceServices::class);
-        $rows = $services->getColumn([['appid', '=', $appid], ['user_id', 'IN', $userIds]], 'nickname,is_ai,user_id', 'user_id');
+        $rows = $services->getColumn([['appid', '=', $appid], ['user_id', 'IN', $userIds]], 'nickname,is_ai,online,user_id', 'user_id');
         return is_array($rows) ? $rows : [];
     }
 
@@ -123,6 +123,8 @@ class ChatServiceRecordServices extends BaseServices
             $item['handler_name'] = $handler['nickname'] ?? '';
             $item['is_ai'] = (int)($handler['is_ai'] ?? 0);
             $item['is_mine'] = (int)($item['user_id'] == $userId);
+            //接待人离线且有未读，说明这条会话实际无人处理
+            $item['handler_online'] = (int)($handler['online'] ?? 0);
         }
         return $list;
     }
