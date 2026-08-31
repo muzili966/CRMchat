@@ -73,10 +73,40 @@ class ChatServiceRecordServices extends BaseServices
      * @throws DbException
      * @throws ModelNotFoundException
      */
-    public function getServiceList(string $appid, int $userId, string $nickname, $isTourist = '')
+    /** 会话归属口径：仅当前客服接待的 */
+    const SCOPE_MINE = 'mine';
+
+    /** 会话归属口径：本应用全部，含其他客服与AI坐席接待的 */
+    const SCOPE_ALL = 'all';
+
+    /**
+     * 接待人id到名称与是否AI的映射
+     * @param string $appid
+     * @param array $userIds 会话行上的接待人chat_user id
+     * @return array
+     */
+    protected function handlerMap(string $appid, array $userIds): array
+    {
+        $userIds = array_values(array_unique(array_filter(array_map('intval', $userIds))));
+        if (!$userIds) {
+            return [];
+        }
+        /** @var ChatServiceServices $services */
+        $services = app()->make(ChatServiceServices::class);
+        $rows = $services->getColumn([['appid', '=', $appid], ['user_id', 'IN', $userIds]], 'nickname,is_ai,user_id', 'user_id');
+        return is_array($rows) ? $rows : [];
+    }
+
+    public function getServiceList(string $appid, int $userId, string $nickname, $isTourist = '', string $scope = self::SCOPE_MINE)
     {
         [$page, $limit] = $this->getPageValue();
-        $list = $this->dao->getServiceList(['appid' => $appid, 'user_id' => $userId, 'title' => $nickname, 'is_tourist' => $isTourist], $page, $limit, ['user']);
+        $where = ['appid' => $appid, 'title' => $nickname, 'is_tourist' => $isTourist];
+        //全部会话不限接待人，AI坐席接待的会话因此也会出现在列表里
+        if ($scope !== self::SCOPE_ALL) {
+            $where['user_id'] = $userId;
+        }
+        $list = $this->dao->getServiceList($where, $page, $limit, ['user']);
+        $handlers = self::SCOPE_ALL === $scope ? $this->handlerMap($appid, array_column($list, 'user_id')) : [];
         foreach ($list as &$item) {
             if ($item['message_type'] == 1) {
                 $item['message'] = $this->getMessage($item['message']);
@@ -88,6 +118,11 @@ class ChatServiceRecordServices extends BaseServices
             if (isset($item['user']['version']) && $item['user']['version']) {
                 $item['nickname'] = '[' . $item['user']['version'] . ']' . $item['nickname'];
             }
+            //前端据此标记接待人与是否AI接待
+            $handler = $handlers[$item['user_id']] ?? null;
+            $item['handler_name'] = $handler['nickname'] ?? '';
+            $item['is_ai'] = (int)($handler['is_ai'] ?? 0);
+            $item['is_mine'] = (int)($item['user_id'] == $userId);
         }
         return $list;
     }

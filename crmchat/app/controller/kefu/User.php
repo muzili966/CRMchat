@@ -144,9 +144,19 @@ class User extends AuthController
      * @throws DbException
      * @throws ModelNotFoundException
      */
-    public function recordList(string $nickname = '', $is_tourist = '')
+    public function recordList(string $nickname = '', $is_tourist = '', string $scope = '')
     {
-        return $this->success($this->services->getServiceList($this->kefuInfo['appid'], (int)$this->kefuInfo['user_id'], $nickname, $is_tourist));
+        //scope=all 时返回本应用全部会话（含其他客服与AI坐席接待的），默认仍只看自己的
+        $scope = $scope === ChatServiceRecordServices::SCOPE_ALL
+            ? ChatServiceRecordServices::SCOPE_ALL
+            : ChatServiceRecordServices::SCOPE_MINE;
+        return $this->success($this->services->getServiceList(
+            $this->kefuInfo['appid'],
+            (int)$this->kefuInfo['user_id'],
+            $nickname,
+            $is_tourist,
+            $scope
+        ));
     }
 
     /**

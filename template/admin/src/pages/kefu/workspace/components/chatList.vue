@@ -18,6 +18,10 @@
           <div class="user-info">
             <div class="hd">
               <span class="name line1">{{item.nickname}}</span>
+              <!-- 全部会话下需一眼看出谁在接待 -->
+              <span class="label ai" v-if="item.is_ai">AI接待</span>
+              <span class="label mine" v-else-if="item.is_mine && showHandler">我接待</span>
+              <span class="label handler" v-else-if="item.handler_name">{{item.handler_name}}</span>
               <template v-if="item.type == 2">
                 <span class="label">小程序</span>
               </template>
@@ -136,15 +140,25 @@ export default {
     return {
       hdTabCur: 1,
       hdTab: [
+        //scope=all 会带出其他客服与AI坐席接待的会话，行内标记接待人
         {
           key: 1,
-          title: '会话列表'
+          title: '我的接待',
+          scope: 'mine',
+          isTourist: ''
+        },
+        {
+          key: 2,
+          title: '全部会话',
+          scope: 'all',
+          isTourist: ''
         },
         {
           key: 0,
-          title: '用户列表'
+          title: '用户列表',
+          scope: 'mine',
+          isTourist: 0
         }
-
       ],
       userList: [],
       curId: '',
@@ -196,6 +210,15 @@ export default {
     })
     this.getList();
     // this.wsStart();
+  },
+  computed: {
+    currentTab() {
+      return this.hdTab.find(item => item.key === this.hdTabCur) || this.hdTab[0]
+    },
+    //只有"全部会话"才需要区分接待人，自己的列表里全是自己没必要标
+    showHandler() {
+      return this.currentTab.scope === 'all'
+    }
   },
   methods: {
     // 搜索
@@ -322,7 +345,8 @@ export default {
         nickname: this.nickname,
         page: this.page,
         limit: this.limit,
-        is_tourist: this.hdTabCur === 1 ? '' : 0
+        is_tourist: this.currentTab.isTourist,
+        scope: this.currentTab.scope
       }).then(res => {
         if(res.data.length > 0) {
           // 清零仅服务于随后自动选中的首条会话，刷新时保留未读数
@@ -478,6 +502,22 @@ export default {
           background: #D8E5FF;
           border-radius: 2px;
           padding: 1px 5px;
+
+          /* 接待人标记：与终端类型标签同处，避免层级不足被覆盖 */
+          &.ai {
+            background: #FFF1DB;
+            color: #E38B00;
+          }
+
+          &.mine {
+            background: #DCF5E7;
+            color: #10893E;
+          }
+
+          &.handler {
+            background: #EEF0F5;
+            color: #5A6478;
+          }
 
           &.H5 {
             background: #FAF1D0;

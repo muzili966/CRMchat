@@ -735,75 +735,6 @@ textarea.ivu-input {
   resize: none;
 }
 
-/* 窄屏单栏：会话列表与对话互斥展示，右侧资料栏收起 */
-.narrow-back {
-  display: none;
-  align-items: center;
-  gap: 4px;
-  height: 44px;
-  padding: 0 12px;
-  border-bottom: 1px solid #ECECEC;
-  color: #17233d;
-  font-size: 15px;
-  cursor: pointer;
-  flex: none;
-}
-
-.chat-scroll-inner {
-  width: 600px;
-  padding: 20px;
-}
-
-.kefu-layouts.is-narrow {
-  padding-top: 0;
-  overflow: hidden;
-
-  .content-wrapper {
-    width: 100%;
-    height: 100vh;
-  }
-
-  .narrow-back {
-    display: flex;
-  }
-
-  .chat-scroll-inner {
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  .container {
-    position: relative;
-    overflow: hidden;
-  }
-
-  /deep/ .chatList {
-    width: 100%;
-    border-right: 0;
-  }
-
-  .chat-content {
-    display: none;
-    width: 100%;
-    border-right: 0;
-  }
-
-  /* 资料栏在窄屏挤不下，先收起；需要时可从对话页另开入口 */
-  /deep/ .right-wrapper {
-    display: none;
-  }
-}
-
-.kefu-layouts.is-narrow.show-chat {
-  /deep/ .chatList {
-    display: none;
-  }
-
-  .chat-content {
-    display: flex;
-  }
-}
-
 .kefu-layouts {
   padding-top: 30px;
   height: 100%;
@@ -1204,4 +1135,77 @@ textarea.ivu-input {
     }
   }
 }
+
+/* 窄屏单栏：会话列表与对话互斥展示，右侧资料栏收起 */
+.narrow-back {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  height: 44px;
+  padding: 0 12px;
+  border-bottom: 1px solid #ECECEC;
+  color: #17233d;
+  font-size: 15px;
+  cursor: pointer;
+  flex: none;
+}
+
+.chat-scroll-inner {
+  width: 600px;
+  padding: 20px;
+}
+
+.kefu-layouts.is-narrow {
+  padding-top: 0;
+  overflow: hidden;
+
+  .content-wrapper {
+    width: 100%;
+    height: 100vh;
+  }
+
+  .narrow-back {
+    display: flex;
+  }
+
+  .chat-scroll-inner {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .container {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* 子组件把宽高都写死了，窄屏需一并放开 */
+  /deep/ .chatList {
+    width: 100%;
+    height: 100%;
+    border-right: 0;
+  }
+
+  .chat-content {
+    display: none;
+    width: 100%;
+    height: 100%;
+    border-right: 0;
+  }
+
+  /* 资料栏在窄屏挤不下，先收起；需要时可从对话页另开入口 */
+  /deep/ .right-wrapper {
+    display: none;
+  }
+}
+
+.kefu-layouts.is-narrow.show-chat {
+  /deep/ .chatList {
+    display: none;
+  }
+
+  .chat-content {
+    display: flex;
+  }
+}
+
 </style>
