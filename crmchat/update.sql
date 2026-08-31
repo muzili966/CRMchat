@@ -495,3 +495,10 @@ VALUES
 
 UPDATE `eb_system_role` SET `rules` = CONCAT(`rules`, ',1302')
   WHERE `tenant_id` > 0 AND CONCAT(',',`rules`,',') NOT LIKE '%,1302,%';
+
+-- ============ 头像绝对地址修正（2026-08-31） ============
+-- 游客头像原先经 link_url() 拼成绝对地址后入库，把当时的站点域名固化了下来；
+-- 站点地址或端口一变，历史头像全部失效（浏览器报连接被拒）。代码已改为存相对路径，
+-- 存量数据在此归一化。各环境执行前请把域名替换成本环境实际的 site_url。
+-- UPDATE `eb_chat_user` SET `avatar` = REPLACE(`avatar`, 'http://你的站点域名/', '/') WHERE `avatar` LIKE 'http://你的站点域名/%';
+-- UPDATE `eb_chat_service_record` SET `avatar` = REPLACE(`avatar`, 'http://你的站点域名/', '/') WHERE `avatar` LIKE 'http://你的站点域名/%';

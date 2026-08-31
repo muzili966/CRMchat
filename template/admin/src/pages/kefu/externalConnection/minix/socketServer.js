@@ -3,12 +3,11 @@ import { userRecord, serviceUpload } from '@/api/kefu';
 import { setLoc, getLoc } from '@/libs/util'
 import Cookies from "js-cookie";
 
-//与客服工作台、后台通知共用同一提示音
-var mp3 = require('@/assets/video/notify.wav');
+//提示音统一走 notifySound：内部处理Chrome的自动播放限制
+import { initNotifySound, playNotifySound } from '@/libs/notifySound';
 export default {
   data() {
     return {
-      mp3: new Audio(mp3),
       inputConType: 1,
       userMessage: '',
       chatServerData: {
@@ -46,6 +45,8 @@ export default {
     },
   },
   created() {
+    //Chrome需借一次用户交互解锁播放权限，否则收到消息时没有提示音
+    initNotifySound()
 
     // 获取url参数
     this.upperData = this.$route.query;
@@ -193,7 +194,7 @@ export default {
 
         ws.$on("reply", (data) => {
           try {
-            this.mp3.play();
+            playNotifySound();
           }catch (e) {
 
           }
@@ -233,7 +234,7 @@ export default {
 
         ws.$on('mssage_num', data => {
           if(data.num > 0) {
-            this.mp3.play();
+            playNotifySound();
             this.unReadMesage = data.num;
           }
           parent.postMessage({ type: 'onMessageNum', data: {num:data.num} }, "*");

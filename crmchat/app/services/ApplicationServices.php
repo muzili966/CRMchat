@@ -216,8 +216,9 @@ class ApplicationServices extends BaseServices
                 //按应用取头像池，应用未单独配置时服务内部回落租户全局设置
                 $theme = app()->make(ApplicationThemeServices::class)->getTheme($appid);
                 $touristAvatar = ApplicationThemeServices::inheritGlobal($theme)['tourist_avatar'] ?? [];
+                //存相对路径：绝对地址会把当时的站点域名固化进库，
+                //站点地址或端口一变，历史头像全部失效（客户端表现为图片连接被拒）
                 $avatar = Arr::getArrayRandKey(is_array($touristAvatar) ? $touristAvatar : []);
-                $avatar = link_url($avatar);
             }
             $userInfo = $userServices->save([
                 'uid' => $uid,

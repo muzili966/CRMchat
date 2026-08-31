@@ -168,9 +168,7 @@
 
 <script>
 
-//收到消息与系统公告统一使用同一提示音
-var mp3 = require('../../../assets/video/notify.wav');
-var mp3 = new Audio(mp3);
+//提示音统一走 notifySound：内部处理Chrome的自动播放限制
 import Setting from '@/setting';
 import { HappyScroll } from 'vue-happy-scroll'
 import baseHeader from './components/baseHeader';
@@ -178,6 +176,7 @@ import chatList from './components/chatList'
 import rightMenu from "./components/rightMenu";
 import emojiList from "@/utils/emoji";
 import { Socket } from '@/libs/socket';
+import { initNotifySound, playNotifySound } from '@/libs/notifySound';
 import msgWindow from "./components/msgWindow";
 import authReply from "./components/authReply";
 import transfer from './components/transfer'
@@ -322,6 +321,8 @@ export default {
     })
   },
   mounted() {
+    //Chrome需借一次用户交互解锁播放权限，否则收到消息时没有提示音
+    initNotifySound()
     let self = this
     window.addEventListener('click', function() {
       self.isEmoji = false
@@ -395,7 +396,7 @@ export default {
           this.$refs.chatList.updateUserList(data,true);
         });
         ws.$on("reply", (data) => {
-          mp3.play();
+          playNotifySound();
         });
         ws.$on("socket_error", () => {
           this.$Message.error("连接失败");
@@ -411,7 +412,7 @@ export default {
         // 用户未读消息条数更改
         ws.$on("mssage_num", (data) => {
           if(data.num > 0) {
-            mp3.play();
+            playNotifySound();
           }
           this.chatList.forEach((item) => {
             if(item.to_uid == data.user_id) {
@@ -419,7 +420,7 @@ export default {
             }
           });
           if(data.recored.id) {
-            mp3.play();
+            playNotifySound();
             this.newRecored = data.recored;
           }
 
