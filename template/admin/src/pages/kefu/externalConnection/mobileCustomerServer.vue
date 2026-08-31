@@ -93,6 +93,12 @@
     <!-- 内容输入开始 -->
 
     <div class="footer_customerServer_container">
+      <!-- 快捷操作条：低频动作从发送按钮旁移出，避免手机上误触发送 -->
+      <div class="footer_quick_actions" v-if="showTransferHuman">
+        <span class="quick_tag" @click="sendTransferHuman">
+          <i class="iconfont">&#xe6c5;</i>转人工
+        </span>
+      </div>
       <div class="mobel_customerServer_container_footer">
         <div class="mobel_customerServer_container_footer_uploag_image">
           <span class="iconfont">&#xe6ca;</span>
@@ -112,8 +118,6 @@
         <div class="mobel_customerServer_container_footer_emoji" @click="selectEmoji">
           <span class="iconfont ">&#xe6cb;</span>
         </div>
-        <!-- 转人工 -->
-        <div class="transferHuman" v-if="showTransferHuman" @click="sendTransferHuman">转人工</div>
         <!-- 发送消息 -->
         <div class="sendMessage" :class="{'sendMessage-primary': userMessage}" :style="sendButtonStyle">
           <div @click="sendText">发送</div>
@@ -498,17 +502,6 @@ export default {
       align-items: center;
       font-size: 24px;
     }
-    .transferHuman {
-      flex-shrink: 0; // 输入内容变长时不被挤压
-      padding: 6px 10px;
-      border: 1px solid #3875ea;
-      border-radius: 4px;
-      margin-left: 8px;
-      color: #3875ea;
-      font-size: 14px;
-      line-height: 18px;
-      white-space: nowrap;
-    }
     .sendMessage {
       background: #ccc;
       padding: 4px 12px;
@@ -777,6 +770,39 @@ export default {
     z-index: 4;
   }
 
+  /* 快捷操作条：紧贴输入区上沿，与输入行留出明确分隔，避免与发送按钮混淆 */
+  .footer_quick_actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 10px 0;
+
+    .quick_tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      height: 28px;
+      padding: 0 12px;
+      border: 1px solid var(--chat-border);
+      border-radius: 14px;
+      background: var(--chat-page-bg);
+      color: var(--chat-primary);
+      font-size: 13px;
+      line-height: 1;
+      white-space: nowrap;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+
+      .iconfont {
+        font-size: 14px;
+      }
+
+      &:active {
+        opacity: .7;
+      }
+    }
+  }
+
   .mobel_customerServer_container_footer {
     min-height: 64px;
     justify-content: flex-start;
@@ -818,7 +844,6 @@ export default {
       }
     }
 
-    .transferHuman,
     .sendMessage {
       min-height: 40px;
       display: flex;
@@ -829,11 +854,6 @@ export default {
       border-radius: 11px;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
-    }
-
-    .transferHuman {
-      color: var(--chat-primary);
-      border-color: var(--chat-primary);
     }
 
     .sendMessage-primary {
@@ -948,7 +968,6 @@ export default {
       width: 40px;
     }
 
-    .transferHuman,
     .sendMessage {
       padding: 0 8px;
       font-size: 13px;

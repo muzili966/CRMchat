@@ -21,6 +21,7 @@ use app\models\TenantPlanOrder;
 use crmeb\basic\BaseServices;
 use crmeb\exceptions\AdminException;
 use crmeb\services\tenant\TenantContext;
+use crmeb\utils\XlsxWriter;
 
 /**
  * 租户套餐订购对账service
@@ -34,6 +35,14 @@ class TenantPlanOrderServices extends BaseServices
      * 对账导出目录（public下）
      */
     const EXPORT_DIR = 'uploads/export/';
+
+    /** 导出格式：逗号分隔，供财务系统直接导入 */
+    const FORMAT_CSV = 'csv';
+
+    /** 导出格式：xlsx，表头加粗、列宽自适应，便于人工核对 */
+    const FORMAT_XLSX = 'xlsx';
+
+    const EXPORT_FORMATS = [self::FORMAT_CSV, self::FORMAT_XLSX];
 
     /**
      * TenantPlanOrderServices constructor.
@@ -175,7 +184,7 @@ class TenantPlanOrderServices extends BaseServices
      * @throws \think\db\exception\DbException
      * @throws \think\db\exception\ModelNotFoundException
      */
-    public function exportOrders(array $where): string
+    public function exportOrders(array $where, string $format = self::FORMAT_CSV): string
     {
         $list = $this->dao->getOrderList($where);
         $tenantNames = $this->getTenantNameMap(array_column($list, 'tenant_id'));
@@ -198,7 +207,44 @@ class TenantPlanOrderServices extends BaseServices
                 date('Y-m-d H:i:s', $item['create_time']),
             ];
         }
-        return $this->writeCsv('plan_orders_', $rows);
+        return $this->writeRows('plan_orders_', $rows, $format);
+    }
+
+    /**
+     * 按格式写出导出文件，返回相对URL路径
+     * @param string $prefix
+     * @param array $rows 二维数组，首行为表头
+     * @param string $format
+     * @return string
+     */
+    protected function writeRows(string $prefix, array $rows, string $format): string
+    {
+        if ($format !== self::FORMAT_XLSX) {
+            return $this->writeCsv($prefix, $rows);
+        }
+        //xlsx 依赖 zip 扩展，缺失时回落CSV而不是直接失败，导出功能不能因环境差异不可用
+        if (!XlsxWriter::isSupported()) {
+            return $this->writeCsv($prefix, $rows);
+        }
+        $dir = $this->exportDir();
+        $fileName = $prefix . date('YmdHis') . mt_rand(100, 999) . '.xlsx';
+        if (!XlsxWriter::write($dir . $fileName, $rows, '订阅订单')) {
+            throw new AdminException('导出文件写入失败');
+        }
+        return '/' . self::EXPORT_DIR . $fileName;
+    }
+
+    /**
+     * 导出目录，不存在则创建
+     * @return string
+     */
+    protected function exportDir(): string
+    {
+        $dir = root_path() . 'public/' . self::EXPORT_DIR;
+        if (!is_dir($dir) && !mkdir($dir, 0755, true)) {
+            throw new AdminException('创建导出目录失败');
+        }
+        return $dir;
     }
 
     /**
@@ -209,10 +255,7 @@ class TenantPlanOrderServices extends BaseServices
      */
     protected function writeCsv(string $prefix, array $rows): string
     {
-        $dir = root_path() . 'public/' . self::EXPORT_DIR;
-        if (!is_dir($dir) && !mkdir($dir, 0755, true)) {
-            throw new AdminException('创建导出目录失败');
-        }
+        $dir = $this->exportDir();
         mt_srand();
         $fileName = $prefix . date('YmdHis') . mt_rand(100, 999) . '.csv';
         $lines = [];

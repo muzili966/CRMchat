@@ -72,8 +72,13 @@ class TenantPlanOrder extends AuthController
     public function export()
     {
         $where = $this->orderWhere();
-        $url = $this->withPlatformScope(function () use ($where) {
-            return $this->services->exportOrders($where);
+        $format = (string)$this->request->param('format', TenantPlanOrderServices::FORMAT_CSV);
+        //格式来自前端，白名单收口避免拼进文件名
+        if (!in_array($format, TenantPlanOrderServices::EXPORT_FORMATS, true)) {
+            $format = TenantPlanOrderServices::FORMAT_CSV;
+        }
+        $url = $this->withPlatformScope(function () use ($where, $format) {
+            return $this->services->exportOrders($where, $format);
         });
         return $this->success('导出成功', ['url' => $url]);
     }

@@ -37,7 +37,8 @@
                 </Row>
                 <Row type="flex">
                     <Col v-bind="grid">
-                        <Button type="primary" icon="ios-download-outline" :loading="exporting" @click="exportOrders">导出对账CSV</Button>
+                        <Button type="primary" icon="ios-download-outline" :loading="exporting === 'xlsx'" @click="exportOrders('xlsx')">导出Excel</Button>
+                        <Button class="ml10" icon="ios-download-outline" :loading="exporting === 'csv'" @click="exportOrders('csv')">导出对账CSV</Button>
                     </Col>
                 </Row>
             </Form>
@@ -70,7 +71,7 @@
             return {
                 grid: { xl: 7, lg: 7, md: 12, sm: 24, xs: 24 },
                 loading: false,
-                exporting: false,
+                exporting: '',
                 total: 0,
                 status: '',
                 planId: '',
@@ -140,17 +141,18 @@
                 this.searchWhere.page = 1
                 this.getList()
             },
-            exportOrders () {
-                this.exporting = true
+            //两个按钮共用一个loading标识，避免导出其中一种时另一个也转圈
+            exportOrders (format) {
+                this.exporting = format
                 this.buildWhere()
-                orderExportApi(this.searchWhere).then(res => {
-                    this.exporting = false
+                orderExportApi({ ...this.searchWhere, format }).then(res => {
+                    this.exporting = ''
                     this.$Message.success(res.msg)
                     if (res.data && res.data.url) {
                         window.open(location.origin + res.data.url)
                     }
                 }).catch(res => {
-                    this.exporting = false
+                    this.exporting = ''
                     this.$Message.error(res.msg)
                 })
             }
