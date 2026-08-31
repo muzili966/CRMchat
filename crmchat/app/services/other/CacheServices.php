@@ -24,11 +24,6 @@ class CacheServices extends BaseServices
 {
 
     /**
-     * 客服页面广告内容的缓存key
-     */
-    const KF_ADV_KEY = 'kf_adv';
-
-    /**
      * CacheServices constructor.
      * @param CacheDao $dao
      */
@@ -43,19 +38,6 @@ class CacheServices extends BaseServices
      * @param $default 默认值不存在则写入
      * @return mixed|null
      */
-    /**
-     * 客服广告缓存key
-     *
-     * 该缓存表按key全局唯一，原先固定key会让所有租户共用同一条广告造成串台，
-     * 故按租户拆分key（平台上下文仍用原key，兼容存量数据）
-     * @param int $tenantId
-     * @return string
-     */
-    public static function kfAdvKey(int $tenantId): string
-    {
-        return $tenantId > 0 ? self::KF_ADV_KEY . ':' . $tenantId : self::KF_ADV_KEY;
-    }
-
     public function getDbCache(string $key, $default, int $expire = 0)
     {
         $this->dao->delectDeOverdueDbCache();

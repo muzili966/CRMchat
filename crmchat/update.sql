@@ -439,3 +439,14 @@ UPDATE `eb_tenant_plan` SET `custom_domain` = 1 WHERE `name` = '旗舰版';
 ALTER TABLE `eb_application_theme`
   ADD `tourist_avatar` text COMMENT '游客头像池,空=继承租户全局' AFTER `custom_html`,
   ADD `service_feedback` varchar(255) NOT NULL DEFAULT '' COMMENT '客服反馈文案,空=继承租户全局' AFTER `tourist_avatar`;
+
+-- ============ 移除失效的「客服页面广告」（2026-08-31） ============
+-- 该功能存取的缓存key按租户隔离（kf_adv:{tenant_id}），但菜单是平台专属，
+-- 平台管理员的租户上下文为0、只会写入全局key kf_adv，而访客读的是 kf_adv:{自己租户}，
+-- 两边永远对不上，等于死配置。广告能力已由「客服端配置-平台默认广告」与「客户端装修」承接。
+DELETE FROM `eb_system_menus` WHERE `id` IN (656, 913, 915, 916);
+DELETE FROM `eb_cache` WHERE `key` LIKE 'kf_adv%';
+
+-- 配置分类补图标：顶级tab渲染icon，缺失时与其它分类视觉不齐
+UPDATE `eb_system_config_tab` SET `icon` = 'md-chatbubbles' WHERE `id` = 69;
+UPDATE `eb_system_config_tab` SET `icon` = 'md-bulb' WHERE `id` = 90;

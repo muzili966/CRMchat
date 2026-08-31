@@ -12,7 +12,6 @@ namespace app\controller\admin\system;
 
 use app\services\other\CacheServices;
 use app\controller\admin\AuthController;
-use crmeb\services\tenant\TenantContext;
 use app\services\system\config\SystemGroupDataServices;
 use app\services\system\config\SystemGroupServices;
 
@@ -212,31 +211,6 @@ class GroupData extends AuthController
         $this->services->update($id, ['status' => $status]);
         \crmeb\services\CacheService::clear();
         return $this->success($status == 0 ? '隐藏成功' : '显示成功');
-    }
-
-    /**
-     * 获取客服页面广告内容
-     * @return mixed
-     */
-    public function getKfAdv()
-    {
-        /** @var CacheServices $cache */
-        $cache = app()->make(CacheServices::class);
-        $content = $cache->getDbCache(CacheServices::kfAdvKey((int)TenantContext::id()), '');
-        return $this->success(compact('content'));
-    }
-
-    /**
-     * 设置客服页面广告内容
-     * @return mixed
-     */
-    public function setKfAdv()
-    {
-        $content = $this->request->post('content');
-        /** @var CacheServices $cache */
-        $cache = app()->make(CacheServices::class);
-        $cache->setDbCache(CacheServices::kfAdvKey((int)TenantContext::id()), $content);
-        return $this->success('设置成功');
     }
 
     /**

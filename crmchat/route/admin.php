@@ -275,10 +275,6 @@ Route::group('api', function () {
             Route::get('group_data/header', 'system.GroupData/header')->option(['real_name' => '组合数据头部']);
             //修改组合数据状态
             Route::put('group_data/set_status/:id/:status', 'system.GroupData/set_status')->option(['real_name' => '修改组合数据状态']);
-            //获取客服广告
-            Route::get('get_kf_adv', 'system.GroupData/getKfAdv')->option(['real_name' => '获取客服广告']);
-            //设置客服广告
-            Route::post('set_kf_adv', 'system.GroupData/setKfAdv')->option(['real_name' => '设置客服广告']);
             //获取隐私协议
             Route::get('get_user_agreement', 'system.GroupData/getUserAgreement')->option(['real_name' => '获取隐私协议']);
             //设置隐私协议

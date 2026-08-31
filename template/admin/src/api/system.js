@@ -379,29 +379,6 @@ export function systemListApi(params) {
 // }
 
 /**
- * @description 获取客服页面广告
- * @param data
- */
-export function getKfAdv() {
-    return request({
-        url: 'setting/get_kf_adv',
-        method: 'get',
-    })
-}
-
-/**
- * @description 设置客服页面广告
- * @param data
- */
-export function setKfAdv(data) {
-    return request({
-        url: 'setting/set_kf_adv',
-        method: 'post',
-        data
-    })
-}
-
-/**
  * @description 数据配置
  * @param data
  */

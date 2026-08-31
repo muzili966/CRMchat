@@ -80,15 +80,6 @@ export default {
       component: () => import('@/pages/system/group/list')
     },
     {
-      path: 'system_group_data/kf_adv',
-      name: `${pre}kfAdv`,
-      meta: {
-        auth: ['setting-system-group_data-kf_adv'],
-        title: '客服页面广告'
-      },
-      component: () => import('@/pages/system/group/kfAdv')
-    },
-    {
       path: 'system_group_data/privacy',
       name: `${pre}privacy`,
       meta: {

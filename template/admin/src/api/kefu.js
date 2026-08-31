@@ -703,18 +703,6 @@ export function appReset(id) {
 }
 
 /*
-  获取客服广告
-*/
-
-export function serviceAdv() {
-  return request({
-    url: '/service/adv',
-    method: 'get',
-    mobile: true
-  })
-}
-
-/*
   修改用户信息
 */
 

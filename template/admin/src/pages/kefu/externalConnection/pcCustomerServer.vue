@@ -139,7 +139,7 @@
 
         <div class="pc_customerServer_container_advertisement" v-if="upperData.noCanClose == '1' || upperData.windowStyle == `center`">
           <div class="advertisement">
-            <!-- 广告位优先级：装修轮播图 > 装修自定义HTML > 旧的客服页面广告富文本，保证未迁移的站点不受影响 -->
+            <!-- 广告位优先级：装修轮播图 > 装修自定义HTML -->
             <Carousel class="theme_banner" v-if="themeBanners.length" v-model="bannerIndex" loop autoplay :autoplay-speed="bannerAutoplaySpeed" :height="bannerHeight" arrow="never" radius-dot>
               <CarouselItem v-for="(banner, index) in themeBanners" :key="index">
                 <div class="theme_banner_item" :class="{'theme_banner_item-link': banner.link}" :style="{ height: bannerHeight + 'px' }" @click="openBanner(banner)">
@@ -148,7 +148,6 @@
               </CarouselItem>
             </Carousel>
             <div v-else-if="themeCustomHtml" v-html="themeCustomHtml"></div>
-            <div v-else v-html="advertisement"></div>
             <div class="copyright" @click="tolink" v-if="isShowPlatformBrand">
               <span>QiaLink 洽联智能客服</span>
             </div>

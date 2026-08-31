@@ -73,18 +73,6 @@ class Service extends AuthController
     }
 
     /**
-     * 获取客服页面广告内容
-     * @return mixed
-     */
-    public function getKfAdv()
-    {
-        /** @var CacheServices $cache */
-        $cache = app()->make(CacheServices::class);
-        $content = $cache->getDbCache(CacheServices::kfAdvKey((int)TenantContext::id()), '');
-        return $this->success(compact('content'));
-    }
-
-    /**
      * @param $key
      * @return mixed
      */

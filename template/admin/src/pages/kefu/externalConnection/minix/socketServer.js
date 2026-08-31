@@ -1,5 +1,5 @@
 import { mobileScoket } from '@/libs/socket';
-import { userRecord, serviceUpload, serviceAdv } from '@/api/kefu';
+import { userRecord, serviceUpload } from '@/api/kefu';
 import { setLoc, getLoc } from '@/libs/util'
 import Cookies from "js-cookie";
 
@@ -30,8 +30,7 @@ export default {
       productMessage: {},
       isShowProductModel: false, // 是否显示携带商品
       copyFile: '', // 粘贴在输入框中的file文件
-      unReadMesage: 0, // 未读消息数
-      advertisement: '' // 广告
+      unReadMesage: 0 // 未读消息数
     }
   },
   // 指令粘贴指令定义
@@ -101,7 +100,6 @@ export default {
 
     });
 
-    this.getServiceAdv();
   },
   watch: {
     productMessage: {
@@ -115,15 +113,6 @@ export default {
     }
   },
   methods: {
-    // 获取客服广告
-    getServiceAdv() {
-      serviceAdv().then(res => {
-        if(res.status == 200) {
-          this.advertisement = res.data.content;
-        }
-      })
-    },
-
     // 查看当前是否有客服在线, 若不在线，跳转到反馈界面
     getUserRecord() {
       let postData = {

@@ -87,7 +87,7 @@
         },
         watch: {
             $route(to, from) {
-                this.getKfAdv()
+                this.getPrivacy()
             }
         },
         methods: {

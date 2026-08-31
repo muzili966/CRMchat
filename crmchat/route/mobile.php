@@ -30,7 +30,6 @@ Route::group('api', function () {
 
         Route::group('service', function () {
 
-            Route::get('adv', 'Service/getKfAdv')->name('getKfAdv');//获取客服广告
             Route::post('feedback', 'Feedback/saveFeedback')->name('saveFeedback');//保存客服反馈内容
             Route::get('feedback', 'Feedback/getFeedbackInfo')->name('getFeedbackInfo');//获取反馈页面广告位内容
             Route::post('upload', 'Service/upload')->name('upload');//图片上传
