@@ -485,3 +485,13 @@ VALUES
 
 UPDATE `eb_system_role` SET `rules` = CONCAT(`rules`, ',1301')
   WHERE `id` = 2 AND CONCAT(',',`rules`,',') NOT LIKE '%,1301,%';
+
+-- ============ 租户端订阅订单导出（2026-08-31） ============
+-- 租户端原本只有列表接口的权限菜单，没有导出接口的，调用会被鉴权拦下
+INSERT INTO `eb_system_menus`
+  (`id`,`pid`,`menu_name`,`api_url`,`methods`,`is_show`,`is_tenant`,`is_platform`,`auth_type`,`is_del`,`is_show_path`,`sort`,`params`,`header`,`path`,`unique_auth`,`icon`,`module`,`controller`,`action`,`access`,`menu_path`)
+VALUES
+  (1302,1240,'我的订阅订单导出','api/admin/setting/tenant/orders/export','GET',0,1,0,2,0,0,0,'[]','','12','','','admin','','',0,'');
+
+UPDATE `eb_system_role` SET `rules` = CONCAT(`rules`, ',1302')
+  WHERE `tenant_id` > 0 AND CONCAT(',',`rules`,',') NOT LIKE '%,1302,%';

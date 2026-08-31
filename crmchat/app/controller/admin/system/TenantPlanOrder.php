@@ -14,6 +14,8 @@ namespace app\controller\admin\system;
 
 use app\controller\admin\AuthController;
 use app\services\TenantPlanOrderServices;
+use app\services\TenantPlanServices;
+use crmeb\services\tenant\TenantContext;
 
 /**
  * 套餐订购对账：平台未选租户视角看全部，租户管理员看自己的
@@ -72,6 +74,13 @@ class TenantPlanOrder extends AuthController
     public function export()
     {
         $where = $this->orderWhere();
+        //前端只是禁用按钮，能力约束必须在服务端兜底，否则直接调接口即可绕过
+        $tenantId = (int)TenantContext::id();
+        if ($tenantId) {
+            /** @var TenantPlanServices $planServices */
+            $planServices = app()->make(TenantPlanServices::class);
+            $planServices->assertFeature($tenantId, 'data_export', '当前套餐不支持数据导出，请升级套餐');
+        }
         $format = (string)$this->request->param('format', TenantPlanOrderServices::FORMAT_CSV);
         //格式来自前端，白名单收口避免拼进文件名
         if (!in_array($format, TenantPlanOrderServices::EXPORT_FORMATS, true)) {

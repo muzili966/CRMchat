@@ -85,6 +85,17 @@
                     </div>
                 </TabPane>
                 <TabPane label="订阅订单" name="orders">
+                    <div class="order-toolbar">
+                        <!-- 不具备导出能力时保留按钮但禁用，让租户知道升级能多拿什么，而不是凭空少一个入口 -->
+                        <Tooltip :disabled="canExport" :content="exportTip" placement="top">
+                            <Button type="primary" icon="ios-download-outline" :disabled="!canExport"
+                                    :loading="exporting === 'xlsx'" @click="exportMyOrders('xlsx')">导出Excel</Button>
+                        </Tooltip>
+                        <Tooltip :disabled="canExport" :content="exportTip" placement="top">
+                            <Button class="ml10" icon="ios-download-outline" :disabled="!canExport"
+                                    :loading="exporting === 'csv'" @click="exportMyOrders('csv')">导出CSV</Button>
+                        </Tooltip>
+                    </div>
                     <Table :columns="orderColumns" :data="orderList" :loading="orderLoading" highlight-row no-userFrom-text="暂无数据">
                         <template slot-scope="{ row }" slot="amount">
                             <span>￥{{ row.amount }}</span>
@@ -192,7 +203,7 @@
 </template>
 
 <script>
-    import { mySubscriptionApi, orderListApi, invoiceListApi, invoiceApplyApi, tenantPlansApi } from '@/api/tenant'
+    import { mySubscriptionApi, orderListApi, orderExportApi, planFeatureApi, invoiceListApi, invoiceApplyApi, tenantPlansApi } from '@/api/tenant'
     import { PLAN_FEATURE_FIELDS, PLAN_QUOTA_FIELDS, getPlanFeatureText } from '@/config/planFeatures'
 
     const INVOICE_STATUS_TEXT = { 0: '待开具', 1: '已开具', 2: '已驳回' }
@@ -209,6 +220,8 @@
                 orderLoading: false,
                 orderTotal: 0,
                 orderWhere: { page: 1, limit: 10 },
+                exporting: '',
+                gate: { features: {}, upgrade: {}, unlimited: false },
                 orderList: [],
                 invoiceLoading: false,
                 invoiceTotal: 0,
@@ -246,6 +259,16 @@
             }
         },
         computed: {
+            canExport () {
+                if (this.gate.unlimited) return true
+                const value = (this.gate.features || {}).data_export
+                //取不到能力表时放行，与后端宽松口径一致
+                return value === undefined ? true : !!value
+            },
+            exportTip () {
+                const plan = (this.gate.upgrade || {}).data_export || '更高版本'
+                return `数据导出需要${plan}及以上，升级后可将对账单导出存档`
+            },
             featureFields () {
                 return PLAN_FEATURE_FIELDS
             },
@@ -260,6 +283,7 @@
             this.getSummary()
             this.getOrders()
             this.getInvoices()
+            this.loadGate()
         },
         methods: {
             featureText (field) {
@@ -298,6 +322,25 @@
                     this.orderLoading = false
                     this.$Message.error(res.msg)
                 })
+            },
+            //导出沿用列表的筛选条件，导出的就是页面上看到的那一批
+            exportMyOrders (format) {
+                this.exporting = format
+                orderExportApi({ ...this.orderWhere, format }).then(res => {
+                    this.exporting = ''
+                    this.$Message.success(res.msg)
+                    if (res.data && res.data.url) {
+                        window.open(location.origin + res.data.url)
+                    }
+                }).catch(res => {
+                    this.exporting = ''
+                    this.$Message.error(res.msg)
+                })
+            },
+            loadGate () {
+                planFeatureApi().then(res => {
+                    this.gate = res.data || {}
+                }).catch(() => {})
             },
             orderPageChange (index) {
                 this.orderWhere.page = index
@@ -436,6 +479,10 @@
         border-top: 1px dashed #e8eaec;
         padding-top: 8px;
     }
+    .order-toolbar {
+        margin-bottom: 16px;
+    }
+
     .plan-card-features {
         min-height: 50px;
         margin-bottom: 14px;
