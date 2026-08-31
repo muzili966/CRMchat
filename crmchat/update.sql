@@ -450,3 +450,15 @@ DELETE FROM `eb_cache` WHERE `key` LIKE 'kf_adv%';
 -- 配置分类补图标：顶级tab渲染icon，缺失时与其它分类视觉不齐
 UPDATE `eb_system_config_tab` SET `icon` = 'md-chatbubbles' WHERE `id` = 69;
 UPDATE `eb_system_config_tab` SET `icon` = 'md-bulb' WHERE `id` = 90;
+
+-- ============ QiaLink 洽联品牌默认配置（2026-08-31） ============
+-- 仅更新平台默认层，保留其他租户已经设置的独立品牌覆盖
+UPDATE `eb_system_config` SET `value` = '"QiaLink 洽联"' WHERE `tenant_id` = 0 AND `menu_name` = 'site_name';
+UPDATE `eb_system_config` SET `value` = '"QiaLink 洽联 · 智能客户联络平台"' WHERE `tenant_id` = 0 AND `menu_name` = 'seo_title';
+UPDATE `eb_system_config` SET `value` = '"/statics/brand/qialink-logo-horizontal.png"' WHERE `tenant_id` = 0 AND `menu_name` IN ('site_logo', 'login_logo');
+UPDATE `eb_system_config` SET `value` = '"/statics/brand/qialink-logo-icon.png"' WHERE `tenant_id` = 0 AND `menu_name` = 'site_logo_square';
+
+-- ============ 补执行：附件管理/个人中心迁出平台专属子树（2026-08-31） ============
+-- 该语句原记录于上方"菜单信息架构重排"批次，但当时未在环境库执行，
+-- 导致1063/1082仍挂在平台专属的维护管理(25)下。此处补记，确保各环境一致。
+UPDATE `eb_system_menus` SET `pid` = 12, `header` = 'setting', `path` = '12' WHERE `id` IN (1063, 1082);

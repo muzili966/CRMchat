@@ -47,4 +47,9 @@ SELECT = ${REDIS_SELECT:-0}
 EOF
 fi
 
+# runtime是持久卷，跨部署不会重建；而权限缓存的key只由角色id决定，
+# 菜单与权限的变更走update.sql在部署时落库，没有任何环节会让该缓存失效，
+# 曾导致租户拿不到新增的附件上传权限。故每次启动清一次缓存（只清cache，保留日志）
+rm -rf runtime/cache
+
 exec php think swoole

@@ -93,6 +93,8 @@ class Menus extends AuthController
             return $this->fail('请填写按钮名称');
         $data['path'] = implode('/', $data['path']);
         if ($this->services->save($data)) {
+            //菜单即权限来源，变更后必须让角色权限缓存失效，否则新权限要等缓存过期才生效
+            \crmeb\services\CacheService::clear();
             return $this->success('添加成功');
         } else {
             return $this->fail('添加失败');
@@ -160,8 +162,10 @@ class Menus extends AuthController
         if (!$data['menu_name'])
             return $this->fail('请输入按钮名称');
         $data['path'] = implode('/', $data['path']);
-        if ($this->services->update($id, $data))
+        if ($this->services->update($id, $data)) {
+            \crmeb\services\CacheService::clear();
             return $this->success('修改成功');
+        }
         else
             return $this->fail('修改失败');
     }
@@ -181,6 +185,7 @@ class Menus extends AuthController
         if (!$this->services->delete((int)$id)) {
             return $this->fail('删除失败,请稍候再试!');
         } else {
+            \crmeb\services\CacheService::clear();
             return $this->success('删除成功!');
         }
     }
@@ -199,6 +204,7 @@ class Menus extends AuthController
         [$show] = $this->request->postMore([['is_show', 0]], true);
 
         if ($this->services->update($id, ['is_show' => $show])) {
+            \crmeb\services\CacheService::clear();
             return $this->success('修改成功');
         } else {
             return $this->fail('修改失败');

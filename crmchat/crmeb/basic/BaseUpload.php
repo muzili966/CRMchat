@@ -283,6 +283,46 @@ abstract class BaseUpload extends BaseStorage
      * @param bool $isData
      * @return array
      */
+    /**
+     * 读取本地已落盘文件的大小与类型
+     *
+     * 原实现统一走getFileHeaders()，即对自己的域名发一次HTTP请求(get_headers)只为拿这两个值。
+     * 单进程环境(如php内置服务器)下服务端正忙于本次上传，无法响应自己的请求，必然阻塞到超时；
+     * 多进程下虽能返回，也白白多一次回环请求。文件就在本地磁盘，直接读即可。
+     * @param string $filePath 形如 /uploads/xxx.png
+     * @return array|null null表示不是本地文件，交由调用方回源
+     */
+    protected function getLocalFileHeaders(string $filePath)
+    {
+        return self::readLocalFileHeaders(app()->getRootPath() . 'public', $filePath);
+    }
+
+    /**
+     * 从磁盘读取文件大小与MIME类型
+     * @param string $publicRoot public目录绝对路径
+     * @param string $filePath 形如 /uploads/xxx.png
+     * @return array|null null表示不是本地文件
+     */
+    public static function readLocalFileHeaders(string $publicRoot, string $filePath)
+    {
+        if (strpos($filePath, 'http') === 0 || strpos($filePath, '//') === 0) {
+            return null;
+        }
+        $realPath = rtrim($publicRoot, '/' . chr(92)) . str_replace(chr(92), '/', $filePath);
+        if (!is_file($realPath)) {
+            return null;
+        }
+        $type = 'image/jpeg';
+        if (function_exists('finfo_open') && $finfo = @finfo_open(FILEINFO_MIME_TYPE)) {
+            $detected = @finfo_file($finfo, $realPath);
+            finfo_close($finfo);
+            if ($detected) {
+                $type = $detected;
+            }
+        }
+        return ['size' => (int)filesize($realPath), 'type' => $type];
+    }
+
     protected function getFileHeaders(string $url, $isData = true)
     {
         stream_context_set_default(['ssl' => ['verify_peer' => false, 'verify_peer_name' => false]]);
@@ -317,12 +357,16 @@ abstract class BaseUpload extends BaseStorage
     public function getUploadInfo()
     {
         if (isset($this->fileInfo->filePath)) {
-            if (strstr($this->fileInfo->filePath, 'http') === false) {
-                $url = request()->domain() . $this->fileInfo->filePath;
-            } else {
-                $url = $this->fileInfo->filePath;
+            //本地已落盘的文件直接读磁盘，只有远程存储(OSS/七牛/COS)才回源取头信息
+            $headers = $this->getLocalFileHeaders($this->fileInfo->filePath);
+            if (is_null($headers)) {
+                if (strstr($this->fileInfo->filePath, 'http') === false) {
+                    $url = request()->domain() . $this->fileInfo->filePath;
+                } else {
+                    $url = $this->fileInfo->filePath;
+                }
+                $headers = $this->getFileHeaders($url);
             }
-            $headers = $this->getFileHeaders($url);
             return [
                 'name' => $this->fileInfo->fileName,
                 'real_name' => $this->fileInfo->realName ?? '',
