@@ -43,7 +43,7 @@ export default [
 			title: '客服',
 			kefu: true
 		},
-		component: () => import('@/pages/kefu/pc/index')
+		component: () => import('@/pages/kefu/workspace/index')
 	},
 	// 旧地址：客服可能已收藏，保留跳转
 	{
