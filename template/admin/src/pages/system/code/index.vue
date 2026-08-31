@@ -31,9 +31,6 @@
             {{ row.auth_mode === 1 ? '签名模式' : '兼容模式' }}
           </Tag>
         </template>
-        <template slot-scope="{ row }" slot="link">
-          <linkWithQr :link="chatLink(row)"/>
-        </template>
         <template slot-scope="{ row, index }" slot="action">
           <a @click="showCode(row)">接入代码</a>
           <Divider type="vertical"/>
@@ -73,7 +70,6 @@
 
 <script>
 import { mapState } from 'vuex'
-import linkWithQr from '@/components/linkWithQr'
 import { appListApi, appCreateFormApi, appEditFormApi, appResetTokenApi } from '@/api/application'
 import appFrom from '@/components/from/from'
 import alink from './components/alink'
@@ -82,7 +78,7 @@ import kaifa from './components/kaifa'
 
 export default {
   name: 'system_code',
-  components: { appFrom, alink, wangye, kaifa, linkWithQr },
+  components: { appFrom, alink, wangye, kaifa },
   data () {
     return {
       grid: { xl: 7, lg: 7, md: 12, sm: 24, xs: 24 },
@@ -100,7 +96,6 @@ export default {
         { title: '应用ID', key: 'appid', minWidth: 180 },
         { title: '接入模式', slot: 'auth_mode', minWidth: 110 },
         { title: '简介', key: 'introduce', minWidth: 160 },
-        { title: '接入链接', slot: 'link', minWidth: 260 },
         { title: '操作', slot: 'action', fixed: 'right', minWidth: 260 }
       ]
     }
@@ -118,10 +113,6 @@ export default {
     this.getList()
   },
   methods: {
-    //与接入代码页给出的地址保持一致，改一处即可
-    chatLink (row) {
-      return `${location.origin}/chat?token=${row.token_md5}&noCanClose=1`
-    },
     getList () {
       this.loading = true
       appListApi(this.searchWhere).then(res => {

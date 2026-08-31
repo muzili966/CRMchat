@@ -15,6 +15,13 @@
         </Col>
       </Row>
 
+      <!-- 登录地址对所有客服都是同一个，放在列表上方而不是每行重复 -->
+      <div class="kefu-login-bar">
+        <span class="kefu-login-label">客服登录地址</span>
+        <linkWithQr class="kefu-login-link" :link="kefuLoginUrl"/>
+        <span class="kefu-login-tip">把这个地址发给客服，用下方列表中的账号密码登录；手机可直接扫码</span>
+      </div>
+
       <Table :columns="columns1" :data="tableList" :loading="loading" highlight-row no-userFrom-text="暂无数据" no-filtered-userFrom-text="暂无筛选结果">
         <template slot-scope="{ row, index }" slot="avatar">
           <div class="tabBox_img" v-viewer>
@@ -88,6 +95,7 @@
 
 <script>
 import { mapState } from 'vuex'
+import linkWithQr from '@/components/linkWithQr'
 import { setCookies } from '@/libs/util'
 import {
   kefuListApi, kefucreateApi, kefuaddApi, kefuAddApi,
@@ -106,9 +114,13 @@ export default {
     }
   },
   components:{
-    AutoReply
+    AutoReply,
+    linkWithQr
   },
   computed: {
+    kefuLoginUrl() {
+      return `${location.origin}/kefu`
+    },
     ...mapState('media', [
       'isMobile'
     ]),
@@ -587,5 +599,35 @@ export default {
 // margin-left: 18px;
 .scollhide::-webkit-scrollbar {
   display: none;
+}
+
+.kefu-login-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 10px 14px;
+  background: #F6F8FB;
+  border: 1px solid #E5EBF5;
+  border-radius: 4px;
+}
+
+.kefu-login-label {
+  flex: none;
+  font-weight: 600;
+  color: #17233d;
+}
+
+.kefu-login-link {
+  flex: 0 1 380px;
+  min-width: 0;
+}
+
+.kefu-login-tip {
+  flex: 1;
+  min-width: 200px;
+  font-size: 12px;
+  color: #808695;
 }
 </style>
