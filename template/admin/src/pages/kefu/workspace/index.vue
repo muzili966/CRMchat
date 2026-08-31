@@ -10,6 +10,17 @@
             <Icon type="ios-arrow-back" size="20"/>
             <span>{{ userActive && userActive.nickname ? userActive.nickname : '返回会话列表' }}</span>
           </div>
+          <div class="conversation-header" v-if="!isNarrow">
+            <div class="conversation-user">
+              <img v-if="userActive && userActive.avatar" :src="userActive.avatar" alt="">
+              <span v-else class="conversation-user__placeholder"><Icon type="ios-person-outline" /></span>
+              <div>
+                <strong>{{ userActive && userActive.nickname ? userActive.nickname : '请选择会话' }}</strong>
+                <small>{{ userActive ? '正在为客户提供服务' : '从左侧会话列表选择一位客户' }}</small>
+              </div>
+            </div>
+            <span v-if="userActive" class="conversation-badge"><i></i> 当前会话</span>
+          </div>
           <div class="chat-body">
 
             <happy-scroll size="5" resize hide-horizontal :scroll-top="scrollTop" @vertical-start="scrollHandler">
@@ -118,7 +129,7 @@
         </div>
         <div class="right_menu">
           <rightMenu :isTourist="tourist" :uid="userActive.to_user_id" :webType="userActive.type" @bindPush="bindPush"></rightMenu>
-          <div class="crmchat_link" @click="tolink">
+          <div class="crmchat_link">
             <span>QiaLink 洽联智能客服</span>
           </div>
         </div>
@@ -717,10 +728,6 @@ export default {
     // 客服转接确定
     transferOk() {
 
-    },
-
-    tolink() {
-      window.open('http://github.crmeb.net/u/CRMChat');
     }
 
 
@@ -737,35 +744,46 @@ textarea.ivu-input {
 }
 
 .kefu-layouts {
-  padding-top: 30px;
+  padding: 18px;
   height: 100%;
   display: flex;
-  background: #ccc;
-  overflow: scroll;
+  background: #f2f6fc;
+  overflow: hidden;
 }
 
 .content-wrapper {
   display: flex;
   flex-direction: column;
-  width: 1200px;
-  height: 808px;
+  width: 100%;
+  max-width: 1480px;
+  height: 100%;
   margin: 0 auto;
   background: #fff;
+  border: 1px solid #e3eaf3;
+  border-radius: 16px;
+  box-shadow: 0 18px 55px rgba(43, 78, 125, .11);
+  overflow: hidden;
 
   .container {
     flex: 1;
+    min-height: 0;
     display: flex;
+    background: #fff;
 
     .chat-content {
-      width: 600px;
+      flex: 1;
+      min-width: 0;
       height: 100%;
-      border-right: 1px solid #ECECEC;
+      border-right: 1px solid #e7edf5;
       display: flex;
       flex-direction: column;
+      background: #fff;
 
       .chat-body {
-        max-height: 530px;
         flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        background: #fbfcfe;
 
         .chat-item {
           margin-bottom: 10px;
@@ -874,7 +892,8 @@ textarea.ivu-input {
               }
 
               .msg-wrapper {
-                background: #CDE0FF;
+                color: #fff;
+                background: linear-gradient(135deg, #3e86ef, #5d95f5);
               }
             }
 
@@ -887,7 +906,8 @@ textarea.ivu-input {
 
       .chat-textarea {
         height: 214px;
-        border-top: 1px solid #ECECEC;
+        border-top: 1px solid #e7edf5;
+        background: #fff;
 
         .chat-btn-wrapper {
           position: relative;
@@ -1116,6 +1136,7 @@ textarea.ivu-input {
 
 .right_menu {
   position: relative;
+  background: #fbfcfe;
 
   .crmchat_link {
     position: absolute;
@@ -1125,16 +1146,118 @@ textarea.ivu-input {
     margin: auto;
     text-align: center;
     transition: 0.3s;
-    cursor: pointer;
 
     span {
       color: #ccc;
     }
 
-    span:hover {
-      color: #007aff;
-    }
   }
+}
+
+.conversation-header {
+  height: 64px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+  border-bottom: 1px solid #e7edf5;
+  background: #fff;
+}
+
+.conversation-user {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+
+  img, .conversation-user__placeholder {
+    width: 38px;
+    height: 38px;
+    margin-right: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .conversation-user__placeholder {
+    color: #7f9bc2;
+    background: #edf4fd;
+    font-size: 18px;
+  }
+
+  div {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  strong {
+    overflow: hidden;
+    color: #2b3c56;
+    font-size: 14px;
+    line-height: 1.4;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  small {
+    margin-top: 3px;
+    color: #9aa8bb;
+    font-size: 11px;
+  }
+}
+
+.conversation-badge {
+  padding: 5px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #dceee6;
+  border-radius: 999px;
+  color: #3c8c70;
+  background: #f3fbf8;
+  font-size: 11px;
+
+  i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #32c787;
+  }
+}
+
+.content-wrapper /deep/ .chatList {
+  width: 330px;
+  height: 100%;
+  border-right-color: #e7edf5;
+  background: #fff;
+}
+
+.content-wrapper /deep/ .chatList .tab-head {
+  height: 56px;
+  color: #53657e;
+  border-bottom: 1px solid #edf1f6;
+}
+
+.content-wrapper /deep/ .chatList .chat-item {
+  margin: 4px 8px;
+  border-left: 0;
+  border-radius: 10px;
+}
+
+.content-wrapper /deep/ .chatList .chat-item.active {
+  border-left: 0;
+  background: #eef5ff;
+  box-shadow: inset 3px 0 0 #3e86ef;
+}
+
+.content-wrapper .right_menu /deep/ .right-wrapper {
+  height: 100%;
+  border-left: 0;
+  background: #fbfcfe;
 }
 
 /* 窄屏单栏：会话列表与对话互斥展示，右侧资料栏收起 */
@@ -1152,8 +1275,16 @@ textarea.ivu-input {
 }
 
 .chat-scroll-inner {
-  width: 600px;
+  width: 100%;
   padding: 20px;
+  box-sizing: border-box;
+}
+
+/* happy-scroll 默认按内容宽度收缩，会让右侧消息停在中间；对话区必须占满，左右消息才能镜像贴边 */
+.chat-body /deep/ .happy-scroll,
+.chat-body /deep/ .happy-scroll-container,
+.chat-body /deep/ .happy-scroll-content {
+  width: 100% !important;
 }
 
 .kefu-layouts.is-narrow {
@@ -1163,6 +1294,9 @@ textarea.ivu-input {
   .content-wrapper {
     width: 100%;
     height: 100vh;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
 
   .narrow-back {

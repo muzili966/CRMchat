@@ -2,13 +2,15 @@
 
   <div class="pc_customerServer">
     <div class="fixed" v-if="upperData.noCanClose == 1"></div>
-    <div class="pc_customerServer_container max-width_con" :class="[themeClass, bubbleClass, {'max-width_advertisement': upperData.noCanClose == 1 || upperData.windowStyle == `center`}]" :style="themeRootStyle">
+    <div class="pc_customerServer_container max-width_con" :class="[themeClass, bubbleClass, {'max-width_advertisement': hasAdvertisement}]" :style="themeRootStyle">
       <!-- 客服头部开始 -->
       <div class="pc_customerServer_container_header" :style="themeBgStyle">
         <div class="pc_customerServer_container_header_title">
-
-          <img v-if="headerLogo" :src="headerLogo" alt="">
-          <span>{{headerTitle}}</span>
+          <img v-if="headerLogo" :src="headerLogo" alt="" @error="handleHeaderLogoError">
+          <div class="header_identity">
+            <span>{{headerTitle}}</span>
+            <small><i></i>客服在线 · 为您服务</small>
+          </div>
         </div>
         <div class="pc_customerServer_container_header_handle" @click="closeIframe" v-if="upperData.noCanClose != '1'">
           <span class="iconfont">&#xe6c5;</span>
@@ -137,7 +139,7 @@
           <!-- 内容输入结束 -->
         </div>
 
-        <div class="pc_customerServer_container_advertisement" v-if="upperData.noCanClose == '1' || upperData.windowStyle == `center`">
+        <div class="pc_customerServer_container_advertisement" v-if="hasAdvertisement">
           <div class="advertisement">
             <!-- 广告位优先级：装修轮播图 > 装修自定义HTML -->
             <Carousel class="theme_banner" v-if="themeBanners.length" v-model="bannerIndex" loop autoplay :autoplay-speed="bannerAutoplaySpeed" :height="bannerHeight" arrow="never" radius-dot>
@@ -385,6 +387,7 @@ export default {
           .right-box {
             flex-direction: row-reverse;
             .chart_list_item_avatar {
+              margin-right: 0;
               margin-left: 10px;
             }
             .chart_list_item_text {
@@ -769,6 +772,38 @@ export default {
       object-fit: cover;
       border: 2px solid rgba(255, 255, 255, .7);
     }
+
+    .header_identity {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+
+      > span {
+        overflow: hidden;
+        font-weight: 600;
+        line-height: 1.25;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+
+      small {
+        margin-top: 3px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        color: rgba(255, 255, 255, .76);
+        font-size: 10px;
+        line-height: 1;
+
+        i {
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: #8ff0c2;
+          box-shadow: 0 0 0 2px rgba(143, 240, 194, .18);
+        }
+      }
+    }
   }
 
   &_content {
@@ -802,6 +837,7 @@ export default {
     color: var(--chat-text);
     background: var(--chat-surface);
     border-color: var(--chat-border);
+    box-shadow: 0 -8px 24px rgba(31, 45, 61, .04);
 
     &_input-textarea {
       color: var(--chat-text);
@@ -811,6 +847,29 @@ export default {
     &_header_handle .transfer_service,
     &_copyright {
       color: var(--chat-muted);
+    }
+
+    &_header_handle > div {
+      width: 30px;
+      height: 30px;
+      margin-right: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      transition: background .2s;
+
+      &:hover {
+        background: var(--chat-page-bg);
+      }
+    }
+
+    &_handle_send {
+      width: 66px;
+      height: 32px;
+      margin: 0;
+      border-radius: 8px;
+      box-shadow: 0 6px 14px rgba(45, 140, 240, .18);
     }
   }
 

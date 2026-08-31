@@ -164,8 +164,14 @@
                     <div class="preview-wrap" :class="'preview-wrap-' + previewDevice">
                         <div class="chat-window" :class="previewClasses" :style="previewVariables">
                             <div class="chat-header" :style="{ background: previewColor }">
-                                <img class="chat-logo" v-if="form.logo" :src="form.logo">
-                                <span class="chat-title">{{ previewTitle }}</span>
+                                <div class="chat-identity">
+                                    <img class="chat-logo" :src="previewAgentLogo" @error="handlePreviewLogoError">
+                                    <div class="chat-identity-copy">
+                                        <span class="chat-title">{{ previewTitle }}</span>
+                                        <small><i></i>客服在线 · 为您服务</small>
+                                    </div>
+                                </div>
+                                <Icon class="chat-close" type="ios-close" size="22"/>
                             </div>
                             <div class="chat-banner" v-if="firstBanner">
                                 <img :src="firstBanner.image">
@@ -178,12 +184,27 @@
                             <div class="chat-body">
                                 <div class="chat-msg" v-for="(item, index) in previewMessages" :key="index"
                                      :class="item.self ? 'chat-msg-self' : ''">
+                                    <span class="chat-avatar" :class="{ 'chat-avatar-self': item.self }">
+                                        <Icon v-if="item.self" type="ios-person-outline"/>
+                                        <img v-else :src="previewAgentLogo" @error="handlePreviewLogoError">
+                                    </span>
                                     <div class="chat-bubble" :style="previewBubbleStyle(item.self)">
                                         {{ item.text }}
                                     </div>
                                 </div>
                             </div>
-                            <div class="chat-footer">
+                            <div class="chat-footer chat-footer-desktop" v-if="previewDevice === 'desktop'">
+                                <div class="chat-footer-tools">
+                                    <Icon class="chat-tool" type="ios-happy-outline" size="21"/>
+                                    <Icon class="chat-tool" type="ios-image-outline" size="21"/>
+                                    <Icon class="chat-tool" type="ios-person-outline" size="20"/>
+                                </div>
+                                <div class="chat-textarea">请输入您的问题…</div>
+                                <div class="chat-footer-action">
+                                    <div class="chat-send" :style="{ background: previewColor }">发送</div>
+                                </div>
+                            </div>
+                            <div class="chat-footer chat-footer-mobile" v-else>
                                 <Icon class="chat-tool" type="ios-image-outline" size="22"/>
                                 <div class="chat-input">请输入您的问题…</div>
                                 <Icon class="chat-tool" type="ios-happy-outline" size="22"/>
@@ -207,6 +228,7 @@
     import { appListApi } from '@/api/application'
     import { mySubscriptionApi, planFeatureApi } from '@/api/tenant'
     import uploadPictures from '@/components/uploadPictures'
+    import defaultBrandIcon from '@/assets/images/qialink-logo-icon.png'
     import {
         CHAT_BUBBLE_PRESETS,
         CHAT_LAYOUT_PRESETS,
@@ -297,6 +319,7 @@
                 recommendColors: RECOMMEND_COLORS,
                 layoutPresets: CHAT_LAYOUT_PRESETS,
                 bubblePresets: CHAT_BUBBLE_PRESETS,
+                defaultBrandIcon,
                 previewDevice: 'mobile',
                 previewMessages: PREVIEW_MESSAGES,
                 platformBrand: PLATFORM_BRAND,
@@ -319,6 +342,9 @@
             },
             previewColor () {
                 return HEX_COLOR_REG.test(this.form.theme_color) ? this.form.theme_color : THEME_COLOR_DEFAULT
+            },
+            previewAgentLogo () {
+                return this.form.logo || this.defaultBrandIcon
             },
             previewVariables () {
                 //与访客端调用同一个函数，预设改动无需在预览里重复一遍
@@ -344,6 +370,12 @@
             this.loadUpgradePlans()
         },
         methods: {
+            handlePreviewLogoError (event) {
+                const image = event && event.target
+                if (!image || image.dataset.fallbackApplied) return
+                image.dataset.fallbackApplied = 'true'
+                image.src = this.defaultBrandIcon
+            },
             getAppList () {
                 appListApi({ page: 1, limit: APP_LIMIT }).then(res => {
                     this.appList = res.data.list || []
@@ -796,6 +828,7 @@
         height: 540px;
     }
     .chat-header {
+        position: relative;
         display: flex;
         align-items: center;
         height: 52px;
@@ -809,6 +842,37 @@
         object-fit: cover;
         margin-right: 10px;
         background: #fff;
+    }
+    .chat-identity {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+    }
+    .chat-identity-copy {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+    }
+    .chat-identity-copy small {
+        margin-top: 2px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        color: rgba(255, 255, 255, .76);
+        font-size: 9px;
+        line-height: 1;
+    }
+    .chat-identity-copy small i {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #8ff0c2;
+        box-shadow: 0 0 0 2px rgba(143, 240, 194, .18);
+    }
+    .chat-close {
+        position: absolute;
+        right: 14px;
+        color: rgba(255, 255, 255, .8);
     }
     .chat-title {
         font-size: 15px;
@@ -862,14 +926,39 @@
     }
     .chat-msg {
         display: flex;
+        align-items: flex-start;
+        gap: 8px;
         margin-bottom: 12px;
     }
     .chat-msg-self {
-        justify-content: flex-end;
+        flex-direction: row-reverse;
+        justify-content: flex-start;
+    }
+    .chat-avatar {
+        width: calc(30px * var(--chat-avatar-scale, 1));
+        height: calc(30px * var(--chat-avatar-scale, 1));
+        display: var(--chat-avatar-display, flex);
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        overflow: hidden;
+        border: 2px solid #fff;
+        border-radius: 50%;
+        color: #8290a7;
+        background: #e8eef7;
+        box-shadow: 0 3px 10px rgba(31, 45, 61, .08);
+    }
+    .chat-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .chat-avatar i {
+        font-size: 17px;
     }
     .chat-bubble {
         max-width: calc(76% * var(--chat-bubble-width-scale, 1));
-        padding: calc(9px * var(--chat-density, 1)) var(--chat-bubble-pad-x, 12px);
+        padding: 9px var(--chat-bubble-pad-x, 12px);
         border-radius: var(--chat-bubble-radius-in, 14px 14px 14px 4px);
         border: var(--chat-bubble-border-width, 0px) solid var(--chat-border);
         background: var(--chat-bubble-fill, var(--chat-incoming));
@@ -888,12 +977,53 @@
     }
     .chat-logo {
         display: var(--chat-header-logo, block);
-        width: calc(22px * var(--chat-avatar-scale, 1));
-        height: calc(22px * var(--chat-avatar-scale, 1));
     }
-    .chat-msg {
-        padding-top: calc(5px * var(--chat-density, 1));
-        padding-bottom: calc(5px * var(--chat-density, 1));
+    /* 预览按真实 PC / 手机端的基准尺寸换算，只缩小外层窗口，不另造一套气泡比例 */
+    .chat-window-desktop {
+        .chat-body {
+            padding: 0 0 20px;
+        }
+        .chat-logo {
+            width: calc(30px * var(--chat-avatar-scale, 1));
+            height: calc(30px * var(--chat-avatar-scale, 1));
+        }
+        .chat-msg {
+            gap: 10px;
+            margin-bottom: 0;
+            padding: calc(8px * var(--chat-density, 1)) 8px;
+        }
+        .chat-avatar {
+            width: calc(33px * var(--chat-avatar-scale, 1));
+            height: calc(33px * var(--chat-avatar-scale, 1));
+        }
+        .chat-bubble {
+            max-width: calc(60% * var(--chat-bubble-width-scale, 1));
+            padding-top: 7px;
+            padding-bottom: 7px;
+        }
+    }
+    .chat-window-mobile {
+        .chat-body {
+            padding: 12px 8px 20px;
+        }
+        .chat-logo {
+            width: calc(34px * var(--chat-avatar-scale, 1));
+            height: calc(34px * var(--chat-avatar-scale, 1));
+        }
+        .chat-msg {
+            gap: 9px;
+            margin-bottom: 0;
+            padding: calc(7px * var(--chat-density, 1)) 4px;
+        }
+        .chat-avatar {
+            width: calc(36px * var(--chat-avatar-scale, 1));
+            height: calc(36px * var(--chat-avatar-scale, 1));
+        }
+        .chat-bubble {
+            max-width: calc((78% - 46px) * var(--chat-bubble-width-scale, 1));
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
     }
 
     .chat-footer {
@@ -903,6 +1033,39 @@
         padding: 10px 12px;
         background: var(--chat-surface);
         border-top: 1px solid var(--chat-border);
+    }
+    .chat-footer-desktop {
+        min-height: 132px;
+        padding: 10px 14px 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+        box-shadow: 0 -8px 24px rgba(31, 45, 61, .035);
+    }
+    .chat-footer-tools {
+        height: 24px;
+        display: flex;
+        align-items: center;
+        gap: 13px;
+    }
+    .chat-textarea {
+        flex: 1;
+        color: var(--chat-muted);
+        font-size: 12px;
+    }
+    .chat-footer-action {
+        display: flex;
+        justify-content: flex-end;
+    }
+    .chat-footer-desktop .chat-send {
+        height: 30px;
+        padding: 0 18px;
+        line-height: 30px;
+        border-radius: 8px;
+    }
+    .chat-footer-mobile {
+        display: flex;
     }
     .chat-input {
         flex: 1;

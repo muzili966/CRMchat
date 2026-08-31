@@ -75,13 +75,17 @@ const BUBBLE_TOKENS = {
 
 /**
  * 布局密度：倍率与结构开关
+ *
+ * avatarDisplay 用 flex 而非 block：头像容器里要靠 align-items/justify-content
+ * 把图标或图片居中，block 下这两条完全失效（预览里的图标因此偏在左上角）。
+ * 各端的头像里都是宽高100%的img或图标，用flex不影响原有表现。
  * density 作用于行间距与内边距，avatarScale 作用于头像与顶部图标，
  * 各端用自己的基准尺寸乘以倍率，因此比例一致而绝对值可各自适配屏幕
  */
 const LAYOUT_TOKENS = {
-  modern: { density: 1, avatarScale: 1, avatarDisplay: 'block', headerJustify: 'space-between', headerLogo: 'block', bubbleMaxWidth: '1' },
-  minimal: { density: 0.55, avatarScale: 0.85, avatarDisplay: 'block', headerJustify: 'space-between', headerLogo: 'block', bubbleMaxWidth: '1' },
-  soft: { density: 1.45, avatarScale: 1.15, avatarDisplay: 'block', headerJustify: 'space-between', headerLogo: 'block', bubbleMaxWidth: '1' },
+  modern: { density: 1, avatarScale: 1, avatarDisplay: 'flex', headerJustify: 'space-between', headerLogo: 'block', bubbleMaxWidth: '1' },
+  minimal: { density: 0.55, avatarScale: 0.85, avatarDisplay: 'flex', headerJustify: 'space-between', headerLogo: 'block', bubbleMaxWidth: '1' },
+  soft: { density: 1.45, avatarScale: 1.15, avatarDisplay: 'flex', headerJustify: 'space-between', headerLogo: 'block', bubbleMaxWidth: '1' },
   midnight: { density: 1, avatarScale: 1, avatarDisplay: 'none', headerJustify: 'center', headerLogo: 'none', bubbleMaxWidth: '1.25' }
 }
 

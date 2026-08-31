@@ -9,6 +9,7 @@ import {
   getChatLayout,
   getChatThemeVariables
 } from '@/config/chatThemes';
+import defaultBrandIcon from '@/assets/images/qialink-logo-icon.png';
 
 const DEFAULT_THEME_COLOR = '#2d8cf0';
 const PLATFORM_BRAND_TEXT = '技术支持 by QiaLink 洽联';
@@ -32,6 +33,7 @@ function parseBanners(raw) {
 export default {
   data() {
     return {
+      defaultBrandIcon,
       platformBrandText: PLATFORM_BRAND_TEXT,
       bannerAutoplaySpeed: BANNER_AUTOPLAY_SPEED,
       bannerIndex: 0
@@ -89,9 +91,18 @@ export default {
       const flag = this.appTheme.show_platform_brand;
       if(flag === undefined || flag === null || flag === '') return true;
       return Number(flag) !== BRAND_HIDDEN;
+    },
+    hasAdvertisement() {
+      return this.themeBanners.length > 0 || !!this.themeCustomHtml;
     }
   },
   methods: {
+    handleHeaderLogoError(event) {
+      const image = event && event.target;
+      if(!image || image.dataset.fallbackApplied) return;
+      image.dataset.fallbackApplied = 'true';
+      image.src = this.defaultBrandIcon;
+    },
     // 仅访客自己发出的气泡跟随主题色，坐席侧保持默认灰底
     messageBubbleStyle(item) {
       return item.user_id == this.chatServerData.user_id ? this.themeBubbleStyle : {};

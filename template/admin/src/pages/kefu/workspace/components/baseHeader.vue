@@ -1,38 +1,42 @@
 <template>
   <div class="base-header">
-
-    <div class="left-wrapper">
-      <!-- <Input class="search_box" prefix="ios-search" placeholder="搜索用户名称" @on-enter="bindSearch" @on-change="inputChange" /> -->
-
+    <div class="brand-block">
+      <img class="brand-logo" :src="brandLogo" alt="QiaLink 洽联">
+      <span class="brand-divider"></span>
+      <div class="brand-copy">
+        <strong>客服工作台</strong>
+        <small>Service Desk</small>
+      </div>
+    </div>
+    <div class="header-actions">
       <div class="user_info">
-        <img v-lazy="kefuInfo.avatar" alt="">
-        <span>{{kefuInfo.nickname}}</span>
+        <img class="user-avatar" v-lazy="kefuInfo.avatar" :alt="kefuInfo.nickname || '客服头像'">
+        <span class="user-name">{{kefuInfo.nickname}}</span>
         <div class="status-box">
-          <div class="status" :class="online ? 'on':'off'" @click.stop="setOnline">
+          <button type="button" class="status" :class="online ? 'on':'off'" @click.stop="setOnline">
             <span class="dot"></span>
             {{online ? '在线': '离线'}}
-          </div>
+            <Icon type="ios-arrow-down" />
+          </button>
 
           <div class="online-down" v-show="isOnline">
             <div class="item" @click.stop="changeOnline(1)"><span class="iconfont iconduihao" v-if="online == 1"></span><i class="green"></i>在线</div>
             <div class="item" @click.stop="changeOnline(0)"><span class="iconfont iconduihao" v-if="online == 0"></span><i></i>离线</div>
-            <div class="item" @click.stop="changeOnline(3)"><span class="iconfont iconduihao" v-if="online == 3"></span><i class="orange"></i>退出登录</div>
           </div>
         </div>
-
       </div>
-      <!-- <div class="out-btn" @click.stop="outLogin">退出登录</div> -->
+      <button type="button" class="logout-button" title="退出登录" @click.stop="outLogin">
+        <Icon type="ios-log-out" />
+        <span>退出登录</span>
+      </button>
     </div>
-
-    <!-- <div class="right-menu">
-      <div class="menu-item" :class="{on:index == curIndex }" v-for="(item,index) in menuList" :key="index" @click.stop="selectTab(item)">{{item.title}}</div>
-    </div> -->
   </div>
 </template>
 
 <script>
-import { mapState, mapActions } from 'vuex';
+import { mapActions } from 'vuex';
 import bus from '@/utils/bus'
+import brandLogo from '@/assets/images/qialink-logo-horizontal.png'
 export default {
   name: "baseHeader",
   props: {
@@ -43,7 +47,7 @@ export default {
       }
     },
     online: {
-      type: Boolean | Number,
+      type: [Boolean, Number],
       default: true
     }
   },
@@ -51,6 +55,7 @@ export default {
   },
   data() {
     return {
+      brandLogo,
       menuList: [
         {
           key: 0,
@@ -70,15 +75,18 @@ export default {
     }
   },
   mounted() {
-    document.addEventListener('click', () => {
-      this.isOnline = false
-    })
+    document.addEventListener('click', this.handleDocumentClick)
+  },
+  beforeDestroy() {
+    document.removeEventListener('click', this.handleDocumentClick)
   },
   methods: {
     ...mapActions('kefu/', [
-      'logout',
       'logoutKefu'
     ]),
+    handleDocumentClick() {
+      this.isOnline = false
+    },
     selectTab(item) {
       this.curIndex = item.key
       this.bus.$emit('selectRightMenu', this.curIndex)
@@ -129,164 +137,263 @@ export default {
 <style lang="stylus" scoped>
 .base-header {
   z-index: 99;
+  height: 72px;
+  padding: 0 22px;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 66px;
-  padding: 0 0 0 15px;
-  background: linear-gradient(270deg, #1890FF 0%, #3875EA 100%);
-  color: #fff;
   flex-shrink: 0;
-
-  .left-wrapper {
-    position: relative;
-    display: flex;
-    flex: 1;
-    align-items: center;
-    justify-content: space-between;
-    padding-right: 15px;
-
-    .search_box {
-      width: 295px;
-      border-radius: 17px;
-      overflow: hidden;
-    }
-
-    .user_info {
-      display: flex;
-      align-items: center;
-
-      // margin-left: 30px;
-      img {
-        width: 40px;
-        height: 40px;
-        margin-right: 10px;
-        border-radius: 50%;
-      }
-
-      span {
-        font-size: 16px;
-      }
-
-      .status-box {
-        position: relative;
-        cursor: pointer;
-      }
-
-      .status {
-        display: flex;
-        align-items: center;
-        padding: 0 10px;
-        margin-left: 5px;
-        background: #EAFFEB;
-        color: rgba(0, 0, 0, 0.65);
-        border-radius: 9px;
-
-        .dot {
-          width: 6px;
-          height: 6px;
-          margin-right: 3px;
-          border-radius: 50%;
-          background: #48D452;
-        }
-
-        &.off {
-          background: #F3F3F3;
-
-          .dot {
-            background: #999999;
-          }
-        }
-      }
-
-      .online-down {
-        z-index: 50;
-        position: absolute;
-        left: 5px;
-        bottom: -75px;
-        width: 120px;
-        background: #fff;
-        color: #333;
-        box-shadow: 0px 2px 4px 0px rgba(0, 0, 0, 0.08);
-        border-radius: 5px;
-
-        .item {
-          position: relative;
-          display: flex;
-          align-items: center;
-          padding: 7px 10px 7px 30px;
-          cursor: pointer;
-
-          i {
-            width: 10px;
-            height: 10px;
-            margin-right: 8px;
-            border-radius: 50%;
-            background: #999999;
-
-            &.green {
-              background: #48D452;
-            }
-          }
-
-          .iconfont {
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 12px;
-          }
-        }
-      }
-    }
-
-    .out-btn {
-      position: absolute;
-      right: 30px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 86px;
-      height: 26px;
-      line-height: 28px;
-      text-align: center;
-      background: #FFFFFF;
-      border-radius: 16px;
-      color: #3875EA;
-      font-size: 13px;
-      cursor: pointer;
-    }
-  }
-
-  .right-menu {
-    display: flex;
-    align-items: center;
-
-    .menu-item {
-      position: relative;
-      margin-right: 30px;
-      font-size: 14px;
-      font-weight: 400;
-      cursor: pointer;
-
-      &.on {
-        font-weight: 600;
-
-        &::after {
-          position: absolute;
-          left: 0;
-          bottom: -22px;
-          content: '';
-          width: 100%;
-          height: 2px;
-          background: #fff;
-        }
-      }
-    }
-  }
+  color: #223451;
+  background: #fff;
+  border-bottom: 1px solid #e7edf5;
+  box-shadow: 0 5px 18px rgba(37, 76, 128, .05);
 }
 
-.orange {
-  background: #ff6700 !important;
+.brand-block {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.brand-logo {
+  width: 136px;
+  height: auto;
+  display: block;
+  object-fit: contain;
+}
+
+.brand-divider {
+  width: 1px;
+  height: 26px;
+  margin: 0 16px;
+  background: #dfe7f2;
+}
+
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-copy strong {
+  color: #263957;
+  font-size: 14px;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+.brand-copy small {
+  margin-top: 3px;
+  color: #a0adbf;
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.header-actions, .user_info {
+  display: flex;
+  align-items: center;
+}
+
+.header-actions {
+  gap: 14px;
+}
+
+.user_info {
+  padding-right: 14px;
+  border-right: 1px solid #e8eef6;
+}
+
+.user-avatar {
+  width: 38px;
+  height: 38px;
+  margin-right: 10px;
+  display: block;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px #dfe8f4;
+}
+
+.user-name {
+  max-width: 130px;
+  overflow: hidden;
+  color: #344761;
+  font-size: 14px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.status-box {
+  margin-left: 8px;
+  position: relative;
+}
+
+.status {
+  height: 30px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #dceee6;
+  border-radius: 999px;
+  color: #278765;
+  background: #f1fbf7;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.status.off {
+  border-color: #e3e8ef;
+  color: #7f8da2;
+  background: #f6f8fb;
+}
+
+.status .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #32c787;
+  box-shadow: 0 0 0 3px rgba(50, 199, 135, .12);
+}
+
+.status.off .dot {
+  background: #a5b0c0;
+  box-shadow: 0 0 0 3px rgba(165, 176, 192, .12);
+}
+
+.status > i {
+  margin-left: 1px;
+  color: currentColor;
+  font-size: 12px;
+}
+
+.online-down {
+  z-index: 50;
+  width: 126px;
+  padding: 6px;
+  position: absolute;
+  top: 38px;
+  right: 0;
+  border: 1px solid #e5ebf3;
+  border-radius: 10px;
+  color: #42536d;
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(39, 68, 108, .14);
+}
+
+.online-down .item {
+  height: 34px;
+  padding: 0 10px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.online-down .item:hover {
+  color: #287feb;
+  background: #f2f7ff;
+}
+
+.online-down .item i {
+  width: 8px;
+  height: 8px;
+  margin-right: 9px;
+  border-radius: 50%;
+  background: #a5b0c0;
+}
+
+.online-down .item i.green {
+  background: #32c787;
+}
+
+.online-down .item .iconfont {
+  margin-left: auto;
+  order: 2;
+  color: #287feb;
+  font-size: 11px;
+}
+
+.logout-button {
+  height: 38px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #dfe7f2;
+  border-radius: 9px;
+  color: #66768e;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  transition: color .2s, border-color .2s, background .2s;
+}
+
+.logout-button:hover {
+  color: #e24a4a;
+  border-color: #f1caca;
+  background: #fff7f7;
+}
+
+.logout-button > i {
+  font-size: 18px;
+}
+
+@media (max-width: 720px) {
+  .base-header {
+    height: 60px;
+    padding: 0 14px;
+  }
+
+  .brand-logo {
+    width: 118px;
+  }
+
+  .brand-divider, .brand-copy, .user-name {
+    display: none;
+  }
+
+  .header-actions {
+    gap: 8px;
+  }
+
+  .user_info {
+    padding-right: 8px;
+  }
+
+  .user-avatar {
+    width: 34px;
+    height: 34px;
+    margin-right: 2px;
+  }
+
+  .status-box {
+    margin-left: 4px;
+  }
+
+  .status {
+    width: 30px;
+    padding: 0;
+    justify-content: center;
+    font-size: 0;
+  }
+
+  .status > i {
+    display: none;
+  }
+
+  .logout-button {
+    width: 38px;
+    padding: 0;
+  }
+
+  .logout-button span {
+    display: none;
+  }
 }
 </style>

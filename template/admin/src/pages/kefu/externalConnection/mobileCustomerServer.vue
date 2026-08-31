@@ -3,8 +3,11 @@
     <!-- 客服头部开始 -->
     <div class="pc_customerServer_container_header" :style="themeBgStyle">
       <div class="pc_customerServer_container_header_title">
-        <img v-if="headerLogo" :src="headerLogo" alt="">
-        <span>{{headerTitle}}</span>
+        <img v-if="headerLogo" :src="headerLogo" alt="" @error="handleHeaderLogoError">
+        <div class="header_identity">
+          <span>{{headerTitle}}</span>
+          <small><i></i>客服在线 · 为您服务</small>
+        </div>
       </div>
       <div class="pc_customerServer_container_header_handle" @click="closeIframe" v-if="upperData.noCanClose != '1'">
         <span class="iconfont">&#xe6c5;</span>
@@ -675,6 +678,35 @@ export default {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+      }
+
+      .header_identity {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+
+        > span {
+          font-weight: 600;
+          line-height: 1.25;
+        }
+
+        small {
+          margin-top: 3px;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          color: rgba(255, 255, 255, .76);
+          font-size: 10px;
+          line-height: 1;
+
+          i {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #8ff0c2;
+            box-shadow: 0 0 0 2px rgba(143, 240, 194, .18);
+          }
+        }
       }
     }
 

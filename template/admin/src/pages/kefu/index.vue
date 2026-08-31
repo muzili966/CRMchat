@@ -46,7 +46,6 @@
       <main class="login-card">
         <div v-show="!loginType" class="login-mode">
           <div class="login-card__heading">
-            <span class="login-card__icon"><img :src="brandIcon" alt=""></span>
             <h2>欢迎回来</h2>
             <p>登录 QiaLink 洽联客服工作台</p>
           </div>
@@ -96,13 +95,11 @@ import Setting from '@/setting';
 import QRCode from 'qrcodejs2'
 import { setCookies } from '@/libs/util'
 import brandLogo from '@/assets/images/qialink-logo-horizontal.png'
-import brandIcon from '@/assets/images/qialink-logo-icon.png'
 export default {
   mixins: [mixins],
   data() {
     return {
       brandLogo,
-      brandIcon,
       fullWidth: document.documentElement.clientWidth,
       swiperOption: {
         pagination: '.swiper-pagination',
@@ -390,7 +387,7 @@ export default {
 .floating-card--satisfaction { right: -7%; top: 17%; }
 .floating-card--message { left: -8%; bottom: 13%; }
 
-.login-panel { min-height: 100vh; padding: 42px clamp(42px, 6vw, 92px) 30px; display: grid; grid-template-rows: auto 1fr auto; background: #fff; }
+.login-panel { min-height: 100vh; padding: 42px clamp(42px, 6vw, 92px) 30px; position: relative; display: flex; flex-direction: column; justify-content: center; background: #fff; }
 .mobile-brand { display: none; }
 .login-card { width: 100%; max-width: 430px; margin: auto; }
 .login-mode { width: 100%; }
@@ -409,7 +406,7 @@ export default {
 .mode-switch:hover { color: #287feb; }
 .mode-switch .iconfont { color: #287feb; font-size: 19px; }
 .mode-switch--center { margin-top: 24px; }
-.login-panel__meta { margin: 0; color: #a7b4c7; font-size: 12px; text-align: center; }
+.login-panel__meta { margin: 0; position: absolute; right: 0; bottom: 30px; left: 0; color: #a7b4c7; font-size: 12px; text-align: center; }
 .login-panel__meta i { width: 6px; height: 6px; margin-right: 7px; display: inline-block; border-radius: 50%; background: #32c787; box-shadow: 0 0 0 4px rgba(50,199,135,.1); vertical-align: 1px; }
 .code-box { width: 220px; height: 220px; margin: 0 auto; padding: 18px; position: relative; display: flex; align-items: center; justify-content: center; border: 1px solid #e4ebf5; border-radius: 16px; background: #fff; box-shadow: 0 12px 35px rgba(33,76,135,.08); }
 .qrcode { width: 180px; height: 180px; display: flex; align-items: center; justify-content: center; }
@@ -435,7 +432,7 @@ export default {
   .kefu-login { display: block; min-height: 100vh; padding: 24px; background: linear-gradient(145deg, #eef5ff, #f8fbff); }
   .brand-panel { display: none; }
   .login-panel { min-height: calc(100vh - 48px); padding: 34px 30px 26px; border-radius: 20px; box-shadow: 0 22px 60px rgba(49,88,141,.1); }
-  .mobile-brand { display: flex; align-items: center; justify-content: space-between; }
+  .mobile-brand { position: absolute; top: 34px; right: 30px; left: 30px; display: flex; align-items: center; justify-content: space-between; }
   .mobile-brand img { width: 150px; height: auto; }
   .mobile-brand span { color: #9aa8bc; font-size: 12px; }
   .login-card { max-width: 440px; }
@@ -443,6 +440,8 @@ export default {
 @media (max-width: 480px) {
   .kefu-login { padding: 0; background: #fff; }
   .login-panel { min-height: 100vh; padding: 27px 22px 22px; border-radius: 0; box-shadow: none; }
+  .mobile-brand { top: 27px; right: 22px; left: 22px; }
+  .login-panel__meta { bottom: 22px; }
   .mobile-brand img { width: 136px; }
   .mobile-brand span { display: none; }
   .login-card__heading { margin-bottom: 30px; }
