@@ -115,7 +115,7 @@ class ApplicationThemeTest extends TestCase
     {
         $theme = ApplicationThemeServices::defaultTheme();
         $this->assertSame(
-            ['title', 'logo', 'theme_color', 'pc_icon', 'mobile_icon', 'banners', 'custom_html', 'show_platform_brand',
+            ['title', 'logo', 'theme_color', 'theme_style', 'bubble_style', 'pc_icon', 'mobile_icon', 'banners', 'custom_html', 'show_platform_brand',
                 'tourist_avatar', 'service_feedback'],
             array_keys($theme)
         );
@@ -125,6 +125,8 @@ class ApplicationThemeTest extends TestCase
         $this->assertSame('', $theme['title']);
         $this->assertSame('', $theme['custom_html']);
         $this->assertSame(ApplicationTheme::DEFAULT_THEME_COLOR, $theme['theme_color']);
+        $this->assertSame(ApplicationTheme::DEFAULT_THEME_STYLE, $theme['theme_style']);
+        $this->assertSame(ApplicationTheme::DEFAULT_BUBBLE_STYLE, $theme['bubble_style']);
         $this->assertSame([], $theme['banners']);
         $this->assertSame(ApplicationTheme::BRAND_SHOW, $theme['show_platform_brand']);
     }
@@ -135,13 +137,47 @@ class ApplicationThemeTest extends TestCase
             'id' => 3,
             'tenant_id' => 2,
             'theme_color' => '#ABCDEF',
+            'theme_style' => 'midnight',
+            'bubble_style' => 'outline',
             'banners' => json_encode([['image' => '/a.png', 'link' => 'javascript:1', 'sort' => 0]]),
             'show_platform_brand' => '0',
         ]);
         $this->assertSame('#abcdef', $theme['theme_color']);
+        $this->assertSame('midnight', $theme['theme_style']);
+        $this->assertSame('outline', $theme['bubble_style']);
         $this->assertSame('', $theme['banners'][0]['link']);
         $this->assertSame(ApplicationTheme::BRAND_HIDE, $theme['show_platform_brand']);
         $this->assertSame('', $theme['logo']);
+    }
+
+    public function testSanitizeThemeStyleAcceptsKnownStyles()
+    {
+        foreach (ApplicationTheme::THEME_STYLES as $style) {
+            $this->assertSame($style, ApplicationThemeServices::sanitizeThemeStyle($style));
+        }
+    }
+
+    public function testSanitizeThemeStyleFallsBackOnUnknownValue()
+    {
+        $this->assertSame(
+            ApplicationTheme::DEFAULT_THEME_STYLE,
+            ApplicationThemeServices::sanitizeThemeStyle('unknown')
+        );
+    }
+
+    public function testSanitizeBubbleStyleAcceptsKnownStyles()
+    {
+        foreach (ApplicationTheme::BUBBLE_STYLES as $style) {
+            $this->assertSame($style, ApplicationThemeServices::sanitizeBubbleStyle($style));
+        }
+    }
+
+    public function testSanitizeBubbleStyleFallsBackOnUnknownValue()
+    {
+        $this->assertSame(
+            ApplicationTheme::DEFAULT_BUBBLE_STYLE,
+            ApplicationThemeServices::sanitizeBubbleStyle('unknown')
+        );
     }
 
     public function testNormalizeAvatarsAcceptsStringsAndObjects()

@@ -416,10 +416,10 @@ CREATE TABLE IF NOT EXISTS `eb_system_config` (
 --
 
 INSERT INTO `eb_system_config` (`id`, `menu_name`, `type`, `input_type`, `config_tab_id`, `parameter`, `upload_type`, `required`, `width`, `high`, `value`, `info`, `desc`, `sort`, `status`) VALUES
-(1, 'site_name', 'text', 'input', 1, '', 0, 'required:true', 100, 0, '"CRMEB"', '网站名称', '网站名称很多地方会显示的，建议认真填写', 10, 1),
+(1, 'site_name', 'text', 'input', 1, '', 0, 'required:true', 100, 0, '"QiaLink 洽联"', '网站名称', '网站名称很多地方会显示的，建议认真填写', 10, 1),
 (2, 'site_url', 'text', 'input', 1, '', 0, 'required:true,url:true', 100, 0, '""', '网站地址', '安装自动配置，不要轻易修改，更换会影响网站访问、接口请求、本地文件储存、支付回调、微信授权、支付、小程序图片访问、部分二维码、官方授权等', 5, 1),
-(3, 'site_logo', 'upload', '', 1, '', 1, '', 0, 0, '"https:\\/\\/chat.crmeb.net\\/uploads\\/attach\\/2021\\/09/\\20210906\\/6972cb96c04079eb1952ef43a04c6fbf.png"', '后台大LOGO', '菜单展开左上角logo,建议尺寸[170*50]', 3, 1),
-(5, 'seo_title', 'text', 'input', 1, '', 0, 'required:true', 100, 0, '"CRMEB"', 'SEO标题', 'SEO标题', 0, 0),
+(3, 'site_logo', 'upload', '', 1, '', 1, '', 0, 0, '"/statics/brand/qialink-logo-horizontal.png"', '后台大LOGO', '菜单展开左上角logo,建议尺寸[170*50]', 3, 1),
+(5, 'seo_title', 'text', 'input', 1, '', 0, 'required:true', 100, 0, '"QiaLink 洽联 · 智能客户联络平台"', 'SEO标题', 'SEO标题', 0, 0),
 (108, 'upload_type', 'radio', '', 31, '1=>本地存储\n2=>七牛云存储\n3=>阿里云OSS\n4=>腾讯COS', 1, '', 0, 0, '1', '上传类型', '文件储存配置，注意：一旦配置就不要轻易修改，会导致文件不能使用', 40, 1),
 (109, 'uploadUrl', 'text', 'input', 32, '', 0, 'url:true', 100, 0, '""', '空间域名 Domain', '空间域名 Domain', 0, 1),
 (110, 'accessKey', 'text', 'input', 32, '', 0, '', 100, 0, '""', 'AccessKey ID', 'AccessKey ID', 0, 1),
@@ -428,8 +428,8 @@ INSERT INTO `eb_system_config` (`id`, `menu_name`, `type`, `input_type`, `config
 (118, 'storage_region', 'text', 'input', 32, '', 0, '', 100, 0, '""', 'Endpoint', '所属地域', 0, 1),
 (142, 'tengxun_map_key', 'text', 'input', 68, '', 0, '', 100, 0, '', '腾讯地图KEY', '腾讯地图KEY，申请地址：https://lbs.qq.com', 0, 1),
 (144, 'cache_config', 'text', 'input', 1, '', 0, '', 100, 0, '"86400"', '网站缓存时间', '配置全局缓存时间（秒），默认留空为永久缓存', 0, 1),
-(168, 'site_logo_square', 'upload', '', 1, '', 1, '', 0, 0, '"https:\\/\\/chat.crmeb.net/\\uploads\\/attach\\/2021\\/09/\\/20210906\\/32645ce20cd8b945598d06bd2a31dd2a.png"', '后台小LOGO', '后台菜单缩进小LOGO，尺寸180*180', 1, 1),
-(171, 'login_logo', 'upload', '', 1, '', 1, '', 0, 0, '', '后台登录页LOGO', '后台登录页LOGO，建议尺寸270x75', 4, 1),
+(168, 'site_logo_square', 'upload', '', 1, '', 1, '', 0, 0, '"/statics/brand/qialink-logo-icon.png"', '后台小LOGO', '后台菜单缩进小LOGO，尺寸180*180', 1, 1),
+(171, 'login_logo', 'upload', '', 1, '', 1, '', 0, 0, '"/statics/brand/qialink-logo-horizontal.png"', '后台登录页LOGO', '后台登录页LOGO，建议尺寸270x75', 4, 1),
 (172, 'qiniu_uploadUrl', 'text', 'input', 33, '', 0, '', 100, 0, '""', '空间域名 Domain', '空间域名 Domain', 0, 1),
 (173, 'qiniu_accessKey', 'text', 'input', 33, '', 0, '', 100, 0, '""', 'accessKey', 'accessKey', 0, 1),
 (174, 'qiniu_secretKey', 'text', 'input', 33, '', 0, '', 100, 0, '""', 'secretKey', 'secretKey', 0, 1),
@@ -1287,6 +1287,8 @@ CREATE TABLE IF NOT EXISTS `eb_application_theme` (
   `title` varchar(50) NOT NULL DEFAULT '' COMMENT '窗口标题,空=用应用名',
   `logo` varchar(255) NOT NULL DEFAULT '' COMMENT '窗口LOGO',
   `theme_color` varchar(20) NOT NULL DEFAULT '#2d8cf0' COMMENT '主题色',
+  `theme_style` varchar(20) NOT NULL DEFAULT 'modern' COMMENT '布局风格modern/minimal/soft/midnight',
+  `bubble_style` varchar(20) NOT NULL DEFAULT 'soft' COMMENT '气泡风格soft/clean/pill/outline/card',
   `pc_icon` varchar(255) NOT NULL DEFAULT '' COMMENT 'PC悬浮按钮图标',
   `mobile_icon` varchar(255) NOT NULL DEFAULT '' COMMENT '移动端悬浮按钮图标',
   `banners` text COMMENT '轮播广告json[{image,link,sort}]',

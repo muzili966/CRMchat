@@ -30,6 +30,18 @@ class ApplicationTheme extends BaseModel
      */
     const DEFAULT_THEME_COLOR = '#2d8cf0';
 
+    /** 默认布局风格 */
+    const DEFAULT_THEME_STYLE = 'modern';
+
+    /** 为兼容既有字段保留theme命名，实际值控制布局密度 */
+    const THEME_STYLES = ['modern', 'minimal', 'soft', 'midnight'];
+
+    /** 默认消息气泡风格 */
+    const DEFAULT_BUBBLE_STYLE = 'soft';
+
+    /** 允许使用的消息气泡风格 */
+    const BUBBLE_STYLES = ['soft', 'clean', 'pill', 'outline', 'card'];
+
     /**
      * 显示平台标识
      */

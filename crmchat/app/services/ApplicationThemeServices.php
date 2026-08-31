@@ -213,6 +213,8 @@ class ApplicationThemeServices extends BaseServices
             'title' => '',
             'logo' => '',
             'theme_color' => ApplicationTheme::DEFAULT_THEME_COLOR,
+            'theme_style' => ApplicationTheme::DEFAULT_THEME_STYLE,
+            'bubble_style' => ApplicationTheme::DEFAULT_BUBBLE_STYLE,
             'pc_icon' => '',
             'mobile_icon' => '',
             'banners' => [],
@@ -254,6 +256,8 @@ class ApplicationThemeServices extends BaseServices
         //读取侧同样清洗：入库前的存量数据与绕过服务层的直写都可能带脚本
         return array_merge(self::defaultTheme(), $theme, [
             'theme_color' => self::sanitizeColor((string)($theme['theme_color'] ?? '')),
+            'theme_style' => self::sanitizeThemeStyle(self::stringValue($theme, 'theme_style')),
+            'bubble_style' => self::sanitizeBubbleStyle(self::stringValue($theme, 'bubble_style')),
             'banners' => self::normalizeBanners($theme['banners'] ?? []),
             'custom_html' => self::sanitizeHtml(self::stringValue($theme, 'custom_html')),
             'show_platform_brand' => self::normalizeBrand($theme['show_platform_brand'] ?? ApplicationTheme::BRAND_SHOW),
@@ -284,6 +288,32 @@ class ApplicationThemeServices extends BaseServices
     {
         $value = trim($color);
         return self::isValidColor($value) ? strtolower($value) : ApplicationTheme::DEFAULT_THEME_COLOR;
+    }
+
+    /**
+     * 校验并规范化主题风格（纯函数），非法值回退默认风格
+     * @param string $style
+     * @return string
+     */
+    public static function sanitizeThemeStyle(string $style): string
+    {
+        $value = trim($style);
+        return in_array($value, ApplicationTheme::THEME_STYLES, true)
+            ? $value
+            : ApplicationTheme::DEFAULT_THEME_STYLE;
+    }
+
+    /**
+     * 校验并规范化气泡风格（纯函数），非法值回退默认风格
+     * @param string $style
+     * @return string
+     */
+    public static function sanitizeBubbleStyle(string $style): string
+    {
+        $value = trim($style);
+        return in_array($value, ApplicationTheme::BUBBLE_STYLES, true)
+            ? $value
+            : ApplicationTheme::DEFAULT_BUBBLE_STYLE;
     }
 
     /**
@@ -322,6 +352,8 @@ class ApplicationThemeServices extends BaseServices
             'title' => self::stringValue($data, 'title'),
             'logo' => self::stringValue($data, 'logo'),
             'theme_color' => self::sanitizeColor(self::stringValue($data, 'theme_color')),
+            'theme_style' => self::sanitizeThemeStyle(self::stringValue($data, 'theme_style')),
+            'bubble_style' => self::sanitizeBubbleStyle(self::stringValue($data, 'bubble_style')),
             'pc_icon' => self::stringValue($data, 'pc_icon'),
             'mobile_icon' => self::stringValue($data, 'mobile_icon'),
             'banners' => json_encode(self::normalizeBanners($data['banners'] ?? []), JSON_UNESCAPED_UNICODE),

@@ -2,7 +2,15 @@
  * 访客端装修主题：数据挂在会话接口返回体的 theme 字段上，由 socketServer 混入的 chatServerData 承载，
  * 因此本混入必须与 socketServer 一起使用；后端未下发 theme 时全部退化为组件内置的默认外观。
  */
-const DEFAULT_THEME_COLOR = '#3875ea';
+import {
+  DEFAULT_BUBBLE_STYLE,
+  DEFAULT_CHAT_LAYOUT,
+  getBubbleStyle,
+  getChatLayout,
+  getChatThemeVariables
+} from '@/config/chatThemes';
+
+const DEFAULT_THEME_COLOR = '#2d8cf0';
 const PLATFORM_BRAND_TEXT = '技术支持 by QiaLink 洽联';
 const BRAND_HIDDEN = 0; // show_platform_brand = 0 表示白标
 const BUBBLE_TEXT_COLOR = '#fff';
@@ -33,19 +41,32 @@ export default {
     appTheme() {
       return this.chatServerData.theme || {};
     },
-    hasThemeColor() {
-      return !!this.appTheme.theme_color;
-    },
     themeColor() {
       return this.appTheme.theme_color || DEFAULT_THEME_COLOR;
     },
-    // 返回空对象是为了让样式表里的默认渐变/底色继续生效，而不是被覆盖成默认色
+    themeStyle() {
+      return getChatLayout(this.appTheme.theme_style || DEFAULT_CHAT_LAYOUT).value;
+    },
+    bubbleStyle() {
+      return getBubbleStyle(this.appTheme.bubble_style || DEFAULT_BUBBLE_STYLE).value;
+    },
+    themeClass() {
+      return `chat-layout-${this.themeStyle}`;
+    },
+    bubbleClass() {
+      return `chat-bubble-${this.bubbleStyle}`;
+    },
+    themeRootStyle() {
+      return getChatThemeVariables(this.themeColor);
+    },
     themeBgStyle() {
-      return this.hasThemeColor ? { background: this.themeColor } : {};
+      return { background: this.themeColor };
     },
     // 主题色饱和度不可控，同步改文字色以保证气泡可读
     themeBubbleStyle() {
-      if(!this.hasThemeColor) return {};
+      if(this.bubbleStyle === 'outline') {
+        return { background: 'transparent', borderColor: this.themeColor, color: this.themeColor };
+      }
       return { background: this.themeColor, color: BUBBLE_TEXT_COLOR };
     },
     headerTitle() {

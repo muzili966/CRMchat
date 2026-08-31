@@ -1,5 +1,5 @@
 <template>
-  <div class="pc_customerServer_container">
+  <div class="pc_customerServer_container" :class="[themeClass, bubbleClass, { 'has-platform-brand': isShowPlatformBrand }]" :style="themeRootStyle">
     <!-- 客服头部开始 -->
     <div class="pc_customerServer_container_header" :style="themeBgStyle">
       <div class="pc_customerServer_container_header_title">
@@ -94,9 +94,6 @@
 
     <div class="footer_customerServer_container">
       <div class="mobel_customerServer_container_footer">
-        <div class="crmchat_link" @click="tolink" v-if="isShowPlatformBrand">
-          <span>QiaLink 洽联智能客服</span>
-        </div>
         <div class="mobel_customerServer_container_footer_uploag_image">
           <span class="iconfont">&#xe6ca;</span>
           <input type="file" class="file_input" @change="uploadFile">
@@ -647,5 +644,423 @@ export default {
 /deep/ .happy-scroll-content {
   width: 100%;
   box-sizing: border-box;
+}
+
+// 移动端采用独立的信息密度、触控尺寸和安全区，不再复用桌面窗口的缩小版观感
+.pc_customerServer_container {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100%;
+  color: var(--chat-text);
+  background: var(--chat-page-bg);
+  overflow: hidden;
+  overscroll-behavior: none;
+
+  &_header {
+    min-height: 58px;
+    flex-shrink: 0;
+    padding: ~"calc(8px + env(safe-area-inset-top)) 12px 8px";
+    box-sizing: content-box;
+    box-shadow: 0 5px 20px rgba(16, 42, 85, .16);
+    z-index: 5;
+
+    &_title {
+      min-width: 0;
+      font-weight: 600;
+      letter-spacing: .2px;
+
+      img {
+        width: 38px;
+        height: 38px;
+        flex: none;
+        object-fit: cover;
+        border: 2px solid rgba(255, 255, 255, .7);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, .14);
+      }
+
+      span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    &_handle {
+      width: 44px;
+      height: 44px;
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: -8px;
+      border-radius: 50%;
+      -webkit-tap-highlight-color: transparent;
+    }
+  }
+
+  &_content {
+    min-height: 0;
+    background: var(--chat-page-bg);
+
+    .scroll_content {
+      width: 100%;
+      padding: 12px 8px 20px;
+
+      .chart_list_item_content {
+        align-items: flex-start;
+        padding: 7px 4px;
+      }
+
+      .chart_list_item_avatar {
+        width: 36px;
+        height: 36px;
+        flex: none;
+        margin-right: 9px;
+        border: 2px solid var(--chat-surface);
+        box-shadow: 0 2px 8px rgba(31, 45, 61, .08);
+      }
+
+      .chart_list_item_text {
+        max-width: ~"calc(78% - 46px)";
+        padding: 10px 13px;
+        color: var(--chat-text);
+        line-height: 1.55;
+        text-align: left;
+        background: var(--chat-incoming);
+        border: 1px solid var(--chat-border);
+        border-radius: 16px 16px 16px 5px;
+        box-shadow: 0 3px 12px rgba(31, 45, 61, .06);
+      }
+
+      .chart_list_item_img,
+      .chart_list_item_imgOrText {
+        max-width: 72%;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 3px 12px rgba(31, 45, 61, .08);
+      }
+
+      .chart_list_item_time {
+        width: max-content;
+        max-width: 80%;
+        margin: 10px auto 4px;
+        padding: 3px 8px;
+        color: var(--chat-muted);
+        font-size: 11px;
+        line-height: 16px;
+        background: rgba(127, 139, 165, .1);
+        border-radius: 10px;
+      }
+
+      .right-box {
+        .chart_list_item_avatar {
+          margin-right: 0;
+          margin-left: 9px;
+        }
+
+        .chart_list_item_text {
+          color: #fff;
+          text-align: left;
+          background: var(--chat-primary);
+          border-color: transparent;
+          border-radius: 16px 16px 5px 16px;
+        }
+      }
+    }
+  }
+
+  .footer_customerServer_container {
+    flex-shrink: 0;
+    background: var(--chat-surface);
+    border-top: 1px solid var(--chat-border);
+    box-shadow: 0 -8px 24px rgba(31, 45, 61, .06);
+    z-index: 4;
+  }
+
+  .mobel_customerServer_container_footer {
+    min-height: 64px;
+    justify-content: flex-start;
+    gap: 4px;
+    padding: ~"8px 10px calc(8px + env(safe-area-inset-bottom))";
+    border-top: 0;
+
+    &_uploag_image,
+    &_emoji {
+      width: 44px;
+      height: 44px;
+      flex: none;
+      justify-content: center;
+      color: var(--chat-muted);
+      border-radius: 12px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    &_input {
+      min-width: 0;
+      min-height: 44px;
+      margin: 0 2px;
+      background: var(--chat-page-bg);
+      border: 1px solid var(--chat-border);
+      border-radius: 13px;
+
+      &_con {
+        min-height: 42px;
+
+        .font {
+          padding: 10px 12px;
+          color: var(--chat-text);
+          line-height: 22px;
+        }
+
+        textarea::placeholder {
+          color: var(--chat-muted);
+        }
+      }
+    }
+
+    .transferHuman,
+    .sendMessage {
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 11px;
+      margin-left: 3px;
+      border-radius: 11px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .transferHuman {
+      color: var(--chat-primary);
+      border-color: var(--chat-primary);
+    }
+
+    .sendMessage-primary {
+      background: var(--chat-primary);
+    }
+
+    &_emojiList {
+      grid-template-columns: repeat(7, minmax(40px, 1fr));
+      gap: 8px 0;
+      background: var(--chat-surface);
+    }
+  }
+}
+
+.theme_banner {
+  background: var(--chat-page-bg);
+  border-bottom: 1px solid var(--chat-border);
+}
+
+.platform_brand {
+  color: var(--chat-muted);
+  background: var(--chat-surface);
+  padding: ~"3px 0 calc(3px + env(safe-area-inset-bottom))";
+}
+
+.has-platform-brand .mobel_customerServer_container_footer {
+  padding-bottom: 8px;
+}
+
+.productMessage_container {
+  background: var(--chat-surface);
+  border-bottom: 1px solid var(--chat-border);
+
+  &_image img {
+    border-radius: 10px;
+    object-fit: cover;
+  }
+
+  &_content_title {
+    color: var(--chat-text);
+  }
+}
+
+.canSelectemoji {
+  height: ~"min(210px, 32vh)" !important;
+  padding: ~"12px 8px calc(12px + env(safe-area-inset-bottom))";
+}
+
+/deep/ .happy-scroll-container,
+/deep/ .happy-scroll-strip {
+  width: 100% !important;
+}
+
+.pc_customerServer_container.chat-bubble-clean {
+  .chart_list_item_text,
+  .right-box .chart_list_item_text {
+    border-radius: 6px;
+    box-shadow: none;
+  }
+}
+
+.pc_customerServer_container.chat-bubble-pill {
+  .chart_list_item_text,
+  .right-box .chart_list_item_text {
+    padding-right: 16px;
+    padding-left: 16px;
+    border-radius: 22px;
+  }
+}
+
+.pc_customerServer_container.chat-bubble-outline {
+  .chart_list_item_text,
+  .right-box .chart_list_item_text {
+    background: transparent;
+    border: 1px solid var(--chat-border);
+    border-radius: 12px;
+    box-shadow: none;
+  }
+}
+
+.pc_customerServer_container.chat-bubble-card {
+  .chart_list_item_text,
+  .right-box .chart_list_item_text {
+    border-radius: 12px;
+    box-shadow: 0 7px 18px rgba(31, 45, 61, .14);
+  }
+}
+
+.pc_customerServer_container.chat-layout-minimal {
+  .pc_customerServer_container_header {
+    min-height: 50px;
+    padding-top: ~"calc(4px + env(safe-area-inset-top))";
+    padding-bottom: 4px;
+
+    &_title img {
+      width: 32px;
+      height: 32px;
+    }
+  }
+
+  .pc_customerServer_container_content .scroll_content {
+    padding-top: 7px;
+
+    .chart_list_item_content {
+      padding-top: 4px;
+      padding-bottom: 4px;
+    }
+
+    .chart_list_item_avatar {
+      width: 30px;
+      height: 30px;
+    }
+
+    .chart_list_item_text {
+      padding: 7px 10px;
+      font-size: 14px;
+    }
+  }
+
+  .mobel_customerServer_container_footer {
+    min-height: 56px;
+    padding-top: 6px;
+  }
+}
+
+.pc_customerServer_container.chat-layout-soft {
+  .pc_customerServer_container_header {
+    min-height: 66px;
+
+    &_title img {
+      width: 42px;
+      height: 42px;
+    }
+  }
+
+  .pc_customerServer_container_content .scroll_content {
+    padding: 18px 12px 28px;
+
+    .chart_list_item_content {
+      padding-top: 10px;
+      padding-bottom: 10px;
+    }
+
+    .chart_list_item_avatar {
+      width: 40px;
+      height: 40px;
+    }
+
+    .chart_list_item_text {
+      padding: 12px 15px;
+    }
+  }
+
+  .mobel_customerServer_container_footer {
+    min-height: 72px;
+    padding-top: 12px;
+  }
+}
+
+.pc_customerServer_container.chat-layout-midnight {
+  .pc_customerServer_container_header {
+    position: relative;
+    justify-content: center;
+
+    &_title img {
+      display: none;
+    }
+
+    &_handle {
+      position: absolute;
+      right: 12px;
+    }
+  }
+
+  .pc_customerServer_container_content .scroll_content {
+    padding-right: 12px;
+    padding-left: 12px;
+
+    .chart_list_item_avatar {
+      display: none;
+    }
+
+    .chart_list_item_content,
+    .right-box {
+      padding-right: 0;
+      padding-left: 0;
+    }
+
+    .chart_list_item_text {
+      max-width: 86%;
+    }
+  }
+}
+
+@media (max-width: 360px) {
+  .pc_customerServer_container .mobel_customerServer_container_footer {
+    gap: 0;
+    padding-left: 6px;
+    padding-right: 6px;
+
+    &_uploag_image,
+    &_emoji {
+      width: 40px;
+    }
+
+    .transferHuman,
+    .sendMessage {
+      padding: 0 8px;
+      font-size: 13px;
+    }
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .pc_customerServer_container_header {
+    min-height: 48px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+
+    &_title img {
+      width: 32px;
+      height: 32px;
+    }
+  }
+
+  .theme_banner {
+    display: none;
+  }
 }
 </style>

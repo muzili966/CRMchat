@@ -28,19 +28,23 @@ function customerServerStyle() {
 
   this.customerServer_container_mobile = {
     position: 'fixed',
-    right: 0,
-    top: '500px',
+    right: '16px',
+    bottom: 'calc(20px + env(safe-area-inset-bottom))',
+    top: 'auto',
     margin: 'auto',
-    width: '40px',
-    height: '40px',
+    width: '52px',
+    height: '52px',
     background: 'linear-gradient(270deg, #1890FF 0%, #3875EA 100%)',
     'border-radius': '50%',
+    'box-shadow': '0 10px 28px rgba(45, 117, 234, 0.32)',
+    overflow: 'hidden',
     'z-index': 998
 
   };
   this.customerServer_container_mobile_image = {
     width: '100%',
-    height: 'auto',
+    height: '100%',
+    'object-fit': 'cover',
   };
 
   this.connect_customerServer = {
@@ -242,10 +246,13 @@ function initCustomerServer(option) {
   // 设置初始化样式，包括iframe弹宽初始定位，未读消息等
   this.initPositionStyle = () => {
     let mobileInitStyle = {
-      width: '100%',
-      height: '100%',
+      width: '100vw',
+      height: window.CSS && window.CSS.supports('height', '100dvh') ? '100dvh' : '100vh',
       top: '100%',
-      left: 0
+      left: 0,
+      right: 0,
+      'border-radius': 0,
+      overflow: 'hidden'
     }
     // pc端初始化样式
     let pcInitStyle = {

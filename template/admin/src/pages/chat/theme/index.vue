@@ -31,10 +31,40 @@
                             <a class="pic-clear" v-if="form.logo" @click="clearPic('logo')">清除</a>
                             <p class="field-tip">建议正方形图片，展示在聊天窗口标题栏</p>
                         </FormItem>
+                        <FormItem label="界面布局：">
+                            <div class="theme-preset-grid">
+                                <button v-for="item in layoutPresets" :key="item.value" type="button"
+                                        class="theme-preset" :class="{ 'theme-preset-active': form.theme_style === item.value }"
+                                        @click="selectLayout(item)">
+                                    <span class="layout-preset-preview" :class="'layout-preset-' + item.size">
+                                        <i class="layout-mini-header"></i>
+                                        <span class="layout-mini-body"><i></i><i></i><i></i></span>
+                                    </span>
+                                    <span class="theme-preset-copy">
+                                        <strong>{{ item.name }}</strong>
+                                        <small>{{ item.description }}</small>
+                                    </span>
+                                    <Icon v-if="form.theme_style === item.value" type="md-checkmark-circle" size="19"/>
+                                </button>
+                            </div>
+                            <p class="field-tip">仅调整标题栏、头像、间距和消息区密度，不会改变主题色</p>
+                        </FormItem>
                         <FormItem label="主题色：">
                             <ColorPicker v-model="form.theme_color" recommend :colors="recommendColors"/>
                             <span class="color-value">{{ form.theme_color }}</span>
                             <a class="pic-clear" @click="resetColor">恢复默认</a>
+                        </FormItem>
+                        <FormItem label="气泡样式：">
+                            <div class="bubble-preset-grid">
+                                <button v-for="item in bubblePresets" :key="item.value" type="button"
+                                        class="bubble-preset" :class="{ 'bubble-preset-active': form.bubble_style === item.value }"
+                                        @click="form.bubble_style = item.value">
+                                    <span class="bubble-preset-preview" :class="'bubble-preview-' + item.value">
+                                        <i></i><i :style="{ background: previewColor, borderColor: previewColor }"></i>
+                                    </span>
+                                    <span><strong>{{ item.name }}</strong><small>{{ item.description }}</small></span>
+                                </button>
+                            </div>
                         </FormItem>
                         <FormItem label="PC悬浮图标：">
                             <div class="pic-box" @click="openPic('pc_icon')">
@@ -105,9 +135,15 @@
                     </Form>
                 </Col>
                 <Col :xl="10" :lg="10" :md="24" :sm="24" :xs="24">
-                    <div class="preview-tip">以下为访客看到的效果（示意）</div>
-                    <div class="preview-wrap">
-                        <div class="chat-window">
+                    <div class="preview-toolbar">
+                        <span>访客端实时预览</span>
+                        <ButtonGroup size="small">
+                            <Button :type="previewDevice === 'desktop' ? 'primary' : 'default'" @click="previewDevice = 'desktop'">桌面</Button>
+                            <Button :type="previewDevice === 'mobile' ? 'primary' : 'default'" @click="previewDevice = 'mobile'">手机</Button>
+                        </ButtonGroup>
+                    </div>
+                    <div class="preview-wrap" :class="'preview-wrap-' + previewDevice">
+                        <div class="chat-window" :class="previewClasses" :style="previewVariables">
                             <div class="chat-header" :style="{ background: previewColor }">
                                 <img class="chat-logo" v-if="form.logo" :src="form.logo">
                                 <span class="chat-title">{{ previewTitle }}</span>
@@ -123,13 +159,15 @@
                             <div class="chat-body">
                                 <div class="chat-msg" v-for="(item, index) in previewMessages" :key="index"
                                      :class="item.self ? 'chat-msg-self' : ''">
-                                    <div class="chat-bubble" :style="item.self ? { background: previewColor } : null">
+                                    <div class="chat-bubble" :style="previewBubbleStyle(item.self)">
                                         {{ item.text }}
                                     </div>
                                 </div>
                             </div>
                             <div class="chat-footer">
+                                <Icon class="chat-tool" type="ios-image-outline" size="22"/>
                                 <div class="chat-input">请输入您的问题…</div>
+                                <Icon class="chat-tool" type="ios-happy-outline" size="22"/>
                                 <div class="chat-send" :style="{ background: previewColor }">发送</div>
                             </div>
                             <div class="chat-brand" v-if="form.show_platform_brand === brandShow">{{ platformBrand }}</div>
@@ -150,6 +188,15 @@
     import { appListApi } from '@/api/application'
     import { mySubscriptionApi } from '@/api/tenant'
     import uploadPictures from '@/components/uploadPictures'
+    import {
+        CHAT_BUBBLE_PRESETS,
+        CHAT_LAYOUT_PRESETS,
+        DEFAULT_BUBBLE_STYLE,
+        DEFAULT_CHAT_LAYOUT,
+        getBubbleStyle,
+        getChatLayout,
+        getChatThemeVariables
+    } from '@/config/chatThemes'
 
     const THEME_COLOR_DEFAULT = '#2d8cf0'
     const PLATFORM_BRAND = '技术支持 by QiaLink 洽联'
@@ -179,6 +226,8 @@
         title: '',
         logo: '',
         theme_color: THEME_COLOR_DEFAULT,
+        theme_style: DEFAULT_CHAT_LAYOUT,
+        bubble_style: DEFAULT_BUBBLE_STYLE,
         pc_icon: '',
         mobile_icon: '',
         banners: [],
@@ -224,6 +273,9 @@
                 gridBtn: { xl: 4, lg: 8, md: 8, sm: 8, xs: 8 },
                 gridPic: { xl: 6, lg: 8, md: 12, sm: 12, xs: 12 },
                 recommendColors: RECOMMEND_COLORS,
+                layoutPresets: CHAT_LAYOUT_PRESETS,
+                bubblePresets: CHAT_BUBBLE_PRESETS,
+                previewDevice: 'mobile',
                 previewMessages: PREVIEW_MESSAGES,
                 platformBrand: PLATFORM_BRAND,
                 titleMax: TITLE_MAX,
@@ -245,6 +297,16 @@
             },
             previewColor () {
                 return HEX_COLOR_REG.test(this.form.theme_color) ? this.form.theme_color : THEME_COLOR_DEFAULT
+            },
+            previewVariables () {
+                return getChatThemeVariables(this.previewColor)
+            },
+            previewClasses () {
+                return [
+                    `chat-window-${this.previewDevice}`,
+                    `chat-layout-${getChatLayout(this.form.theme_style).value}`,
+                    `chat-bubble-${getBubbleStyle(this.form.bubble_style).value}`
+                ]
             },
             firstBanner () {
                 return this.form.banners.find(item => item.image) || null
@@ -290,6 +352,8 @@
                     appid: this.appid,
                     title: theme.title || '',
                     theme_color: theme.theme_color || THEME_COLOR_DEFAULT,
+                    theme_style: getChatLayout(theme.theme_style).value,
+                    bubble_style: getBubbleStyle(theme.bubble_style).value,
                     banners: normalizeBanners(theme.banners),
                     custom_html: theme.custom_html || '',
                     // 开关与预览按数值严格比较，后端字符串形态需先归一
@@ -326,6 +390,16 @@
             },
             resetColor () {
                 this.form.theme_color = THEME_COLOR_DEFAULT
+            },
+            selectLayout (layout) {
+                this.form.theme_style = layout.value
+            },
+            previewBubbleStyle (self) {
+                if (!self) return null
+                if (this.form.bubble_style === 'outline') {
+                    return { background: 'transparent', color: this.previewColor, borderColor: this.previewColor }
+                }
+                return { background: this.previewColor }
             },
             addBanner () {
                 if (this.bannerFull) return this.$Message.warning(`最多添加 ${BANNER_MAX} 张轮播广告`)
@@ -393,6 +467,176 @@
         color: #808695;
         font-size: 12px;
         line-height: 1.6;
+    }
+    .theme-preset-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+    .theme-preset {
+        min-height: 76px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        color: #515a6e;
+        text-align: left;
+        background: #fff;
+        border: 1px solid #dcdee2;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: border-color .2s, box-shadow .2s, transform .2s;
+    }
+    .theme-preset:hover {
+        border-color: #8bbcf1;
+        transform: translateY(-1px);
+    }
+    .theme-preset-active {
+        color: #2d8cf0;
+        border-color: #2d8cf0;
+        box-shadow: 0 0 0 2px rgba(45, 140, 240, .1);
+    }
+    .layout-preset-preview {
+        width: 48px;
+        height: 48px;
+        flex: none;
+        display: flex;
+        flex-direction: column;
+        padding: 5px;
+        background: #f3f6fb;
+        border: 1px solid #e5ebf5;
+        border-radius: 8px;
+        box-sizing: border-box;
+    }
+    .layout-mini-header {
+        display: block;
+        height: 7px;
+        background: #2d8cf0;
+        border-radius: 3px 3px 1px 1px;
+    }
+    .layout-mini-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 3px;
+    }
+    .layout-mini-body i {
+        display: block;
+        width: 68%;
+        height: 5px;
+        background: #fff;
+        border-radius: 4px;
+        box-shadow: 0 1px 2px rgba(31, 45, 61, .1);
+    }
+    .layout-mini-body i:nth-child(2) {
+        width: 58%;
+        align-self: flex-end;
+        background: #8bbcf1;
+    }
+    .layout-preset-compact .layout-mini-body {
+        gap: 1px;
+    }
+    .layout-preset-compact .layout-mini-body i {
+        height: 4px;
+    }
+    .layout-preset-spacious .layout-mini-body {
+        gap: 5px;
+    }
+    .layout-preset-spacious .layout-mini-body i:nth-child(3) {
+        display: none;
+    }
+    .layout-preset-focus .layout-mini-body i {
+        width: 82%;
+    }
+    .layout-preset-focus .layout-mini-body i:nth-child(2) {
+        width: 76%;
+    }
+    .bubble-preset-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+    }
+    .bubble-preset {
+        min-height: 92px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 7px;
+        padding: 8px;
+        color: #515a6e;
+        text-align: center;
+        background: #fff;
+        border: 1px solid #dcdee2;
+        border-radius: 8px;
+        cursor: pointer;
+    }
+    .bubble-preset:hover,
+    .bubble-preset-active {
+        color: #2d8cf0;
+        border-color: #2d8cf0;
+    }
+    .bubble-preset-active {
+        box-shadow: 0 0 0 2px rgba(45, 140, 240, .1);
+    }
+    .bubble-preset > span:last-child {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.4;
+    }
+    .bubble-preset small {
+        color: #808695;
+        font-size: 10px;
+    }
+    .bubble-preset-preview {
+        width: 62px;
+        height: 28px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .bubble-preset-preview i {
+        width: 38px;
+        height: 11px;
+        background: #eef2f7;
+        border: 1px solid transparent;
+        border-radius: 8px 8px 8px 2px;
+    }
+    .bubble-preset-preview i:last-child {
+        width: 32px;
+        align-self: flex-end;
+        border-radius: 8px 8px 2px 8px;
+    }
+    .bubble-preview-clean i {
+        border-radius: 3px;
+    }
+    .bubble-preview-pill i {
+        border-radius: 12px;
+    }
+    .bubble-preview-outline i,
+    .bubble-preview-outline i:last-child {
+        background: transparent !important;
+        border-color: #aab6c8;
+    }
+    .bubble-preview-card i {
+        border-radius: 5px;
+        box-shadow: 0 3px 7px rgba(31, 45, 61, .2);
+    }
+    .theme-preset-copy {
+        min-width: 0;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        line-height: 1.45;
+    }
+    .theme-preset-copy strong {
+        color: inherit;
+        font-size: 14px;
+    }
+    .theme-preset-copy small {
+        color: #808695;
+        font-size: 11px;
     }
     .counter {
         text-align: right;
@@ -464,18 +708,23 @@
         padding-top: 16px;
         margin-top: 8px;
     }
-    .preview-tip {
-        color: #808695;
-        font-size: 12px;
-        text-align: center;
+    .preview-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         margin-bottom: 10px;
+        color: #515a6e;
+        font-size: 13px;
     }
     .preview-wrap {
         display: flex;
         justify-content: center;
-        background: #f8f8f9;
-        border-radius: 6px;
-        padding: 20px 0;
+        align-items: center;
+        min-height: 620px;
+        padding: 24px 12px;
+        background: #f2f4f7;
+        border-radius: 12px;
+        transition: background .2s;
     }
     .chat-window {
         width: 360px;
@@ -483,10 +732,22 @@
         height: 560px;
         display: flex;
         flex-direction: column;
-        background: #fff;
-        border-radius: 10px;
-        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.14);
+        color: var(--chat-text);
+        background: var(--chat-surface);
+        border: 1px solid var(--chat-border);
+        border-radius: 14px;
+        box-shadow: var(--chat-shadow);
         overflow: hidden;
+        transition: width .25s, height .25s, border-radius .25s;
+    }
+    .chat-window-mobile {
+        width: 320px;
+        height: 580px;
+        border-radius: 24px;
+    }
+    .chat-window-desktop {
+        width: 390px;
+        height: 540px;
     }
     .chat-header {
         display: flex;
@@ -549,8 +810,8 @@
     }
     .chat-body {
         flex: 1;
-        padding: 14px;
-        background: #f5f7fa;
+        padding: 18px 14px;
+        background: var(--chat-page-bg);
         overflow: hidden;
     }
     .chat-msg {
@@ -562,46 +823,127 @@
     }
     .chat-bubble {
         max-width: 76%;
-        padding: 8px 12px;
-        border-radius: 8px;
-        background: #fff;
-        color: #515a6e;
+        padding: 9px 12px;
+        border-radius: 14px 14px 14px 4px;
+        background: var(--chat-incoming);
+        color: var(--chat-text);
         font-size: 13px;
         line-height: 1.6;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+        box-shadow: 0 2px 8px rgba(31, 45, 61, .06);
     }
     .chat-msg-self .chat-bubble {
         color: #fff;
+        border-radius: 14px 14px 4px 14px;
+    }
+    .chat-bubble-clean .chat-bubble {
+        border-radius: 6px;
+        box-shadow: none;
+    }
+    .chat-bubble-pill .chat-bubble,
+    .chat-bubble-pill .chat-msg-self .chat-bubble {
+        border-radius: 22px;
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+    .chat-bubble-outline .chat-bubble {
+        background: transparent;
+        border: 1px solid var(--chat-border);
+        border-radius: 12px;
+        box-shadow: none;
+    }
+    .chat-bubble-card .chat-bubble,
+    .chat-bubble-card .chat-msg-self .chat-bubble {
+        border-radius: 12px;
+        box-shadow: 0 6px 16px rgba(31, 45, 61, .14);
+    }
+    .chat-layout-minimal .chat-header {
+        height: 44px;
+    }
+    .chat-layout-minimal .chat-logo {
+        width: 28px;
+        height: 28px;
+    }
+    .chat-layout-minimal .chat-body {
+        padding: 10px;
+    }
+    .chat-layout-minimal .chat-msg {
+        margin-bottom: 8px;
+    }
+    .chat-layout-minimal .chat-footer {
+        padding: 8px;
+    }
+    .chat-layout-soft .chat-header {
+        height: 62px;
+    }
+    .chat-layout-soft .chat-logo {
+        width: 38px;
+        height: 38px;
+    }
+    .chat-layout-soft .chat-body {
+        padding: 24px 18px;
+    }
+    .chat-layout-soft .chat-msg {
+        margin-bottom: 17px;
+    }
+    .chat-layout-soft .chat-footer {
+        padding: 14px;
+    }
+    .chat-layout-midnight .chat-header {
+        justify-content: center;
+    }
+    .chat-layout-midnight .chat-logo {
+        display: none;
+    }
+    .chat-layout-midnight .chat-bubble {
+        max-width: 86%;
     }
     .chat-footer {
         display: flex;
         align-items: center;
+        gap: 8px;
         padding: 10px 12px;
-        border-top: 1px solid #e8eaec;
+        background: var(--chat-surface);
+        border-top: 1px solid var(--chat-border);
     }
     .chat-input {
         flex: 1;
-        height: 34px;
-        line-height: 34px;
+        min-width: 0;
+        height: 38px;
+        line-height: 38px;
         padding: 0 10px;
-        border: 1px solid #dcdee2;
-        border-radius: 4px;
-        color: #c5c8ce;
+        background: var(--chat-page-bg);
+        border: 1px solid var(--chat-border);
+        border-radius: 12px;
+        color: var(--chat-muted);
         font-size: 13px;
     }
+    .chat-tool {
+        flex: none;
+        color: var(--chat-muted);
+    }
     .chat-send {
-        margin-left: 10px;
-        padding: 0 16px;
-        height: 34px;
-        line-height: 34px;
-        border-radius: 4px;
+        flex: none;
+        padding: 0 14px;
+        height: 38px;
+        line-height: 38px;
+        border-radius: 11px;
         color: #fff;
         font-size: 13px;
     }
     .chat-brand {
         text-align: center;
-        color: #c5c8ce;
+        color: var(--chat-muted);
+        background: var(--chat-surface);
         font-size: 11px;
         padding-bottom: 8px;
+    }
+    @media (max-width: 768px) {
+        .theme-preset-grid,
+        .bubble-preset-grid {
+            grid-template-columns: 1fr;
+        }
+        .preview-wrap {
+            min-height: 0;
+        }
     }
 </style>

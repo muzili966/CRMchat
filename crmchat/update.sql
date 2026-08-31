@@ -338,6 +338,10 @@ CREATE TABLE IF NOT EXISTS `eb_application_theme` (
   KEY `idx_tenant_id` (`tenant_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='客户端装修配置表';
 
+-- 存量安装增加多主题风格字段；全新安装已包含在public/install/crmeb.sql
+ALTER TABLE `eb_application_theme` ADD `theme_style` varchar(20) NOT NULL DEFAULT 'modern' COMMENT '布局风格modern/minimal/soft/midnight' AFTER `theme_color`;
+ALTER TABLE `eb_application_theme` ADD `bubble_style` varchar(20) NOT NULL DEFAULT 'soft' COMMENT '气泡风格soft/clean/pill/outline/card' AFTER `theme_style`;
+
 -- 白标能力：去除平台标识，仅旗舰版
 ALTER TABLE `eb_tenant_plan` ADD `white_label` tinyint(1) NOT NULL DEFAULT '0' COMMENT '去平台标识0=否,1=是' AFTER `brand_custom`;
 UPDATE `eb_tenant_plan` SET `white_label` = 1 WHERE `name` = '旗舰版';

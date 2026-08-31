@@ -69,6 +69,8 @@ class AppTheme extends AuthController
             ['title', ''],
             ['logo', ''],
             ['theme_color', ApplicationTheme::DEFAULT_THEME_COLOR],
+            ['theme_style', ApplicationTheme::DEFAULT_THEME_STYLE],
+            ['bubble_style', ApplicationTheme::DEFAULT_BUBBLE_STYLE],
             ['pc_icon', ''],
             ['mobile_icon', ''],
             [['banners', 'a'], []],

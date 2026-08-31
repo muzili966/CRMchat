@@ -2,7 +2,7 @@
 
   <div class="pc_customerServer">
     <div class="fixed" v-if="upperData.noCanClose == 1"></div>
-    <div class="pc_customerServer_container max-width_con" :class="{'max-width_advertisement': upperData.noCanClose == 1 || upperData.windowStyle == `center`}">
+    <div class="pc_customerServer_container max-width_con" :class="[themeClass, bubbleClass, {'max-width_advertisement': upperData.noCanClose == 1 || upperData.windowStyle == `center`}]" :style="themeRootStyle">
       <!-- 客服头部开始 -->
       <div class="pc_customerServer_container_header" :style="themeBgStyle">
         <div class="pc_customerServer_container_header_title">
@@ -544,6 +544,122 @@ export default {
   }
 }
 
+.pc_customerServer_container.chat-bubble-clean {
+  .pc_customerServer_container_content .scroll_content .chart_list_item_text,
+  .pc_customerServer_container_content .scroll_content .right-box .chart_list_item_text {
+    border-radius: 6px;
+    box-shadow: none;
+  }
+}
+
+.pc_customerServer_container.chat-bubble-pill {
+  .pc_customerServer_container_content .scroll_content .chart_list_item_text,
+  .pc_customerServer_container_content .scroll_content .right-box .chart_list_item_text {
+    padding-right: 17px;
+    padding-left: 17px;
+    border-radius: 22px;
+  }
+}
+
+.pc_customerServer_container.chat-bubble-outline {
+  .pc_customerServer_container_content .scroll_content .chart_list_item_text,
+  .pc_customerServer_container_content .scroll_content .right-box .chart_list_item_text {
+    background: transparent;
+    border: 1px solid var(--chat-border);
+    border-radius: 12px;
+    box-shadow: none;
+  }
+}
+
+.pc_customerServer_container.chat-bubble-card {
+  .pc_customerServer_container_content .scroll_content .chart_list_item_text,
+  .pc_customerServer_container_content .scroll_content .right-box .chart_list_item_text {
+    border-radius: 12px;
+    box-shadow: 0 7px 18px rgba(31, 45, 61, .14);
+  }
+}
+
+.pc_customerServer_container.chat-layout-minimal {
+  max-height: 600px;
+
+  .pc_customerServer_container_header {
+    height: 50px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .pc_customerServer_container_content .chart_list_item_content {
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+
+  .pc_customerServer_container_content .chart_list_item_avatar {
+    width: 30px;
+    height: 30px;
+  }
+
+  .pc_customerServer_container_footer {
+    min-height: 150px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+}
+
+.pc_customerServer_container.chat-layout-soft {
+  .pc_customerServer_container_header {
+    height: 64px;
+
+    &_title img {
+      width: 38px;
+      height: 38px;
+    }
+  }
+
+  .pc_customerServer_container_content .chart_list_item_content {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .pc_customerServer_container_content .chart_list_item_avatar {
+    width: 38px;
+    height: 38px;
+  }
+
+  .pc_customerServer_container_footer {
+    min-height: 200px;
+    padding: 18px 22px;
+  }
+}
+
+.pc_customerServer_container.chat-layout-midnight {
+  .pc_customerServer_container_header {
+    position: relative;
+    justify-content: center;
+
+    &_title img {
+      display: none;
+    }
+
+    &_handle {
+      position: absolute;
+      right: 14px;
+    }
+  }
+
+  .pc_customerServer_container_content .chart_list_item_avatar {
+    display: none;
+  }
+
+  .pc_customerServer_container_content .chart_list_item_content {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .pc_customerServer_container_content .chart_list_item_text {
+    max-width: 78%;
+  }
+}
+
 .platform_brand {
   position: absolute;
   left: 0;
@@ -703,6 +819,84 @@ export default {
 /deep/ .happy-scroll-content {
   width: 100% !important;
   box-sizing: border-box;
+}
+
+.pc_customerServer_container {
+  color: var(--chat-text);
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-border);
+  box-shadow: var(--chat-shadow);
+
+  &_header {
+    box-shadow: 0 5px 18px rgba(16, 42, 85, .13);
+
+    &_title img {
+      object-fit: cover;
+      border: 2px solid rgba(255, 255, 255, .7);
+    }
+  }
+
+  &_content {
+    background: var(--chat-page-bg);
+
+    .scroll_content .chart_list_item {
+      &_text {
+        color: var(--chat-text);
+        line-height: 1.55;
+        background: var(--chat-incoming);
+        border: 1px solid var(--chat-border);
+        border-radius: 14px 14px 14px 4px;
+        box-shadow: 0 3px 12px rgba(31, 45, 61, .05);
+      }
+
+      &_time {
+        color: var(--chat-muted);
+        font-size: 11px;
+      }
+
+      .right-box .chart_list_item_text {
+        color: #fff;
+        background: var(--chat-primary);
+        border-color: transparent;
+        border-radius: 14px 14px 4px 14px;
+      }
+    }
+  }
+
+  &_footer {
+    color: var(--chat-text);
+    background: var(--chat-surface);
+    border-color: var(--chat-border);
+
+    &_input-textarea {
+      color: var(--chat-text);
+      background: transparent;
+    }
+
+    &_header_handle .transfer_service,
+    &_copyright {
+      color: var(--chat-muted);
+    }
+  }
+
+  .layout_customerServer_content {
+    border-color: var(--chat-border);
+  }
+
+  .pc_customerServer_container_advertisement,
+  .productMessage_container,
+  .platform_brand {
+    color: var(--chat-text);
+    background: var(--chat-surface);
+  }
+
+  .productMessage_container_content_title {
+    color: var(--chat-text);
+  }
+
+  .platform_brand {
+    color: var(--chat-muted);
+  }
 }
 </style>
 <style lang="less">
