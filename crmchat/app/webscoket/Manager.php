@@ -141,9 +141,12 @@ class Manager extends Websocket
      * @param int|null $tenantId 不传时取当前租户上下文
      * @return string
      */
+    /** 连接注册表的键前缀，启动时按此清理上次运行的残留 */
+    const WS_KEY_PREFIX = '_ws_';
+
     public static function wsKey(string $type, $uid = '', ?int $tenantId = null): string
     {
-        return '_ws_' . ($tenantId ?? TenantContext::id()) . '_' . $type . $uid;
+        return self::WS_KEY_PREFIX . ($tenantId ?? TenantContext::id()) . '_' . $type . $uid;
     }
 
     /**
@@ -308,7 +311,18 @@ class Manager extends Websocket
             } elseif ($exclude && $exclude == $fd) {
                 continue;
             }
-            $this->server->push($fd, $data);
+            //访客关闭页面后fd仍可能残留在注册表中，直接push会抛
+            //"session#N does not exists"并中断整个消息处理：消息已入库却不再回帧，
+            //发送方于是看不到自己刚发的内容。与task进程的推送口径保持一致，先判活。
+            if (!$this->server->isEstablished((int)$fd)) {
+                continue;
+            }
+            try {
+                $this->server->push((int)$fd, $data);
+            } catch (\Throwable $e) {
+                //判活与推送之间仍可能断开，单个接收方失败不应影响其余接收方与发送方回显
+                Log::warning('websocket推送失败 fd=' . $fd . ' ' . $e->getMessage());
+            }
         }
         return true;
     }

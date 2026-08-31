@@ -60,10 +60,33 @@ class SwooleWorkerStart implements ListenerInterface
     public function handle($event): void
     {
         if (0 == $this->server->worker_id) {
+            $this->clearStaleFds();
             $this->timer($event);
         }
         if ($this->server->worker_id == ($this->config->get('swoole.server.options.worker_num')) && $this->config->get('swoole.websocket.enable', false)) {
             $this->ping();
+        }
+    }
+
+    /**
+     * 清理上一次运行残留的连接注册表
+     *
+     * fd由onClose负责清理，但容器重启时连接直接消失、回调不会触发，Redis里的fd就成了孤儿。
+     * 之后给这些用户推消息会抛"session#N does not exists"，中断整个消息处理：
+     * 消息已入库却不再回帧，发送方看不到自己刚发的内容。每次部署都会踩到，故启动时清空。
+     * @return void
+     */
+    protected function clearStaleFds()
+    {
+        try {
+            $redis = \crmeb\services\CacheService::redisHandler();
+            $keys = $redis->keys(Manager::WS_KEY_PREFIX . '*');
+            foreach ($keys as $key) {
+                //Redis扩展按配置可能返回带前缀的键名，删除时需剥离
+                $redis->delete(str_replace($redis->getOption(\Redis::OPT_PREFIX) ?: '', '', $key));
+            }
+        } catch (\Throwable $e) {
+            \think\facade\Log::error('清理websocket连接注册表失败：' . $e->getMessage());
         }
     }
 
