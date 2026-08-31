@@ -67,7 +67,16 @@ class SystemMenusServices extends BaseServices
      * @throws \think\db\exception\DbException
      * @throws \think\db\exception\ModelNotFoundException
      */
-    public function getMenusList($rouleId, int $level, bool $platformView = false)
+    /** 视角口径：平台自身，剔除租户专属页 */
+    const SCOPE_PLATFORM = 'platform';
+
+    /** 视角口径：平台代入租户，剔除平台专属页 */
+    const SCOPE_TENANT_VIEW = 'tenant_view';
+
+    /** 视角口径：租户账号本身，不额外剔除（其角色本就只有租户可见项） */
+    const SCOPE_TENANT = 'tenant';
+
+    public function getMenusList($rouleId, int $level, string $scope = self::SCOPE_TENANT)
     {
         /** @var SystemRoleServices $systemRoleServices */
         $systemRoleServices = app()->make(SystemRoleServices::class);
@@ -75,16 +84,52 @@ class SystemMenusServices extends BaseServices
         $rulesStr = Arr::unique($rules);
         $menusList = $this->dao->getMenusRoule(['route' => $level ? $rulesStr : '']);
         $unique = $this->dao->getMenusUnique(['unique' => $level ? $rulesStr : '']);
-        //登录返回的权限标识决定前端路由是否放行；不与侧边栏用同一套口径的话，
-        //平台账号侧边栏虽已隐藏租户专属页，直接输网址仍能进去然后撞上"请切换租户视角"
-        if ($platformView) {
-            $tenantOnly = $this->getTenantOnlyMenuIds();
-            $menusList = $menusList->filter(function ($item) use ($tenantOnly) {
-                return !in_array((int)$item->id, $tenantOnly, true);
-            })->values();
-            $unique = array_values(array_diff($unique, $this->tenantOnlyUniqueAuth()));
+        //权限标识决定前端路由是否放行，必须与侧边栏同口径，否则会出现
+        //"菜单看不到但直接输网址进得去"或反过来的错位
+        if ($scope === self::SCOPE_PLATFORM) {
+            //平台视角：剔除租户专属页，进去只会撞上"请切换租户视角"
+            [$menusList, $unique] = $this->excludeMenus($menusList, $unique, $this->getTenantOnlyMenuIds(), $this->tenantOnlyUniqueAuth());
+        } elseif ($scope === self::SCOPE_TENANT_VIEW) {
+            //租户视角：剔除平台专属页。代入租户时若还能进租户管理、套餐管理，
+            //很容易把平台配置误当成该租户的配置去改
+            [$menusList, $unique] = $this->excludeMenus($menusList, $unique, $this->getPlatformOnlyMenuIds(), $this->platformOnlyUniqueAuth());
         }
         return [Arr::getMenuIviewList($this->getMenusData($menusList)), $unique];
+    }
+
+    /**
+     * 从菜单与权限标识中剔除指定集合
+     * @param mixed $menusList
+     * @param array $unique
+     * @param array $excludeIds
+     * @param array $excludeAuth
+     * @return array
+     */
+    protected function excludeMenus($menusList, array $unique, array $excludeIds, array $excludeAuth): array
+    {
+        $menusList = $menusList->filter(function ($item) use ($excludeIds) {
+            return !in_array((int)$item->id, $excludeIds, true);
+        })->values();
+        return [$menusList, array_values(array_diff($unique, $excludeAuth))];
+    }
+
+    /**
+     * 仅平台端可见的菜单ID集合
+     * @return array
+     */
+    public function getPlatformOnlyMenuIds(): array
+    {
+        return array_map('intval', $this->dao->getColumn([['is_tenant', '=', 0], ['is_del', '=', 0]], 'id'));
+    }
+
+    /**
+     * 仅平台端可用的权限标识
+     * @return array
+     */
+    public function platformOnlyUniqueAuth(): array
+    {
+        $list = $this->dao->getColumn([['is_tenant', '=', 0], ['is_del', '=', 0]], 'unique_auth');
+        return array_values(array_filter(is_array($list) ? $list : []));
     }
 
     /**

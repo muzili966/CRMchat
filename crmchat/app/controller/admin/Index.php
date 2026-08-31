@@ -73,9 +73,14 @@ class Index extends AuthController
         /** @var SystemMenusServices $menusServices */
         $menusServices = app()->make(SystemMenusServices::class);
         $adminInfo = $this->adminInfo;
-        //已切换到租户视角时按租户口径下发，未切换则仍剔除租户专属项
-        $platformView = SystemAdmin::isPlatformAdmin($adminInfo) && !TenantContext::id();
-        [$menus, $uniqueAuth] = $menusServices->getMenusList($adminInfo['roles'], (int)$adminInfo['level'], $platformView);
+        $scope = SystemMenusServices::SCOPE_TENANT;
+        if (SystemAdmin::isPlatformAdmin($adminInfo)) {
+            //代入租户时剔除平台专属页，未代入时剔除租户专属页
+            $scope = TenantContext::id()
+                ? SystemMenusServices::SCOPE_TENANT_VIEW
+                : SystemMenusServices::SCOPE_PLATFORM;
+        }
+        [$menus, $uniqueAuth] = $menusServices->getMenusList($adminInfo['roles'], (int)$adminInfo['level'], $scope);
         return $this->success([
             'menus' => $menus,
             'unique_auth' => $uniqueAuth,
