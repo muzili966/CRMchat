@@ -50,6 +50,31 @@ class ApplicationThemeServices extends BaseServices
     const FEATURE_CUSTOM_AD = 'custom_ad';
 
     /**
+     * 装修字段与所需订阅能力的对应关系
+     *
+     * 未列出的字段（窗口标题、主题色）不设门槛：新租户接进来第一眼就是自家名字与配色，
+     * 否则客服窗口顶着别人的品牌，反而降低付费意愿。
+     * 前端按同一份关系决定展示哪些表单项，此处是服务端的权威口径。
+     */
+    /** 受限能力被触碰时的提示语 */
+    const FEATURE_MESSAGES = [
+        self::FEATURE_BRAND_CUSTOM => '当前套餐不支持自定义LOGO与界面风格，请升级套餐',
+        self::FEATURE_CUSTOM_AD => '当前套餐不支持自定义广告位，升级后可投放自有广告',
+        self::FEATURE_WHITE_LABEL => '当前套餐不支持隐藏平台标识，请升级套餐',
+    ];
+
+    const FIELD_FEATURES = [
+        'logo' => self::FEATURE_BRAND_CUSTOM,
+        'theme_style' => self::FEATURE_BRAND_CUSTOM,
+        'bubble_style' => self::FEATURE_BRAND_CUSTOM,
+        'pc_icon' => self::FEATURE_BRAND_CUSTOM,
+        'mobile_icon' => self::FEATURE_BRAND_CUSTOM,
+        'banners' => self::FEATURE_CUSTOM_AD,
+        'custom_html' => self::FEATURE_CUSTOM_AD,
+        'show_platform_brand' => self::FEATURE_WHITE_LABEL,
+    ];
+
+    /**
      * 平台默认广告的配置项
      */
     const CONFIG_PLATFORM_BANNERS = 'platform_ad_banners';
@@ -183,6 +208,18 @@ class ApplicationThemeServices extends BaseServices
         $payload = self::buildPayload($data);
         $this->validatePayload($payload, $data);
         $result = TenantContext::runAs($tenantId, function () use ($appid, $tenantId, $payload) {
+            /** @var TenantPlanServices $planServices */
+            $planServices = app()->make(TenantPlanServices::class);
+            $can = function ($feature) use ($planServices, $tenantId) {
+                return $planServices->hasFeature($tenantId, $feature);
+            };
+            $stored = $this->storedTheme($appid);
+            //仅当确实想改动受限字段时才报错；前端把这些项置为禁用后会原样回传，不应误报
+            if ($blocked = self::blockedFeature($payload, $stored, $can)) {
+                throw new AdminException(self::FEATURE_MESSAGES[$blocked]);
+            }
+            //兜底：即便提交值与已存值一致，也按已存值写入，避免默认值抹掉配置
+            $payload = self::applyEntitlement($payload, $stored, $can);
             return $this->persist($appid, $tenantId, $payload);
         });
         $this->clearCache($appid);
@@ -346,6 +383,87 @@ class ApplicationThemeServices extends BaseServices
      * @param array $data
      * @return array
      */
+    /**
+     * 受限字段中第一个被实际改动的能力，无则返回空串
+     * @param array $payload
+     * @param array $stored
+     * @param callable $can
+     * @return string
+     */
+    public static function blockedFeature(array $payload, array $stored, callable $can): string
+    {
+        $allowed = [];
+        foreach (self::FIELD_FEATURES as $field => $feature) {
+            $allowed[$feature] = $allowed[$feature] ?? (bool)$can($feature);
+            if ($allowed[$feature] || !array_key_exists($field, $payload)) {
+                continue;
+            }
+            $current = array_key_exists($field, $stored) ? $stored[$field] : self::defaultStoredValue($field);
+            //宽松比较：库里的数字型字段取出来是字符串
+            if ((string)$payload[$field] !== (string)$current) {
+                return $feature;
+            }
+        }
+        return '';
+    }
+
+    /**
+     * 已存主题的原始行，不做格式化，用于门禁回填
+     * @param string $appid
+     * @return array
+     */
+    protected function storedTheme(string $appid): array
+    {
+        $row = $this->dao->get(['appid' => $appid]);
+        return $row ? $row->toArray() : [];
+    }
+
+    /**
+     * 按订阅能力过滤待写入字段：无权限的字段沿用已存值，避免被表单默认值清空
+     * @param array $payload buildPayload的结果
+     * @param array $current 当前已存主题
+     * @param callable $can 能力判定 fn(string $feature): bool
+     * @return array
+     */
+    public static function applyEntitlement(array $payload, array $current, callable $can): array
+    {
+        $allowed = [];
+        foreach (self::FIELD_FEATURES as $field => $feature) {
+            $allowed[$feature] = $allowed[$feature] ?? (bool)$can($feature);
+            if ($allowed[$feature] || !array_key_exists($field, $payload)) {
+                continue;
+            }
+            //字段在库里以原始形态存放，取不到时回落到该字段的默认值
+            $payload[$field] = array_key_exists($field, $current)
+                ? $current[$field]
+                : self::defaultStoredValue($field);
+        }
+        return $payload;
+    }
+
+    /**
+     * 字段在数据表中的默认存值
+     * @param string $field
+     * @return mixed
+     */
+    protected static function defaultStoredValue(string $field)
+    {
+        if ($field === 'banners') {
+            return json_encode([], JSON_UNESCAPED_UNICODE);
+        }
+        if ($field === 'show_platform_brand') {
+            return ApplicationTheme::BRAND_SHOW;
+        }
+        //枚举字段的默认值不是空串，漏掉会让新应用的首次保存被误判成"想改受限字段"
+        if ($field === 'theme_style') {
+            return ApplicationTheme::DEFAULT_THEME_STYLE;
+        }
+        if ($field === 'bubble_style') {
+            return ApplicationTheme::DEFAULT_BUBBLE_STYLE;
+        }
+        return '';
+    }
+
     public static function buildPayload(array $data): array
     {
         return [

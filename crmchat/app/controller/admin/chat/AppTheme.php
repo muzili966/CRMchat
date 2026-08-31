@@ -116,22 +116,14 @@ class AppTheme extends AuthController
      * @param array $data
      * @return string
      */
+    /**
+     * 套餐能力改由服务层按"字段是否真的被改动"判定：
+     * 控制器只能看到提交值，无法与已存值比对，枚举字段（布局/气泡）永远非空会误报
+     * @param array $data
+     * @return string
+     */
     protected function checkPlan(array $data): string
     {
-        $planServices = $this->planServices();
-        $tenantId = TenantContext::id();
-        if (!$planServices->hasFeature($tenantId, ApplicationThemeServices::FEATURE_BRAND_CUSTOM)) {
-            return '当前套餐不支持客户端装修，请升级套餐';
-        }
-        $hideBrand = (int)$data['show_platform_brand'] === ApplicationTheme::BRAND_HIDE;
-        if ($hideBrand && !$planServices->hasFeature($tenantId, ApplicationThemeServices::FEATURE_WHITE_LABEL)) {
-            return '当前套餐不支持隐藏平台标识，请升级套餐';
-        }
-        //未开通自定义广告的租户，访客端展示平台默认广告，此处直接拒绝写入避免"配了却不生效"
-        $hasAd = !empty($data['banners']) || trim((string)($data['custom_html'] ?? '')) !== '';
-        if ($hasAd && !$planServices->hasFeature($tenantId, ApplicationThemeServices::FEATURE_CUSTOM_AD)) {
-            return '当前套餐不支持自定义广告位，升级后可投放自有广告';
-        }
         return '';
     }
 

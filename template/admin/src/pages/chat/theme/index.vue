@@ -5,7 +5,6 @@
                 <span class="ivu-page-header-title">{{$route.meta.title}}</span>
             </div>
         </div>
-        <planGate feature="brand_custom">
         <Card :bordered="false" dis-hover class="ivu-mt">
             <div class="app-bar">
                 <span class="app-bar-label">选择应用：</span>
@@ -25,18 +24,25 @@
                             <div class="counter">{{ form.title.length }}/{{ titleMax }}</div>
                         </FormItem>
                         <FormItem label="窗口LOGO：">
-                            <div class="pic-box" @click="openPic('logo')">
+                            <div class="pic-box" :class="{ 'pic-box-locked': !brandCustom }"
+                                 @click="brandCustom && openPic('logo')">
                                 <img v-if="form.logo" :src="form.logo">
                                 <div class="pic-empty" v-else><Icon type="ios-camera-outline" size="26"/></div>
                             </div>
-                            <a class="pic-clear" v-if="form.logo" @click="clearPic('logo')">清除</a>
-                            <p class="field-tip">建议正方形图片，展示在聊天窗口标题栏</p>
+                            <a class="pic-clear" v-if="form.logo && brandCustom" @click="clearPic('logo')">清除</a>
+                            <template v-if="brandCustom">
+                                <p class="field-tip">建议正方形图片，展示在聊天窗口标题栏</p>
+                            </template>
+                            <template v-else>
+                                <Tag color="gold" class="brand-tag">{{ requiredPlan('brand_custom') }}</Tag>
+                                <p class="field-tip">升级后可换成贵司自己的LOGO</p>
+                            </template>
                         </FormItem>
                         <FormItem label="界面布局：">
                             <div class="theme-preset-grid">
                                 <button v-for="item in layoutPresets" :key="item.value" type="button"
                                         class="theme-preset" :class="{ 'theme-preset-active': form.theme_style === item.value }"
-                                        @click="selectLayout(item)">
+                                        :disabled="!brandCustom" @click="selectLayout(item)">
                                     <span class="layout-preset-preview" :class="'layout-preset-' + item.size">
                                         <i class="layout-mini-header"></i>
                                         <span class="layout-mini-body"><i></i><i></i><i></i></span>
@@ -48,7 +54,11 @@
                                     <Icon v-if="form.theme_style === item.value" type="md-checkmark-circle" size="19"/>
                                 </button>
                             </div>
-                            <p class="field-tip">仅调整标题栏、头像、间距和消息区密度，不会改变主题色</p>
+                            <p class="field-tip" v-if="brandCustom">仅调整标题栏、头像、间距和消息区密度，不会改变主题色</p>
+                            <template v-else>
+                                <Tag color="gold" class="brand-tag">{{ requiredPlan('brand_custom') }}</Tag>
+                                <p class="field-tip">升级后可切换布局密度与气泡样式</p>
+                            </template>
                         </FormItem>
                         <FormItem label="主题色：">
                             <ColorPicker v-model="form.theme_color" recommend :colors="recommendColors"/>
@@ -59,7 +69,7 @@
                             <div class="bubble-preset-grid">
                                 <button v-for="item in bubblePresets" :key="item.value" type="button"
                                         class="bubble-preset" :class="{ 'bubble-preset-active': form.bubble_style === item.value }"
-                                        @click="form.bubble_style = item.value">
+                                        :disabled="!brandCustom" @click="form.bubble_style = item.value">
                                     <span class="bubble-preset-preview" :class="'bubble-preview-' + item.value">
                                         <i></i><i :style="{ background: previewColor, borderColor: previewColor }"></i>
                                     </span>
@@ -68,20 +78,28 @@
                             </div>
                         </FormItem>
                         <FormItem label="PC悬浮图标：">
-                            <div class="pic-box" @click="openPic('pc_icon')">
+                            <div class="pic-box" :class="{ 'pic-box-locked': !brandCustom }"
+                                 @click="brandCustom && openPic('pc_icon')">
                                 <img v-if="form.pc_icon" :src="form.pc_icon">
                                 <div class="pic-empty" v-else><Icon type="ios-camera-outline" size="26"/></div>
                             </div>
-                            <a class="pic-clear" v-if="form.pc_icon" @click="clearPic('pc_icon')">清除</a>
-                            <p class="field-tip">留空使用默认图标</p>
+                            <a class="pic-clear" v-if="form.pc_icon && brandCustom" @click="clearPic('pc_icon')">清除</a>
+                            <p class="field-tip" v-if="brandCustom">留空使用默认图标</p>
+                            <template v-else>
+                                <Tag color="gold" class="brand-tag">{{ requiredPlan('brand_custom') }}</Tag>
+                            </template>
                         </FormItem>
                         <FormItem label="移动端图标：">
-                            <div class="pic-box" @click="openPic('mobile_icon')">
+                            <div class="pic-box" :class="{ 'pic-box-locked': !brandCustom }"
+                                 @click="brandCustom && openPic('mobile_icon')">
                                 <img v-if="form.mobile_icon" :src="form.mobile_icon">
                                 <div class="pic-empty" v-else><Icon type="ios-camera-outline" size="26"/></div>
                             </div>
-                            <a class="pic-clear" v-if="form.mobile_icon" @click="clearPic('mobile_icon')">清除</a>
-                            <p class="field-tip">留空使用默认图标</p>
+                            <a class="pic-clear" v-if="form.mobile_icon && brandCustom" @click="clearPic('mobile_icon')">清除</a>
+                            <p class="field-tip" v-if="brandCustom">留空使用默认图标</p>
+                            <template v-else>
+                                <Tag color="gold" class="brand-tag">{{ requiredPlan('brand_custom') }}</Tag>
+                            </template>
                         </FormItem>
                         <FormItem label="轮播广告：">
                             <div class="banner-empty" v-if="!form.banners.length">
@@ -100,7 +118,7 @@
                                 {{ bannerFull ? `最多添加 ${bannerMax} 张` : '添加一张' }}
                             </Button>
                             <template v-if="!customAd">
-                                <Tag color="gold" class="brand-tag">标准版及以上</Tag>
+                                <Tag color="gold" class="brand-tag">{{ requiredPlan('custom_ad') }}</Tag>
                                 <p class="field-tip">当前套餐的客服窗口展示平台统一广告，升级后可投放自有广告</p>
                             </template>
                         </FormItem>
@@ -126,7 +144,7 @@
                                 <span slot="open">显示</span>
                                 <span slot="close">隐藏</span>
                             </i-switch>
-                            <Tag color="gold" class="brand-tag" v-if="!whiteLabel">旗舰版功能</Tag>
+                            <Tag color="gold" class="brand-tag" v-if="!whiteLabel">{{ requiredPlan('white_label') }}</Tag>
                             <p class="field-tip" v-if="!whiteLabel">升级套餐后可隐藏平台标识</p>
                             <p class="field-tip" v-else>关闭后访客窗口底部不再显示「{{ platformBrand }}」</p>
                         </FormItem>
@@ -177,7 +195,6 @@
                 </Col>
             </Row>
         </Card>
-        </planGate>
 
         <Modal v-model="modalPic" width="950px" scrollable footer-hide closable title="选择图片" :mask-closable="false" :z-index="888">
             <uploadPictures :isChoice="isChoice" @getPic="getPic" :gridBtn="gridBtn" :gridPic="gridPic" v-if="modalPic"></uploadPictures>
@@ -188,7 +205,7 @@
 <script>
     import { appThemeApi, appThemeSaveApi } from '@/api/theme'
     import { appListApi } from '@/api/application'
-    import { mySubscriptionApi } from '@/api/tenant'
+    import { mySubscriptionApi, planFeatureApi } from '@/api/tenant'
     import uploadPictures from '@/components/uploadPictures'
     import {
         CHAT_BUBBLE_PRESETS,
@@ -260,7 +277,7 @@
 
     export default {
         name: 'chat_theme',
-        components: { planGate, uploadPictures },
+        components: { uploadPictures },
         data () {
             return {
                 saving: false,
@@ -268,6 +285,9 @@
                 appList: [],
                 whiteLabel: false,
                 customAd: false,
+                brandCustom: false,
+                //各能力的最低所需套餐名，由订阅接口下发，不在前端写死
+                upgradePlans: {},
                 form: createForm(),
                 modalPic: false,
                 isChoice: '单选',
@@ -321,6 +341,7 @@
         created () {
             this.getAppList()
             this.getWhiteLabel()
+            this.loadUpgradePlans()
         },
         methods: {
             getAppList () {
@@ -338,6 +359,7 @@
                 mySubscriptionApi().then(res => {
                     const plan = (res.data || {}).plan
                     this.whiteLabel = !!(plan && plan.white_label)
+                    this.brandCustom = !!(plan && plan.brand_custom)
                 }).catch(res => {
                     console.error('套餐权益读取失败', res)
                 })
@@ -369,6 +391,21 @@
                 const plan = data.plan || {}
                 if (plan.white_label !== undefined) this.whiteLabel = !!plan.white_label
                 if (plan.custom_ad !== undefined) this.customAd = !!plan.custom_ad
+                if (plan.brand_custom !== undefined) this.brandCustom = !!plan.brand_custom
+            },
+            //门禁提示里的套餐名取自真实套餐数据，运营调整权益后自动跟随
+            loadUpgradePlans () {
+                planFeatureApi().then(res => {
+                    const data = res.data || {}
+                    this.upgradePlans = data.upgrade || {}
+                    if (data.unlimited) {
+                        this.brandCustom = this.customAd = this.whiteLabel = true
+                    }
+                }).catch(() => {})
+            },
+            requiredPlan (feature) {
+                const name = this.upgradePlans[feature]
+                return name ? `${name}及以上` : '升级可用'
             },
             onAppChange () {
                 if (!this.appid) return
@@ -669,6 +706,12 @@
         height: 100%;
         color: #c5c8ce;
     }
+    /* 未开通时不可点击，但保留占位让租户看见这里能配什么 */
+    .pic-box-locked {
+        cursor: not-allowed;
+        opacity: .55;
+    }
+
     .pic-clear {
         margin-left: 12px;
         font-size: 12px;
