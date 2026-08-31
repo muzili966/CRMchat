@@ -12,6 +12,8 @@
 namespace app\services\system;
 
 use app\dao\system\SystemMenusDao;
+use app\models\system\admin\SystemAdmin;
+use crmeb\services\tenant\TenantContext;
 use crmeb\basic\BaseServices;
 use app\services\system\admin\SystemRoleServices;
 use crmeb\exceptions\AdminException;
@@ -95,6 +97,13 @@ class SystemMenusServices extends BaseServices
      */
     public function filterVisibleMenus($list, array $adminInfo)
     {
+        //平台账号的租户上下文为0，租户专属页面进去只会报"请切换到租户视角"，索性不展示
+        if (SystemAdmin::isPlatformAdmin($adminInfo) && !TenantContext::id()) {
+            $tenantOnly = $this->getTenantOnlyMenuIds();
+            $list = $list->filter(function ($item) use ($tenantOnly) {
+                return !in_array((int)$item->id, $tenantOnly, true);
+            })->values();
+        }
         if ((int)($adminInfo['level'] ?? 1) === 0) {
             return $list;
         }
@@ -103,6 +112,15 @@ class SystemMenusServices extends BaseServices
         return $list->filter(function ($item) use ($granted) {
             return in_array((int)$item->id, $granted, true);
         })->values();
+    }
+
+    /**
+     * 仅租户端可见的菜单ID集合
+     * @return array
+     */
+    public function getTenantOnlyMenuIds(): array
+    {
+        return array_map('intval', $this->dao->getColumn(['is_platform' => 0, 'is_del' => 0], 'id'));
     }
 
     /**

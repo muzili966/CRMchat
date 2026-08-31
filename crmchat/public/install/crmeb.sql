@@ -1409,3 +1409,22 @@ DELETE FROM `eb_cache` WHERE `key` LIKE 'kf_adv%';
 -- 配置分类补图标：顶级tab渲染icon，缺失时与其它分类视觉不齐
 UPDATE `eb_system_config_tab` SET `icon` = 'md-chatbubbles' WHERE `id` = 69;
 UPDATE `eb_system_config_tab` SET `icon` = 'md-bulb' WHERE `id` = 90;
+
+-- 菜单按端隔离与订阅能力门禁（与update.sql保持一致）
+-- 平台账号的租户上下文为0，进「我的订阅」「AI客服设置」「客户端装修」只会得到
+-- "请切换到租户视角"的报错，这类页面不应出现在平台端菜单里。
+-- 原有 is_tenant 只表达"租户可见"，无法表达"仅租户可见"，故补一列。
+ALTER TABLE `eb_system_menus`
+  ADD `is_platform` tinyint(1) NOT NULL DEFAULT 1 COMMENT '平台端是否可见,0=仅租户端' AFTER `is_tenant`;
+
+UPDATE `eb_system_menus` SET `is_platform` = 0
+  WHERE `id` IN (1240,1241,1242,1243,1244,1245,1250,1251,1252,1253,1260,1261,1262);
+
+-- 订阅能力门禁接口：功能页据此展示内容或升级提示
+INSERT INTO `eb_system_menus`
+  (`id`,`pid`,`menu_name`,`api_url`,`methods`,`is_show`,`is_tenant`,`is_platform`,`auth_type`,`is_del`,`is_show_path`,`sort`,`params`,`header`,`path`,`unique_auth`,`icon`,`module`,`controller`,`action`,`access`,`menu_path`)
+VALUES
+  (1301,1240,'订阅能力门禁','api/admin/setting/tenant/features','GET',0,1,0,2,0,0,0,'[]','','12','','','admin','','',0,'');
+
+UPDATE `eb_system_role` SET `rules` = CONCAT(`rules`, ',1301')
+  WHERE `id` = 2 AND CONCAT(',',`rules`,',') NOT LIKE '%,1301,%';

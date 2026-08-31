@@ -294,6 +294,55 @@ class TenantPlanServices extends BaseServices
     }
 
     /**
+     * 当前租户的能力门禁：每项能力是否可用，以及不可用时最低需要哪个套餐
+     *
+     * 最低套餐由在售套餐数据实时算出而非写死，运营调整套餐权益后提示自动跟随
+     * @param int $tenantId
+     * @return array
+     */
+    public function getFeatureGate(int $tenantId): array
+    {
+        $plan = $this->getTenantPlan($tenantId);
+        $plans = TenantContext::withoutTenant(function () {
+            return $this->dao->getPlanList(['is_delete' => 0, 'status' => TenantPlan::STATUS_ON]);
+        });
+        $features = [];
+        $upgrade = [];
+        foreach (TenantPlan::FEATURE_FIELDS as $field) {
+            //未绑定套餐时不设限，与hasFeature的fail-open口径保持一致
+            $features[$field] = $plan ? !empty($plan[$field]) : true;
+            if (!$features[$field]) {
+                $upgrade[$field] = self::lowestPlanWith($plans, $field);
+            }
+        }
+        return [
+            'plan_name' => $plan['name'] ?? '',
+            'features' => $features,
+            'upgrade' => $upgrade,
+        ];
+    }
+
+    /**
+     * 含某项能力且价格最低的套餐名
+     * @param array $plans
+     * @param string $field
+     * @return string
+     */
+    protected static function lowestPlanWith(array $plans, string $field): string
+    {
+        $matched = array_filter($plans, function ($item) use ($field) {
+            return !empty($item[$field]);
+        });
+        if (!$matched) {
+            return '';
+        }
+        usort($matched, function ($a, $b) {
+            return (float)($a['price'] ?? 0) <=> (float)($b['price'] ?? 0);
+        });
+        return (string)($matched[0]['name'] ?? '');
+    }
+
+    /**
      * 是否具备某项功能
      * @param int $tenantId
      * @param string $feature TenantPlan::FEATURE_FIELDS 之一

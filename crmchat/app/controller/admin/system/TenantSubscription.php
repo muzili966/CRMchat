@@ -48,6 +48,20 @@ class TenantSubscription extends AuthController
     }
 
     /**
+     * 能力门禁：供各功能页判断是否展示升级提示
+     * @return mixed
+     */
+    public function features()
+    {
+        $tenantId = (int)TenantContext::id();
+        //平台视角不受套餐约束，一律放行，避免平台预览租户页面时被拦
+        if (!$tenantId) {
+            return $this->success(['plan_name' => '', 'features' => [], 'upgrade' => [], 'unlimited' => true]);
+        }
+        return $this->success($this->services->getFeatureGate($tenantId) + ['unlimited' => false]);
+    }
+
+    /**
      * 在售套餐展示（租户升级续订选择用，只读）
      * @return mixed
      */

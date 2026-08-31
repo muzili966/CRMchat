@@ -156,6 +156,16 @@ export function orderListApi(data) {
  * @description 订购对账--导出CSV
  * @param {Object} param data {Object} 传值参数
  */
+/**
+ * @description 订阅能力门禁：各功能页据此决定展示内容还是升级提示
+ */
+export function planFeatureApi() {
+    return request({
+        url: 'setting/tenant/features',
+        method: 'get'
+    })
+}
+
 export function orderExportApi(data) {
     return request({
         url: 'setting/tenant/orders/export',

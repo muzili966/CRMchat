@@ -5,6 +5,7 @@
                 <span class="ivu-page-header-title">{{$route.meta.title}}</span>
             </div>
         </div>
+        <planGate feature="brand_custom">
         <Card :bordered="false" dis-hover class="ivu-mt">
             <div class="app-bar">
                 <span class="app-bar-label">选择应用：</span>
@@ -176,6 +177,7 @@
                 </Col>
             </Row>
         </Card>
+        </planGate>
 
         <Modal v-model="modalPic" width="950px" scrollable footer-hide closable title="选择图片" :mask-closable="false" :z-index="888">
             <uploadPictures :isChoice="isChoice" @getPic="getPic" :gridBtn="gridBtn" :gridPic="gridPic" v-if="modalPic"></uploadPictures>
@@ -258,7 +260,7 @@
 
     export default {
         name: 'chat_theme',
-        components: { uploadPictures },
+        components: { planGate, uploadPictures },
         data () {
             return {
                 saving: false,

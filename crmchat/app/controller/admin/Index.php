@@ -66,11 +66,14 @@ class Index extends AuthController
         $list          = $menusServices->getSearchList();
         //该接口在鉴权白名单内，必须自行按身份过滤，否则平台后台的完整菜单结构会泄露给租户
         $list          = $menusServices->filterVisibleMenus($list, $this->adminInfo);
+        //统计口径需与上面的可见集合一致，否则父菜单会因不可见的子级而残留展开箭头
+        $visibleIds = array_column($list->toArray(), 'id');
         $counts        = $menusServices->getColumn([
             ['is_show', '=', 1],
             ['auth_type', '=', 1],
             ['is_del', '=', 0],
             ['is_show_path', '=', 0],
+            ['id', 'IN', $visibleIds ?: [0]],
         ], 'pid');
         $data          = [];
         foreach ($list as $key => $item) {

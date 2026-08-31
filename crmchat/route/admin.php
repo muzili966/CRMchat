@@ -340,6 +340,8 @@ Route::group('api', function () {
             Route::get('tenant/my', 'system.TenantSubscription/my')->option(['real_name' => '我的订阅概览']);
 
             Route::get('tenant/plans', 'system.TenantSubscription/plans')->option(['real_name' => '在售套餐展示']);
+            //能力门禁
+            Route::get('tenant/features', 'system.TenantSubscription/features')->option(['real_name' => '订阅能力门禁']);
 
             Route::post('tenant/domain', 'system.TenantSubscription/saveDomain')->option(['real_name' => '设置独立域名']);
 

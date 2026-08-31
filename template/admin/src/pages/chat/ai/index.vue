@@ -5,6 +5,7 @@
                 <span class="ivu-page-header-title">{{$route.meta.title}}</span>
             </div>
         </div>
+        <planGate feature="ai_reply">
         <Card :bordered="false" dis-hover class="ivu-mt">
             <Tabs v-model="curTab">
                 <TabPane label="基础设置" name="base">
@@ -77,11 +78,13 @@
                 <Button type="primary" :loading="saving" @click="save">保存</Button>
             </div>
         </Card>
+        </planGate>
     </div>
 </template>
 
 <script>
     import { aiConfigApi, aiConfigSaveApi } from '@/api/ai'
+    import planGate from '@/components/planGate'
 
     const MODE_STANDBY = 'standby'
     const MODE_AI_FIRST = 'ai_first'
@@ -135,6 +138,7 @@
     const isBlankFaq = item => !item.q.trim() && !item.a.trim()
 
     export default {
+        components: { planGate },
         name: 'chat_ai',
         data () {
             return {
