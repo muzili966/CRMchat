@@ -525,10 +525,45 @@ abstract class BaseHandler
      * @param array $data
      * @param Response $response
      */
+    /**
+     * 该用户是否还有其它存活连接
+     *
+     * onClose 已先行摘除本次的fd，故此处取到的都是其它连接
+     * @param array $room 关闭连接的房间信息
+     * @param int $userId
+     * @return bool
+     */
+    protected function hasOtherConnection(array $room, int $userId): bool
+    {
+        try {
+            $fds = Manager::userFd($room['type'] ?? '', $userId, isset($room['tenant_id']) ? (int)$room['tenant_id'] : null);
+            if (!$fds) {
+                return false;
+            }
+            /** @var \Swoole\Server $server */
+            $server = app()->make(\Swoole\Server::class);
+            foreach ($fds as $fd) {
+                if ($server->isEstablished((int)$fd)) {
+                    return true;
+                }
+            }
+        } catch (\Throwable $e) {
+            //判断失败时按"没有其它连接"处理，宁可置离线也不要把已下线的客服显示成在线
+            Log::error('检查存活连接失败：' . $e->getMessage());
+        }
+        return false;
+    }
+
     public function close(array $data = [], Response $response)
     {
         $usreId = $data['data']['user_id'] ?? 0;
         $appId = $data['data']['appid'] ?? '';
+        //多标签页或刷新时，旧连接的关闭常晚于新连接的登录到达；此处若无条件置离线，
+        //会把刚建好的会话标记成离线，服务端便只推未读数不推消息，
+        //表现为"对方发了消息不进对话框、不响铃，要再刷新一次"
+        if ($usreId && $this->hasOtherConnection($data['data'], $usreId)) {
+            return;
+        }
         if ($usreId) {
             /** @var ChatServiceServices $service */
             $service = app()->make(ChatServiceServices::class);
