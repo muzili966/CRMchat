@@ -531,3 +531,4 @@ ALTER TABLE `eb_application_theme`
 -- 2026-09-02 起改用版本化增量脚本，新变更请加到 public/install/upgrade/，
 -- 规则见该目录 README。此处保留历史记录，不再追加。
 -- 平台销售线索（CRM）的建表已迁至 V20260902_01__platform_crm.sql。
+-- 悬浮挂件配置的加列已迁至 V20260902_02__widget_config.sql，上方保留的是历史记录，不要手工执行。

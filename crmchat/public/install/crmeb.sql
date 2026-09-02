@@ -1471,7 +1471,8 @@ CREATE TABLE IF NOT EXISTS `eb_system_upgrade` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='升级版本账本';
 
 INSERT INTO `eb_system_upgrade` (`version`,`name`,`create_time`) VALUES
-('20260902_01','platform_crm',UNIX_TIMESTAMP());
+('20260902_01','platform_crm',UNIX_TIMESTAMP()),
+('20260902_02','widget_config',UNIX_TIMESTAMP());
 
 CREATE TABLE IF NOT EXISTS `eb_platform_lead` (
   `id` int NOT NULL AUTO_INCREMENT,
