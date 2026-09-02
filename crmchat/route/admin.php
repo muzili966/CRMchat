@@ -371,6 +371,16 @@ Route::group('api', function () {
             //开通续费套餐
             Route::post('tenant/subscribe', 'system.Tenant/subscribe')->option(['real_name' => '开通续费套餐']);
             //订购对账列表
+            //销售线索（平台专属）
+            Route::get('lead', 'platform.Lead/index')->option(['real_name' => '线索列表']);
+            Route::get('lead/options', 'platform.Lead/options')->option(['real_name' => '线索选项']);
+            Route::get('lead/:id', 'platform.Lead/read')->option(['real_name' => '线索详情']);
+            Route::post('lead', 'platform.Lead/save')->option(['real_name' => '录入线索']);
+            Route::post('lead/follow/:id', 'platform.Lead/follow')->option(['real_name' => '记录跟进']);
+            Route::post('lead/assign/:id', 'platform.Lead/assign')->option(['real_name' => '转派线索']);
+            Route::post('lead/link/:id', 'platform.Lead/link')->option(['real_name' => '关联租户']);
+            Route::delete('lead/:id', 'platform.Lead/delete')->option(['real_name' => '删除线索']);
+
             Route::get('tenant/orders', 'system.TenantPlanOrder/index')->option(['real_name' => '订购对账列表']);
             //对账CSV导出
             Route::get('tenant/orders/export', 'system.TenantPlanOrder/export')->option(['real_name' => '对账导出']);

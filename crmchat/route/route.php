@@ -22,6 +22,9 @@ Route::get('/', function () {
     return view('website/index', ['plans' => $plans]);
 })->middleware(InstallMiddleware::class);
 
+//官网公开接口：面向未登录访客，仅合作意向提交
+Route::post('website/lead', 'WebsiteController/lead')->middleware(InstallMiddleware::class);
+
 Route::group('/', function () {
     Route::miss(function () {
         return view(app()->getRootPath() . 'public' . DS . 'admin' . DS . 'index.html');
