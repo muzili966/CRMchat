@@ -17,7 +17,12 @@
     <section class="form-panel">
       <div class="form-panel__top">
         <span>智能客户联络平台</span>
-        <span class="online"><i></i> 服务在线</span>
+        <span class="top-right">
+          <a v-if="websiteUrl" class="website-link" :href="websiteUrl" target="_blank" rel="noopener">
+            官网首页<Icon type="ios-arrow-forward" />
+          </a>
+          <span class="online"><i></i> 服务在线</span>
+        </span>
       </div>
       <div class="login-card">
         <img class="login-card__logo" :src="brandLogo" alt="QiaLink 洽联">
@@ -47,7 +52,10 @@
         </Form>
         <p class="login-card__hint"><Icon type="ios-lock-outline" /> 登录信息通过加密通道传输</p>
       </div>
-      <footer class="form-panel__footer">QiaLink 洽联 · 智能客户联络平台</footer>
+      <footer class="form-panel__footer">
+        QiaLink 洽联 · 智能客户联络平台
+        <template v-if="websiteUrl"> · <a :href="websiteUrl" target="_blank" rel="noopener">了解产品</a></template>
+      </footer>
     </section>
 
     <Modal v-model="modals" scrollable footer-hide closable title="请完成安全校验" :mask-closable="false" :z-index="2" width="342">
@@ -60,7 +68,7 @@
 </template>
 
 <script>
-import { AccountLogin, captcha_pro } from '@/api/account'
+import { AccountLogin, captcha_pro, loginInfoApi } from '@/api/account'
 import { setCookies } from '@/libs/util'
 import brandLogo from '@/assets/images/qialink-logo-horizontal.png'
 import brandIcon from '@/assets/images/qialink-logo-icon.png'
@@ -83,6 +91,7 @@ export default {
       captchaTimer: null,
       errorNum: 0,
       jigsaw: null,
+      websiteUrl: '',
       formInline: { username: '', password: '', code: '', key: '' },
       ruleInline: {
         username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
@@ -92,6 +101,7 @@ export default {
     }
   },
   mounted() {
+    this.loadSiteInfo()
     this.initJigsaw()
     this.captchas()
     this.updateCanvasClass()
@@ -151,6 +161,12 @@ export default {
       this.$store.commit('userInfo/logoSmall', data.logo_square)
       this.$store.commit('userInfo/version', data.version)
       this.$store.commit('userInfo/newOrderAudioLink', data.newOrderAudioLink)
+    },
+    loadSiteInfo() {
+      //官网地址未配置时接口返回空串，入口就不出现，不必为此报错
+      loginInfoApi().then(res => {
+        this.websiteUrl = (res.data && res.data.website_url) || ''
+      }).catch(() => {})
     },
     login() {
       const loading = this.$Message.loading({ content: '正在安全登录...', duration: 0 })
@@ -271,6 +287,9 @@ export default {
 .form-panel__top { display: flex; justify-content: flex-end; gap: 28px; color: #8290aa; font-size: 13px; }
 .online { display: flex; align-items: center; gap: 7px; }
 .online i { width: 7px; height: 7px; border-radius: 50%; background: #32c787; box-shadow: 0 0 0 4px rgba(50, 199, 135, .12); }
+.top-right { display: flex; align-items: center; gap: 28px; }
+.website-link { display: flex; align-items: center; gap: 2px; color: #8290aa; transition: color .2s; }
+.website-link:hover { color: #335cff; }
 .login-card { width: 100%; max-width: 480px; margin: auto; }
 .login-card__logo { display: none; width: 176px; height: auto; margin-bottom: 40px; }
 .login-card__heading h2 { margin: 0; color: #14213d; font-size: 34px; line-height: 1.3; }
@@ -285,6 +304,7 @@ export default {
 .login-button:hover { background: #4775ef !important; transform: translateY(-1px); }
 .login-card__hint { margin-top: 20px; color: #b4becf; font-size: 12px; text-align: center; }
 .form-panel__footer { color: #c1cad9; font-size: 12px; text-align: center; }
+.form-panel__footer a { color: #8290aa; } .form-panel__footer a:hover { color: #335cff; }
 .captcha-box { width: 310px; }
 #msg { width: 100%; line-height: 40px; font-size: 14px; text-align: center; }
 

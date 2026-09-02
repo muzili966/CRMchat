@@ -205,21 +205,35 @@ class TenantPlanServices extends BaseServices
         }
         try {
             return CacheService::redisHandler()->remember(self::PLAN_CACHE_PREFIX . $tenantId, function () use ($tenantId) {
-                return TenantContext::withoutTenant(function () use ($tenantId) {
-                    /** @var TenantDao $tenantDao */
-                    $tenantDao = app()->make(TenantDao::class);
-                    $planId = (int)$tenantDao->value(['id' => $tenantId], 'plan_id');
-                    if (!$planId) {
-                        return [];
-                    }
-                    $plan = $this->dao->get(['id' => $planId, 'is_delete' => 0]);
-                    return $plan ? $plan->toArray() : [];
-                });
+                return $this->readPlan($tenantId);
             }, self::PLAN_CACHE_TTL) ?: [];
         } catch (\Throwable $e) {
-            \think\facade\Log::error('读取租户套餐失败：' . $e->getMessage());
-            return [];
+            //缓存不可用时直接读库。空数组的语义是"未绑定套餐=不设限"，
+            //把读取失败也归到这个语义上，Redis一挂全体租户就白拿所有付费功能。
+            \think\facade\Log::error('租户套餐缓存不可用，回退直连数据库：' . $e->getMessage());
+            return $this->readPlan($tenantId);
         }
+    }
+
+    /**
+     * 从库里读租户套餐
+     *
+     * 数据库再读不到就没有可信依据了，异常向上抛而不是当作未绑定套餐
+     * @param int $tenantId
+     * @return array
+     */
+    protected function readPlan(int $tenantId): array
+    {
+        return TenantContext::withoutTenant(function () use ($tenantId) {
+            /** @var TenantDao $tenantDao */
+            $tenantDao = app()->make(TenantDao::class);
+            $planId = (int)$tenantDao->value(['id' => $tenantId], 'plan_id');
+            if (!$planId) {
+                return [];
+            }
+            $plan = $this->dao->get(['id' => $planId, 'is_delete' => 0]);
+            return $plan ? $plan->toArray() : [];
+        });
     }
 
     /**

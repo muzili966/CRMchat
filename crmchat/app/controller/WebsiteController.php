@@ -5,7 +5,12 @@
 
 namespace app\controller;
 
+use app\dao\ApplicationDao;
+use app\models\Tenant;
 use app\services\platform\PlatformLeadServices;
+use app\services\TenantPlanServices;
+use crmeb\services\tenant\TenantContext;
+use think\facade\Log;
 use crmeb\services\CacheService;
 use think\Request;
 
@@ -33,6 +38,93 @@ class WebsiteController
         $this->request = $request;
     }
 
+    /**
+     * 官网首页
+     *
+     * 官网可被解析到独立域名（如 www），届时控制台与客服都不再同源，
+     * 故地址一律由服务端按 site_url 注入，而不是写死相对路径。
+     * @return \think\Response
+     */
+    public function index()
+    {
+        return view('website/index', [
+            'plans' => $this->pricing(),
+            //去掉末尾斜杠，模板里统一拼 /admin/ 这类路径；留空则退回同源相对路径
+            'app_url' => $this->appUrl(),
+            'app_origin' => $this->appUrl(),
+            'chat_token' => $this->chatToken(),
+        ]);
+    }
+
+    /**
+     * 在售套餐，取不到时官网其余部分照常展示
+     * @return array
+     */
+    protected function pricing(): array
+    {
+        try {
+            /** @var TenantPlanServices $planServices */
+            $planServices = app()->make(TenantPlanServices::class);
+            return $planServices->getPublicPricing();
+        } catch (\Throwable $e) {
+            Log::error('官网定价读取失败：' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * 官网上指向应用的地址
+     *
+     * 同域时返回空串走相对路径：官网若挂在 https 的 www 上而 site_url 还是
+     * http 的内网地址，绝对地址会被浏览器当混合内容拦掉。只有确实跨域
+     * （官网被单独解析出去）才需要绝对地址。
+     * @return string
+     */
+    protected function appUrl(): string
+    {
+        return self::resolveAppUrl((string)sys_config('site_url'), (string)$this->request->host(true));
+    }
+
+    /**
+     * 同主机返回空串（相对路径），跨主机返回绝对地址
+     * @param string $siteUrl
+     * @param string $requestHost
+     * @return string
+     */
+    public static function resolveAppUrl(string $siteUrl, string $requestHost): string
+    {
+        $siteUrl = rtrim($siteUrl, '/');
+        if (!$siteUrl) {
+            return '';
+        }
+        $siteHost = parse_url($siteUrl, PHP_URL_HOST);
+        return $siteHost && strcasecmp((string)$siteHost, $requestHost) !== 0 ? $siteUrl : '';
+    }
+
+    /**
+     * 官网自用的客服接入token
+     *
+     * 写死在模板里会跟着代码进到每个环境，而各环境的应用是各自建的，
+     * token 对不上就表现为访客一律进留言页。改为按默认租户实时解析，
+     * 解析不到则不渲染客服脚本，避免挂一个必然失败的入口。
+     * @return string
+     */
+    protected function chatToken(): string
+    {
+        try {
+            return TenantContext::withoutTenant(function () {
+                /** @var ApplicationDao $dao */
+                $dao = app()->make(ApplicationDao::class);
+                return (string)$dao->value([
+                    'tenant_id' => Tenant::DEFAULT_TENANT_ID,
+                    'is_delete' => 0,
+                ], 'token_md5');
+            });
+        } catch (\Throwable $e) {
+            Log::error('官网客服token读取失败：' . $e->getMessage());
+            return '';
+        }
+    }
     /**
      * 提交合作意向
      * @return \think\Response

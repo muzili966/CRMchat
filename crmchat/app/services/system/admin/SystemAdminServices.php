@@ -138,7 +138,9 @@ class SystemAdminServices extends BaseServices
             'slide'          => sys_data('admin_login_slide') ?? [],
             'logo_square'    => sys_config('site_logo_square'),//透明
             'logo_rectangle' => sys_config('site_logo'),//方形
-            'login_logo'     => sys_config('login_logo')//登陆
+            'login_logo'     => sys_config('login_logo'),//登陆
+            //官网被解析到独立域名后，登录页需要一条回官网的路；留空则前端不展示
+            'website_url'    => rtrim((string)sys_config('website_url'), '/')
         ];
     }
 
