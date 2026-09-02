@@ -252,6 +252,9 @@ UPDATE `eb_system_menus` SET `menu_name` = '应用管理' WHERE `id` = 1011;
 
 -- ============ 租户端我的订阅（2026-08-30） ============
 -- 顶级菜单：我的订阅（租户查看套餐/订单/发票；平台超管经租户视角亦可查看）
+-- header 原定义 varchar(10) 装不下 'subscription'（12字符）：
+-- 严格模式下报 1406 中断导入，非严格模式则静默截断成 'subscripti'，顶部菜单匹配不上
+ALTER TABLE `eb_system_menus` MODIFY `header` varchar(32) NOT NULL DEFAULT '' COMMENT '顶部菜单标示';
 INSERT INTO `eb_system_menus` (`id`, `pid`, `icon`, `menu_name`, `module`, `controller`, `action`, `api_url`, `methods`, `params`, `sort`, `is_show`, `is_show_path`, `access`, `menu_path`, `path`, `auth_type`, `header`, `is_header`, `unique_auth`, `is_del`, `is_tenant`) VALUES
 (1240, 0, 'md-card', '我的订阅', 'admin', '', '', '', '', '[]', 0, 1, 0, 1, '/admin/tenant/subscription', '', 1, 'subscription', 1, 'tenant-subscription', 0, 1),
 (1241, 1240, '', '我的订阅概览', 'admin', '', '', 'api/admin/setting/tenant/my', 'GET', '[]', 0, 0, 0, 1, '', '1240', 2, '', 0, '', 0, 1),

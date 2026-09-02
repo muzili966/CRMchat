@@ -550,7 +550,7 @@ CREATE TABLE IF NOT EXISTS `eb_system_menus` (
   `menu_path` varchar(255) NOT NULL DEFAULT '' COMMENT '路由名称 前端使用',
   `path` varchar(255) NOT NULL DEFAULT '' COMMENT '路径',
   `auth_type` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否为菜单 1菜单 2功能',
-  `header` varchar(10) NOT NULL DEFAULT '' COMMENT '顶部菜单标示',
+  `header` varchar(32) NOT NULL DEFAULT '' COMMENT '顶部菜单标示',
   `is_header` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否顶部菜单1是0否',
   `unique_auth` varchar(255) NOT NULL DEFAULT '' COMMENT '前台唯一标识',
   `is_del` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否删除',
@@ -1055,9 +1055,6 @@ ALTER TABLE `eb_system_menus`
 --
 ALTER TABLE `eb_system_role`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT,AUTO_INCREMENT=2;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 
 -- 多租户改造：业务表补充租户维度（与update.sql保持一致）
 ALTER TABLE `eb_chat_user` ADD `tenant_id` int(10) NOT NULL DEFAULT '0' COMMENT '所属租户ID' AFTER `id`, ADD INDEX `idx_tenant_id` (`tenant_id`);
