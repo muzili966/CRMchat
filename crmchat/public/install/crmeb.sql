@@ -1472,7 +1472,8 @@ CREATE TABLE IF NOT EXISTS `eb_system_upgrade` (
 
 INSERT INTO `eb_system_upgrade` (`version`,`name`,`create_time`) VALUES
 ('20260902_01','platform_crm',UNIX_TIMESTAMP()),
-('20260902_02','widget_config',UNIX_TIMESTAMP());
+('20260902_02','widget_config',UNIX_TIMESTAMP()),
+('20260902_03','fix_lead_menu_path',UNIX_TIMESTAMP());
 
 CREATE TABLE IF NOT EXISTS `eb_platform_lead` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -1516,7 +1517,7 @@ CREATE TABLE IF NOT EXISTS `eb_platform_lead_follow` (
 
 -- 菜单挂在租户管理下，仅平台端可见
 INSERT INTO `eb_system_menus` (`id`,`pid`,`menu_name`,`menu_path`,`api_url`,`methods`,`is_show`,`is_tenant`,`is_platform`,`auth_type`,`is_del`,`is_show_path`,`sort`,`params`,`header`,`path`,`unique_auth`,`icon`,`module`,`controller`,`action`,`access`) VALUES
-(1310,1200,'销售线索','/admin/platform/lead','','',1,0,1,1,0,0,90,'[]','','1200','platform-lead','','admin','','',0),
+(1310,1200,'销售线索','/admin/tenant/lead','','',1,0,1,1,0,0,90,'[]','tenant','1200','platform-lead','','admin','','',0),
 (1311,1310,'线索列表','','api/admin/setting/lead','GET',0,0,1,2,0,0,0,'[]','','1200/1310','','','admin','','',0),
 (1312,1310,'线索选项','','api/admin/setting/lead/options','GET',0,0,1,2,0,0,0,'[]','','1200/1310','','','admin','','',0),
 (1313,1310,'线索详情','','api/admin/setting/lead/<id>','GET',0,0,1,2,0,0,0,'[]','','1200/1310','','','admin','','',0),

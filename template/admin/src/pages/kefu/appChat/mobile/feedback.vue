@@ -2,7 +2,7 @@
 	<div class="feedback-wrapper">
 		<div class="head">
 			<div class="left-wrapper">
-				<div class="title">商城客服已离线</div>
+				<div class="title">客服当前不在线</div>
 				<div class="txt">{{feedback}}</div>
 			</div>
 			<div class="img-box"><img src="@/assets/images/feed-icon.png" mode="" /></div>

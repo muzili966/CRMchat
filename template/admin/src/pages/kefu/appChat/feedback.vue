@@ -2,7 +2,7 @@
     <div>
         <div class="feedback" :class="change === true ? 'on' : ''">
             <div class="feedback-header acea-row">
-                <span class="sp1">商城客服已离线</span>
+                <span class="sp1">客服当前不在线</span>
                 <div>
                     <!--<Icon type="md-remove" color="#fff" size="18" class="mr10"/>-->
                     <Icon type="md-close" color="#fff" size="18" @click="close"/>

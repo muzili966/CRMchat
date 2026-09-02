@@ -1,7 +1,7 @@
 <template>
   <div class="customerOutLine_server" :class="{ 'max_style': !isMobile }">
     <div class="customerOutLine_server_header">
-      <span>商城客服已离线</span>
+      <span>客服当前不在线</span>
       <div class="pc_customerServer_container_header_handle" @click="closeIframe">
         <span class="iconfont">&#xe6c6;</span>
       </div>
