@@ -50,6 +50,7 @@
                 </template>
                 <template slot-scope="{ row }" slot="owner">
                     <span v-if="row.owner_name">{{ row.owner_name }}</span>
+                    <span v-else-if="row.from_kefu" class="lead-sub">待认领 · {{ row.from_kefu }}</span>
                     <span v-else class="lead-sub">未指派</span>
                 </template>
                 <template slot-scope="{ row }" slot="follow">
@@ -84,6 +85,7 @@
                     <div><label>团队规模</label><span>{{ detail.scale || '—' }}</span></div>
                     <div><label>意向版本</label><span>{{ detail.intent_plan || '—' }}</span></div>
                     <div><label>跟进人</label><span>{{ detail.owner_name || '未指派' }}</span></div>
+                    <div v-if="detail.from_kefu"><label>转入客服</label><span>{{ detail.from_kefu }}</span></div>
                 </div>
                 <div class="detail-content" v-if="detail.content">
                     <label>需求描述</label>

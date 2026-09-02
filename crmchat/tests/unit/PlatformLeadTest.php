@@ -84,4 +84,36 @@ class PlatformLeadTest extends TestCase
             $this->assertNotSame('', $label);
         }
     }
+
+    /**
+     * 转线索时的需求描述由最近对话拼成，客服未填时全靠它
+     */
+    public function testDialogueDigestKeepsOnlyTheLastFewLines()
+    {
+        $rows = ['你好', '在吗', '第三条', '第四条', '第五条', '第六条', '第七条'];
+        $digest = PlatformLeadServices::digestDialogue($rows);
+        $this->assertSame('第三条；第四条；第五条；第六条；第七条', $digest);
+    }
+
+    public function testDialogueDigestDropsBlankLines()
+    {
+        $digest = PlatformLeadServices::digestDialogue(['  ', '想了解报价', '', null, '  能开发票吗 ']);
+        $this->assertSame('想了解报价；能开发票吗', $digest);
+    }
+
+    public function testDialogueDigestOfEmptyRecordIsEmpty()
+    {
+        $this->assertSame('', PlatformLeadServices::digestDialogue([]));
+        $this->assertSame('', PlatformLeadServices::digestDialogue(['', '   ']));
+    }
+
+    /**
+     * 长对话不能撑爆 content 字段
+     */
+    public function testDialogueDigestIsTruncatedToContentLimit()
+    {
+        $rows = array_fill(0, PlatformLeadServices::DIALOGUE_PICK, str_repeat('长', 500));
+        $digest = PlatformLeadServices::digestDialogue($rows);
+        $this->assertSame(PlatformLead::MAX_CONTENT, mb_strlen($digest));
+    }
 }

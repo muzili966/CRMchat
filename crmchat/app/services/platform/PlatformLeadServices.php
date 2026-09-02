@@ -9,6 +9,9 @@ use app\dao\platform\PlatformLeadDao;
 use app\dao\platform\PlatformLeadFollowDao;
 use app\dao\system\admin\SystemAdminDao;
 use app\models\PlatformLead;
+use app\models\Tenant;
+use app\services\chat\ChatServiceDialogueRecordServices;
+use app\services\chat\ChatUserServices;
 use crmeb\basic\BaseServices;
 use crmeb\exceptions\AdminException;
 use crmeb\services\tenant\TenantContext;
@@ -23,6 +26,9 @@ use crmeb\services\tenant\TenantContext;
  */
 class PlatformLeadServices extends BaseServices
 {
+    /** 转线索时带出的最近对话条数：够看清诉求，又不至于把整段聊天塞进需求描述 */
+    const DIALOGUE_PICK = 5;
+
     /**
      * @param PlatformLeadDao $dao
      */
@@ -114,6 +120,95 @@ class PlatformLeadServices extends BaseServices
             throw new AdminException('线索创建失败');
         }
         return (int)$lead->id;
+    }
+
+    /**
+     * 由客服会话转为线索
+     *
+     * 官网咨询里聊出意向的访客，客服可直接转成线索，省去手工誊抄。
+     * 线索是平台自己的客户，故仅平台自营租户（官网客服所在租户）可转，
+     * 否则其他租户的访客会被写进平台的销售线索里。
+     * @param int $tenantId 客服所属租户
+     * @param int $userId 访客chat_user id
+     * @param array $extra 客服补充的字段，会覆盖自动带出的值
+     * @param array $adminInfo 操作的客服信息
+     * @return int 线索ID
+     */
+    public function createFromChat(int $tenantId, int $userId, array $extra, array $adminInfo): int
+    {
+        if ($tenantId !== Tenant::DEFAULT_TENANT_ID) {
+            throw new AdminException('仅平台自营客服可将会话转为线索');
+        }
+        /** @var ChatUserServices $userServices */
+        $userServices = app()->make(ChatUserServices::class);
+        $user = $userServices->get($userId);
+        if (!$user) {
+            throw new AdminException('访客不存在');
+        }
+        $user = $user->toArray();
+        //同一访客重复转会产生重复线索，已转过的直接返回原线索
+        if ($exists = $this->dao->getOne(['chat_user_id' => $userId, 'is_delete' => 0])) {
+            throw new AdminException('该访客已转为线索，请在销售线索中跟进');
+        }
+        $data = array_merge([
+            //备注名是客服整理过的，比昵称更接近真实姓名
+            'name' => $user['remark_nickname'] ?: $user['nickname'],
+            'phone' => $user['phone'] ?? '',
+            'content' => $this->recentDialogue($userId),
+        ], array_filter($extra, function ($value) {
+            return $value !== '' && $value !== null;
+        }));
+        $data['source'] = PlatformLead::SOURCE_CHAT;
+        $payload = self::buildPayload($data);
+        $now = time();
+        $payload['stage'] = PlatformLead::STAGE_NEW;
+        //客服表与管理员表没有关联字段，客服id不能当owner_id用；
+        //这里只记下是谁转的，跟进人待销售在后台认领
+        $payload['owner_id'] = 0;
+        $payload['from_kefu'] = mb_substr((string)($adminInfo['nickname'] ?? $adminInfo['account'] ?? ''), 0, 50);
+        $payload['chat_user_id'] = $userId;
+        $payload['create_time'] = $now;
+        $payload['update_time'] = $now;
+        $lead = $this->dao->save($payload);
+        if (!$lead) {
+            throw new AdminException('线索创建失败');
+        }
+        return (int)$lead->id;
+    }
+
+    /**
+     * 摘取最近几条对话作为需求描述初稿
+     * @param int $userId
+     * @return string
+     */
+    protected function recentDialogue(int $userId): string
+    {
+        try {
+            /** @var ChatServiceDialogueRecordServices $recordServices */
+            $recordServices = app()->make(ChatServiceDialogueRecordServices::class);
+            $rows = $recordServices->getColumn([
+                ['user_id', '=', $userId],
+                ['msn_type', '=', ChatServiceDialogueRecordServices::MSN_TYPE_TXT],
+            ], 'msn');
+            return self::digestDialogue((array)$rows);
+        } catch (\Throwable $e) {
+            //带不出对话不影响转线索，客服可自行补写
+            return '';
+        }
+    }
+
+    /**
+     * 把对话摘成需求描述初稿
+     *
+     * 取最后几条是因为访客的真实诉求通常出现在对话末尾，开场白没有信息量
+     * @param array $rows
+     * @return string
+     */
+    public static function digestDialogue(array $rows): string
+    {
+        $rows = array_map(function ($row) { return trim((string)$row); }, $rows);
+        $rows = array_slice(array_values(array_filter($rows, 'strlen')), -self::DIALOGUE_PICK);
+        return $rows ? mb_substr(implode('；', $rows), 0, PlatformLead::MAX_CONTENT) : '';
     }
 
     /**
@@ -256,6 +351,7 @@ class PlatformLeadServices extends BaseServices
         $item['stage_text'] = PlatformLead::STAGES[$item['stage']] ?? '';
         $item['source_text'] = PlatformLead::SOURCES[$item['source']] ?? $item['source'];
         $item['owner_name'] = $owners[$item['owner_id']] ?? '';
+        $item['from_kefu'] = (string)($item['from_kefu'] ?? '');
         $item['_create_time'] = $item['create_time'] ? date('Y-m-d H:i', (int)$item['create_time']) : '';
         $item['_next_follow_time'] = $item['next_follow_time'] ? date('Y-m-d', (int)$item['next_follow_time']) : '';
         //逾期未跟进需要在列表里被一眼看到，终态线索不参与判断

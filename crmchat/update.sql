@@ -578,3 +578,8 @@ INSERT INTO `eb_system_menus` (`id`,`pid`,`menu_name`,`menu_path`,`api_url`,`met
 (1316,1310,'转派线索','','api/admin/setting/lead/assign/<id>','POST',0,0,1,2,0,0,0,'[]','','1200/1310','','','admin','','',0),
 (1317,1310,'关联租户','','api/admin/setting/lead/link/<id>','POST',0,0,1,2,0,0,0,'[]','','1200/1310','','','admin','','',0),
 (1318,1310,'删除线索','','api/admin/setting/lead/<id>','DELETE',0,0,1,2,0,0,0,'[]','','1200/1310','','','admin','','',0);
+
+-- 会话转线索：记录来源访客用于去重，以及转线索的客服（客服表与管理员表无关联，只能存名称）
+ALTER TABLE `eb_platform_lead` ADD COLUMN `chat_user_id` int NOT NULL DEFAULT 0 COMMENT '来源会话的访客ID,用于去重' AFTER `last_follow_time`;
+ALTER TABLE `eb_platform_lead` ADD COLUMN `from_kefu` varchar(50) NOT NULL DEFAULT '' COMMENT '转线索的客服名称' AFTER `chat_user_id`;
+ALTER TABLE `eb_platform_lead` ADD INDEX `idx_chat_user` (`chat_user_id`);

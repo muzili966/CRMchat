@@ -48,6 +48,7 @@ Route::group('api', function () {
                 Route::delete('label/:userId/:labelId', 'User/delUserLabel')->name('delUserLabel');//删除单个用户标签
                 Route::get('group', 'User/getUserGroup')->name('getUserGroup');//退出登录
                 Route::put('group/:userId/:id', 'User/setUserGroup')->name('setUserGroup');//退出登录
+                Route::post('to_lead/:userId', 'User/toLead')->name('toLead');//会话转销售线索
                 Route::post('logout', 'User/logout')->name('logout');//退出登录
                 Route::get('userInfo', 'User/getKefuInfo')->name('getKefuInfo');//获取当前客服信息
                 Route::put('userInfo', 'User/updateKefu')->name('updateKefu');//修改当前客服信息

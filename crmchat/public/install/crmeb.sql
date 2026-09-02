@@ -1475,13 +1475,16 @@ CREATE TABLE IF NOT EXISTS `eb_platform_lead` (
   `tenant_id` int NOT NULL DEFAULT 0 COMMENT '成交后关联的租户ID',
   `next_follow_time` int NOT NULL DEFAULT 0 COMMENT '下次跟进时间',
   `last_follow_time` int NOT NULL DEFAULT 0 COMMENT '最近跟进时间',
+  `chat_user_id` int NOT NULL DEFAULT 0 COMMENT '来源会话的访客ID,用于去重',
+  `from_kefu` varchar(50) NOT NULL DEFAULT '' COMMENT '转线索的客服名称,客服表与管理员表无关联故只存名称',
   `is_delete` tinyint(1) NOT NULL DEFAULT 0,
   `create_time` int NOT NULL DEFAULT 0,
   `update_time` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `idx_stage` (`stage`),
   KEY `idx_owner` (`owner_id`),
-  KEY `idx_phone` (`phone`)
+  KEY `idx_phone` (`phone`),
+  KEY `idx_chat_user` (`chat_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='平台销售线索';
 
 CREATE TABLE IF NOT EXISTS `eb_platform_lead_follow` (

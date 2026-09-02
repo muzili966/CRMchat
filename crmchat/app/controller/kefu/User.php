@@ -18,6 +18,8 @@ use app\services\chat\ChatComplainServices;
 use app\services\chat\ChatServiceDialogueRecordServices;
 use app\services\chat\ChatServiceFeedbackServices;
 use app\services\chat\ChatServiceRecordServices;
+use app\services\platform\PlatformLeadServices;
+use crmeb\services\tenant\TenantContext;
 use app\services\chat\ChatServiceServices;
 use app\services\chat\ChatUserServices;
 use app\services\chat\user\ChatUserGroupServices;
@@ -144,6 +146,37 @@ class User extends AuthController
      * @throws DbException
      * @throws ModelNotFoundException
      */
+    /**
+     * 会话转销售线索
+     *
+     * 线索是平台自己的客户，服务层会校验仅平台自营租户可转，
+     * 避免其他租户的访客被写进平台的销售线索。
+     * @param int $userId 访客chat_user id
+     * @return mixed
+     */
+    public function toLead($userId)
+    {
+        $extra = $this->request->postMore([
+            ['name', ''],
+            ['company', ''],
+            ['phone', ''],
+            ['email', ''],
+            ['scale', ''],
+            ['intent_plan', ''],
+            ['content', ''],
+        ]);
+        /** @var PlatformLeadServices $leadServices */
+        $leadServices = app()->make(PlatformLeadServices::class);
+        $leadServices->createFromChat(
+            (int)TenantContext::id(),
+            (int)$userId,
+            $extra,
+            //kefuInfo是模型对象，服务层按数组取字段
+            is_object($this->kefuInfo) ? $this->kefuInfo->toArray() : (array)$this->kefuInfo
+        );
+        return $this->success('已转为销售线索');
+    }
+
     public function recordList(string $nickname = '', $is_tourist = '', string $scope = '')
     {
         //scope=all 时返回本应用全部会话（含其他客服与AI坐席接待的），默认仍只看自己的

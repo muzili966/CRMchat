@@ -740,3 +740,16 @@ export function aiTakeOverApi(data) {
     kefu: true
   });
 }
+
+/**
+ * 会话转销售线索（仅平台自营客服可用）
+ * @constructor
+ */
+export function userToLeadApi(userId, data) {
+  return request({
+    url: `user/to_lead/${userId}`,
+    method: 'post',
+    kefu: true,
+    data
+  })
+}

@@ -128,7 +128,7 @@
           </div>
         </div>
         <div class="right_menu">
-          <rightMenu :isTourist="tourist" :uid="userActive.to_user_id" :webType="userActive.type" @bindPush="bindPush"></rightMenu>
+          <rightMenu :isTourist="tourist" :uid="userActive.to_user_id" :webType="userActive.type" :canToLead="!!kefuInfo.can_to_lead" @bindPush="bindPush"></rightMenu>
           <div class="crmchat_link">
             <span>QiaLink 洽联智能客服</span>
           </div>

@@ -68,6 +68,10 @@
             </div>
           </div>
 
+          <div class="lead-entry" v-if="canToLead">
+            <Button type="primary" long size="small" @click="openLeadModal">转为销售线索</Button>
+          </div>
+
         </div>
         <!-- <div class="user-info">
           <div class="item">
@@ -122,6 +126,22 @@
       <user-group v-if="isUserGroup" @close="usergroupClose" :userGroup="userGroupList" :activeUserInfo="activeUserInfo" @selectGroup="selectGroup" @handleSelectGroup="handleSelectGroup"></user-group>
     </Modal>
 
+    <Modal v-model="isLeadModal" title="转为销售线索" width="420" class="none-radius">
+      <Form :label-width="70">
+        <FormItem label="客户称呼"><Input v-model="leadForm.name" placeholder="默认取访客备注名" /></FormItem>
+        <FormItem label="公司"><Input v-model="leadForm.company" placeholder="选填" /></FormItem>
+        <FormItem label="联系电话"><Input v-model="leadForm.phone" placeholder="默认取访客手机号" /></FormItem>
+        <FormItem label="团队规模"><Input v-model="leadForm.scale" placeholder="如 50-200人" /></FormItem>
+        <FormItem label="意向套餐"><Input v-model="leadForm.intent_plan" placeholder="选填" /></FormItem>
+        <FormItem label="需求描述">
+          <Input v-model="leadForm.content" type="textarea" :rows="3" placeholder="留空则自动摘取最近对话" />
+        </FormItem>
+      </Form>
+      <div slot="footer">
+        <Button @click="isLeadModal=false">取消</Button>
+        <Button type="primary" :loading="leadLoading" @click="submitLead">确定</Button>
+      </div>
+    </Modal>
     <Modal v-model="isEditRemark" title="请输入用户备注" width="320" class="none-radius">
       <Input v-model="remarkValue" placeholder="请输入备注"></Input>
       <div slot="footer">
@@ -143,7 +163,8 @@ import {
   productCart, productHot,
   productVisit, userGroupApi,
   putGroupApi,
-  updateUserData
+  updateUserData,
+  userToLeadApi
 } from '@/api/kefu'
 import empty from "../../components/empty";
 import dayjs from 'dayjs'
@@ -173,6 +194,11 @@ export default {
     webType: {
       type: String | Number,
       default: ''
+    },
+    //仅平台自营客服可将会话转为线索
+    canToLead: {
+      type: Boolean,
+      default: false
     }
   },
   filters: {
@@ -209,6 +235,9 @@ export default {
       editUserPhoneModel: false,
       copyGroupId: '',
       isEditRemark: false, // 修改备注
+      isLeadModal: false, // 转线索弹窗
+      leadLoading: false,
+      leadForm: {},
       remarkValue: '',
       isUserGroup: false, // 是否展示分组
       userGroupList: [],
@@ -300,6 +329,32 @@ export default {
 
   },
   methods: {
+
+    openLeadModal() {
+      //表单留空即走后端自动填充，这里只做回显
+      this.leadForm = {
+        name: this.activeUserInfo.remark_nickname || this.activeUserInfo.nickname || '',
+        company: '',
+        phone: this.activeUserInfo.phone || '',
+        scale: '',
+        intent_plan: '',
+        content: ''
+      };
+      this.isLeadModal = true;
+    },
+
+    submitLead() {
+      if (this.leadLoading) return;
+      this.leadLoading = true;
+      userToLeadApi(this.uid, this.leadForm).then(res => {
+        this.leadLoading = false;
+        this.isLeadModal = false;
+        this.$Message.success(res.msg || '已转为销售线索');
+      }).catch(err => {
+        this.leadLoading = false;
+        this.$Message.error(err.msg || err);
+      });
+    },
 
     // 修改备注
     handlyEditRemark() {
@@ -918,5 +973,8 @@ color #6440C2, &.routine {
     color: #333333;
     border-bottom: 1px solid #F0F0F0;
   }
+}
+.lead-entry {
+  padding: 12px 0 4px;
 }
 </style>

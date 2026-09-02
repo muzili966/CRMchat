@@ -319,6 +319,8 @@ class Service extends AuthController
         }
         $this->kefuInfo['config_export_open'] = $exportOpen;
         $this->kefuInfo['user_ids'] = $this->services->getColumn(['appid' => $this->kefuInfo['appid']], 'user_id');
+        //会话转线索是平台自己的销售动作，租户客服看不到这个入口
+        $this->kefuInfo['can_to_lead'] = (int)(\crmeb\services\tenant\TenantContext::id() === \app\models\Tenant::DEFAULT_TENANT_ID);
         return $this->success($this->kefuInfo->toArray());
     }
 
