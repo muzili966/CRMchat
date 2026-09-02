@@ -294,6 +294,82 @@ class TenantPlanServices extends BaseServices
     }
 
     /**
+     * 官网定价展示用的套餐列表
+     *
+     * 直接读在售套餐，运营在后台调价或改权益，官网随即跟随；
+     * 若写死在页面里，改一次套餐就要改一次官网，必然对不上。
+     * 只输出对外可公开的字段，不外泄内部标识与排序等。
+     * @return array
+     */
+    public function getPublicPricing(): array
+    {
+        $plans = TenantContext::withoutTenant(function () {
+            return $this->dao->getPlanList(['is_delete' => 0, 'status' => TenantPlan::STATUS_ON]);
+        });
+        $rows = array_map(function ($plan) {
+            return [
+                'name' => (string)($plan['name'] ?? ''),
+                'price' => (float)($plan['price'] ?? 0),
+                'quotas' => self::publicQuotas($plan),
+                'features' => self::publicFeatures($plan),
+            ];
+        }, is_array($plans) ? $plans : []);
+        //按价格升序，官网从低到高排列更符合选购习惯
+        usort($rows, function ($a, $b) {
+            return $a['price'] <=> $b['price'];
+        });
+        return $rows;
+    }
+
+    /**
+     * 配额的可读表述，0一律表示不限
+     * @param array $plan
+     * @return array
+     */
+    protected static function publicQuotas(array $plan): array
+    {
+        $items = [
+            ['接入应用', 'app_limit', '个'],
+            ['客服坐席', 'seat_limit', '个'],
+            ['日消息量', 'daily_msg_limit', '条'],
+            ['AI日回复', 'daily_ai_limit', '次'],
+            ['存储空间', 'storage_limit_mb', 'MB'],
+        ];
+        $result = [];
+        foreach ($items as [$label, $field, $unit]) {
+            $value = (int)($plan[$field] ?? 0);
+            $result[] = ['label' => $label, 'text' => $value > 0 ? $value . $unit : '不限'];
+        }
+        $days = (int)($plan['record_keep_days'] ?? 0);
+        $result[] = ['label' => '记录保留', 'text' => $days > 0 ? $days . '天' : '永久'];
+        return $result;
+    }
+
+    /**
+     * 能力清单，含未包含项以便对比档位差异
+     * @param array $plan
+     * @return array
+     */
+    protected static function publicFeatures(array $plan): array
+    {
+        $names = [
+            'auto_reply' => '关键词自动回复',
+            'ai_reply' => 'AI 智能客服',
+            'brand_custom' => '客户端装修',
+            'custom_ad' => '自定义广告位',
+            'app_push' => 'APP 消息推送',
+            'data_export' => '数据导出',
+            'white_label' => '去除平台标识',
+            'custom_domain' => '独立域名',
+        ];
+        $result = [];
+        foreach ($names as $field => $label) {
+            $result[] = ['label' => $label, 'enabled' => !empty($plan[$field])];
+        }
+        return $result;
+    }
+
+    /**
      * 当前租户的能力门禁：每项能力是否可用，以及不可用时最低需要哪个套餐
      *
      * 最低套餐由在售套餐数据实时算出而非写死，运营调整套餐权益后提示自动跟随
