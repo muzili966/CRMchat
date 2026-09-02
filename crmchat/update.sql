@@ -381,8 +381,8 @@ ALTER TABLE `eb_application_theme` ADD `custom_html` text COMMENT '自定义广�
 
 -- ============ AI密钥改为数据库管理（2026-08-30） ============
 -- 密钥加密存储（APP_KEY派生），后台可自助更换；留空时回落环境变量 AI_API_KEY
-INSERT INTO `eb_system_config_tab` (`id`, `pid`, `title`, `eng_title`, `status`, `type`, `icon`, `info`) VALUES
-(90, 0, 'AI客服配置', 'ai_config', 1, 0, '', '平台统一的大模型接入配置，密钥加密存储');
+INSERT INTO `eb_system_config_tab` (`id`, `pid`, `title`, `eng_title`, `status`, `info`, `icon`, `type`, `sort`) VALUES
+(90, 0, 'AI客服配置', 'ai_config', 1, 0, 'md-bulb', 0, 0);
 INSERT INTO `eb_system_config` (`tenant_id`, `menu_name`, `type`, `input_type`, `config_tab_id`, `parameter`, `upload_type`, `required`, `width`, `high`, `value`, `info`, `desc`, `sort`, `status`) VALUES
 (0, 'ai_base_url', 'text', 'input', 90, '', 0, '', 100, 0, '"https://api.deepseek.com"', '接口地址', '大模型服务地址，需兼容OpenAI协议。DeepSeek填 https://api.deepseek.com', 40, 1),
 (0, 'ai_api_key', 'text', 'input', 90, '', 0, '', 100, 0, '""', 'API密钥', '加密存储；留空则回落环境变量 AI_API_KEY。保存后仅显示掩码', 30, 1),
@@ -423,7 +423,7 @@ UPDATE `eb_system_menus` SET `sort` = 20 WHERE `id` = 1200;
 UPDATE `eb_system_menus` SET `sort` = 10 WHERE `id` = 25;
 
 -- 广告分层：平台配默认广告，付费套餐方可自定义
-ALTER TABLE `eb_application_theme` ADD `custom_html` text COMMENT '自定义广告HTML' AFTER `banners`;
+-- custom_html 已在「客服页面广告并入客户端装修」批次添加，此处不再重复 ADD（否则报 1060）
 ALTER TABLE `eb_tenant_plan` ADD `custom_ad` tinyint(1) NOT NULL DEFAULT '0' COMMENT '自定义广告位0=用平台默认,1=可自定义' AFTER `white_label`;
 UPDATE `eb_tenant_plan` SET `custom_ad` = 1 WHERE `name` IN ('标准版', '旗舰版');
 INSERT INTO `eb_system_config` (`tenant_id`, `menu_name`, `type`, `input_type`, `config_tab_id`, `parameter`, `upload_type`, `required`, `width`, `high`, `value`, `info`, `desc`, `sort`, `status`) VALUES
