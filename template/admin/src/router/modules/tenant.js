@@ -70,6 +70,16 @@ export default {
       component: () => import('@/pages/tenant/notice/index')
     },
     {
+      //销售线索：平台自己的潜在客户，仅平台端可见
+      path: 'lead',
+      name: `${pre}lead`,
+      meta: {
+        auth: ['platform-lead'],
+        title: '销售线索'
+      },
+      component: () => import('@/pages/platform/lead/index')
+    },
+    {
       path: 'subscription',
       name: `${pre}subscription`,
       meta: {

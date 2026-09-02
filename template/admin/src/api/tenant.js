@@ -265,3 +265,88 @@ export function invoiceApplyApi(data) {
         data
     })
 }
+
+/**
+ * @description 销售线索列表
+ */
+export function leadListApi(params) {
+    return request({
+        url: 'setting/lead',
+        method: 'get',
+        params
+    })
+}
+
+/**
+ * @description 线索阶段与来源选项
+ */
+export function leadOptionsApi() {
+    return request({
+        url: 'setting/lead/options',
+        method: 'get'
+    })
+}
+
+/**
+ * @description 线索详情（含跟进记录）
+ */
+export function leadInfoApi(id) {
+    return request({
+        url: `setting/lead/${id}`,
+        method: 'get'
+    })
+}
+
+/**
+ * @description 手工录入线索
+ */
+export function leadSaveApi(data) {
+    return request({
+        url: 'setting/lead',
+        method: 'post',
+        data
+    })
+}
+
+/**
+ * @description 记录跟进，可同时推进阶段
+ */
+export function leadFollowApi(id, data) {
+    return request({
+        url: `setting/lead/follow/${id}`,
+        method: 'post',
+        data
+    })
+}
+
+/**
+ * @description 转派跟进人
+ */
+export function leadAssignApi(id, data) {
+    return request({
+        url: `setting/lead/assign/${id}`,
+        method: 'post',
+        data
+    })
+}
+
+/**
+ * @description 关联已开通的租户
+ */
+export function leadLinkApi(id, data) {
+    return request({
+        url: `setting/lead/link/${id}`,
+        method: 'post',
+        data
+    })
+}
+
+/**
+ * @description 删除线索
+ */
+export function leadDeleteApi(id) {
+    return request({
+        url: `setting/lead/${id}`,
+        method: 'delete'
+    })
+}
