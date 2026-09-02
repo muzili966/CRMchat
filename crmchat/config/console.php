@@ -20,6 +20,7 @@ return [
         'make:dao'     => \crmeb\command\Dao::class,
         'make:service' => \crmeb\command\Service::class,
         'install'      => \crmeb\command\Install::class,
-        'key'          => \crmeb\command\Key::class
+        'key'          => \crmeb\command\Key::class,
+        'upgrade'      => \crmeb\command\Upgrade::class
     ],
 ];

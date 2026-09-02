@@ -1460,6 +1460,19 @@ ALTER TABLE `eb_application_theme`
 -- 平台销售线索（与update.sql保持一致）
 -- 官网表单与手工录入的潜在客户在此沉淀，按阶段推进直至开通租户。
 -- 平台自身数据，不属于任何租户，模型中 tenantScoped=false。
+-- 升级账本：全量脚本已含所有历史版本，故预置版本号，install 后不会重复执行增量脚本
+CREATE TABLE IF NOT EXISTS `eb_system_upgrade` (
+  `version` varchar(20) NOT NULL COMMENT '版本号',
+  `name` varchar(100) NOT NULL DEFAULT '' COMMENT '脚本描述',
+  `checksum` varchar(32) NOT NULL DEFAULT '' COMMENT '文件md5,用于核对脚本是否被改动',
+  `cost_ms` int NOT NULL DEFAULT 0 COMMENT '执行耗时',
+  `create_time` int NOT NULL DEFAULT 0,
+  PRIMARY KEY (`version`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='升级版本账本';
+
+INSERT INTO `eb_system_upgrade` (`version`,`name`,`create_time`) VALUES
+('20260902_01','platform_crm',UNIX_TIMESTAMP());
+
 CREATE TABLE IF NOT EXISTS `eb_platform_lead` (
   `id` int NOT NULL AUTO_INCREMENT,
   `name` varchar(50) NOT NULL DEFAULT '' COMMENT '联系人',

@@ -47,8 +47,14 @@ SELECT = ${REDIS_SELECT:-0}
 EOF
 fi
 
+# 增量升级：已装好的库在启动时把未执行的版本脚本落库，未安装时跳过（表都还没有）。
+# 升级失败即中止启动——带着旧表结构跑新代码只会产出更难查的错
+if [ -f public/install/install.lock ]; then
+    php think upgrade
+fi
+
 # runtime是持久卷，跨部署不会重建；而权限缓存的key只由角色id决定，
-# 菜单与权限的变更走update.sql在部署时落库，没有任何环节会让该缓存失效，
+# 菜单与权限的变更走升级脚本在启动时落库，没有任何环节会让该缓存失效，
 # 曾导致租户拿不到新增的附件上传权限。故每次启动清一次缓存（只清cache，保留日志）
 rm -rf runtime/cache
 
