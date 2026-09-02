@@ -118,7 +118,8 @@ const customerServerStyleObject = new customerServerStyle();
 function initCustomerServer(option) {
     this.outLine = false; // 是否在离线界面
     this.settingObj = settingObj;
-    this.settingObj.openUrl = `${option.openUrl || location.origin}/chat`; //服务器地址加路由, 若不传入则自动获取引入应用所在服务器的域名
+    this.settingObj.serverOrigin = option.openUrl || location.origin; //接口与页面同源
+    this.settingObj.openUrl = `${this.settingObj.serverOrigin}/chat`; //服务器地址加路由, 若不传入则自动获取引入应用所在服务器的域名
     this.settingObj.domId = option.customerServerTip || 'customerServerTip'; //浮动客服dom
     this.settingObj.insertDomNode = option.insertDomNode || 'body' // 插入的标签
     this.settingObj.token = option.token; // token为必填项
@@ -127,6 +128,13 @@ function initCustomerServer(option) {
     this.settingObj.deviceType = option.deviceType || ''; // Mobile 手机端打开
     this.settingObj.isShowTip = option.isShowTip; //  false隐藏 true 展示 客服悬浮按钮默认展示
     this.settingObj.windowStyle = option.windowStyle || ''; // pc 端打开默认最精简模式，center居中模式
+    // 记下接入方显式传了哪些：后台装修只填补未指定项，已有的接入代码不会被后台改动影响
+    this.explicitOptions = {
+        pcIcon: option.pcIcon !== undefined,
+        mobileIcon: option.mobileIcon !== undefined,
+        isShowTip: option.isShowTip !== undefined,
+        windowStyle: option.windowStyle !== undefined
+    };
     this.settingObj.kefuid = option.kefuid || 0; // 指定客服，默认随机
     this.settingObj.sendUserData = option.sendUserData || {}; // 用户信息，默认游客
     this.settingObj.productInfo = option.productInfo || {}; // 携带产品信息，默认空
@@ -364,7 +372,7 @@ function initCustomerServer(option) {
 
         //检测是否初始化过
         if (this.initStatus === false) {
-            this.init();
+            this.doInit();
         }
 
         if (this.settingObj.deviceType == 'Mobile') {
@@ -415,8 +423,61 @@ initCustomerServer.prototype.destroy = function () {
     this.initStatus = false;
 }
 
+//拉取后台装修里的挂件配置
+//优先级：接入方显式传参 > 后台装修 > 内置默认值。
+//拉取失败不阻断初始化，按后两级回落即可，客服入口不能因为一次请求失败就消失。
+initCustomerServer.prototype.fetchWidgetConfig = function () {
+    var self = this;
+    return new Promise(function (resolve) {
+        if (!self.settingObj.token) return resolve();
+        var origin = self.settingObj.serverOrigin || location.origin;
+        var url = origin + '/api/mobile/widget?token=' + encodeURIComponent(self.settingObj.token);
+        var xhr = new XMLHttpRequest();
+        var done = false;
+        var finish = function () {
+            if (done) return;
+            done = true;
+            resolve();
+        };
+        xhr.open('GET', url, true);
+        //超时上限，慢接口不应拖住入口按钮的出现
+        xhr.timeout = 3000;
+        xhr.onload = function () {
+            try {
+                var res = JSON.parse(xhr.responseText || '{}');
+                var data = (res && res.data) || {};
+                var explicit = self.explicitOptions || {};
+                if (!explicit.pcIcon && data.pcIcon) self.settingObj.pcIcon = data.pcIcon;
+                if (!explicit.mobileIcon && data.mobileIcon) self.settingObj.mobileIcon = data.mobileIcon;
+                if (!explicit.isShowTip && data.showTip !== undefined) {
+                    self.settingObj.isShowTip = !!Number(data.showTip);
+                }
+                if (!explicit.windowStyle && data.windowStyle) {
+                    //后台的float对应脚本里的精简模式（空串），center保持一致
+                    self.settingObj.windowStyle = data.windowStyle === 'center' ? 'center' : '';
+                }
+            } catch (e) {
+                // 解析失败按取不到处理
+            }
+            finish();
+        };
+        xhr.onerror = finish;
+        xhr.ontimeout = finish;
+        try { xhr.send(); } catch (e) { finish(); }
+    });
+};
+
 //初始化
+//先拉后台挂件配置再渲染：入口按钮的图标与显隐都取决于它，
+//渲染完再改会出现图标闪一下变样的跳变
 initCustomerServer.prototype.init = function () {
+    var self = this;
+    return this.fetchWidgetConfig().then(function () {
+        self.doInit();
+    });
+};
+
+initCustomerServer.prototype.doInit = function () {
     this.setMatchMedia();
     this.createCustomerServerContainer();
     this.batchSetStyle();

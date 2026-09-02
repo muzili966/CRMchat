@@ -28,6 +28,9 @@ Route::group('api', function () {
 
         })->middleware(MobileAuthTokenMiddleware::class);
 
+        //挂件配置：嵌入脚本在渲染入口按钮前拉取，凭token定位，无需登录态
+        Route::get('widget', 'Widget/index')->name('widgetConfig');
+
         Route::group('service', function () {
 
             Route::post('feedback', 'Feedback/saveFeedback')->name('saveFeedback');//保存客服反馈内容

@@ -77,6 +77,8 @@ class AppTheme extends AuthController
             //富文本广告位，服务层会剥离脚本后入库
             ['custom_html', ''],
             [['show_platform_brand', 'd'], ApplicationTheme::BRAND_SHOW],
+            [['show_tip', 'd'], ApplicationTheme::TIP_SHOW],
+            ['window_style', ApplicationTheme::WINDOW_FLOAT],
             [['tourist_avatar', 'a'], []],
             ['service_feedback', ''],
         ]);

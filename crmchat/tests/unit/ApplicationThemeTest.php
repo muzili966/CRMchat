@@ -116,7 +116,7 @@ class ApplicationThemeTest extends TestCase
         $theme = ApplicationThemeServices::defaultTheme();
         $this->assertSame(
             ['title', 'logo', 'theme_color', 'theme_style', 'bubble_style', 'pc_icon', 'mobile_icon', 'banners', 'custom_html', 'show_platform_brand',
-                'tourist_avatar', 'service_feedback'],
+                'show_tip', 'window_style', 'tourist_avatar', 'service_feedback'],
             array_keys($theme)
         );
         //这两项空值代表继承租户全局设置，不能给默认内容

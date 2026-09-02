@@ -45,6 +45,20 @@ class ApplicationTheme extends BaseModel
     /**
      * 显示平台标识
      */
+    /** 显示悬浮客服按钮 */
+    const TIP_SHOW = 1;
+
+    /** 隐藏悬浮客服按钮：接入方自行放置入口时使用 */
+    const TIP_HIDE = 0;
+
+    /** 窗口形态：右下角悬浮对话框 */
+    const WINDOW_FLOAT = 'float';
+
+    /** 窗口形态：居中弹窗，带遮罩与广告位 */
+    const WINDOW_CENTER = 'center';
+
+    const WINDOW_STYLES = [self::WINDOW_FLOAT, self::WINDOW_CENTER];
+
     const BRAND_SHOW = 1;
 
     /**

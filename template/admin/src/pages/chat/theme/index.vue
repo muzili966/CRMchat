@@ -138,6 +138,24 @@
                                 </Panel>
                             </Collapse>
                         </FormItem>
+                        <FormItem label="悬浮按钮：">
+                            <i-switch v-model="form.show_tip" :true-value="1" :false-value="0" size="large">
+                                <span slot="open">显示</span>
+                                <span slot="close">隐藏</span>
+                            </i-switch>
+                            <p class="field-tip">
+                                关闭后接入方页面上不再出现客服入口按钮，需自行在页面里放置触发入口
+                            </p>
+                        </FormItem>
+                        <FormItem label="窗口形态：">
+                            <RadioGroup v-model="form.window_style" type="button">
+                                <Radio label="float">悬浮对话框</Radio>
+                                <Radio label="center">居中弹窗</Radio>
+                            </RadioGroup>
+                            <p class="field-tip">
+                                悬浮对话框贴在页面右下角；居中弹窗带遮罩、面积更大，可展示广告位
+                            </p>
+                        </FormItem>
                         <FormItem label="平台标识：">
                             <i-switch v-model="form.show_platform_brand" :true-value="brandShow" :false-value="brandHide"
                                       :disabled="!whiteLabel" size="large">
@@ -270,6 +288,8 @@
         theme_style: DEFAULT_CHAT_LAYOUT,
         bubble_style: DEFAULT_BUBBLE_STYLE,
         pc_icon: '',
+        show_tip: 1,
+        window_style: 'float',
         mobile_icon: '',
         banners: [],
         custom_html: '',

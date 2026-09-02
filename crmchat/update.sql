@@ -517,3 +517,12 @@ SELECT 1303,`pid`,'获取当前视角权限','api/admin/viewAuth','GET',0,1,1,2,
 
 UPDATE `eb_system_role` SET `rules` = CONCAT(`rules`, ',1303')
   WHERE CONCAT(',',`rules`,',') NOT LIKE '%,1303,%';
+
+-- ============ 悬浮挂件配置（2026-09-01） ============
+-- 悬浮按钮由嵌入脚本在接入方页面渲染，早于聊天窗口打开，
+-- 拿不到走websocket下发的装修数据，故新增公开接口 GET /api/mobile/widget?token=xxx。
+-- 「PC悬浮图标」「移动端图标」两项此前虽在后台可配但从未生效，一并由该接口下发。
+-- 生效优先级：接入方显式传参 > 后台装修 > 脚本内置默认值。
+ALTER TABLE `eb_application_theme`
+  ADD `show_tip` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否显示悬浮客服按钮' AFTER `mobile_icon`,
+  ADD `window_style` varchar(20) NOT NULL DEFAULT 'float' COMMENT '窗口形态float悬浮/center居中' AFTER `show_tip`;

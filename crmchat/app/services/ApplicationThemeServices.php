@@ -171,6 +171,26 @@ class ApplicationThemeServices extends BaseServices
         }
     }
 
+    /**
+     * 悬浮挂件配置：供嵌入脚本在渲染入口按钮前拉取
+     *
+     * 挂件按钮在聊天窗口打开之前就要渲染，拿不到走ws下发的装修数据，
+     * 故单独开一个公开接口。只返回按钮渲染必需的几项，不外泄其余装修内容。
+     * @param string $appid
+     * @return array
+     */
+    public function getWidgetConfig(string $appid): array
+    {
+        $theme = $this->getPublicTheme($appid);
+        return [
+            'pcIcon' => (string)($theme['pc_icon'] ?? ''),
+            'mobileIcon' => (string)($theme['mobile_icon'] ?? ''),
+            'showTip' => (int)($theme['show_tip'] ?? ApplicationTheme::TIP_SHOW),
+            'windowStyle' => (string)($theme['window_style'] ?? ApplicationTheme::WINDOW_FLOAT),
+            'themeColor' => (string)($theme['theme_color'] ?? ApplicationTheme::DEFAULT_THEME_COLOR),
+        ];
+    }
+
     public function getPublicTheme(string $appid): array
     {
         $theme = $this->getTheme($appid);
@@ -257,6 +277,8 @@ class ApplicationThemeServices extends BaseServices
             'banners' => [],
             'custom_html' => '',
             'show_platform_brand' => ApplicationTheme::BRAND_SHOW,
+            'show_tip' => ApplicationTheme::TIP_SHOW,
+            'window_style' => ApplicationTheme::WINDOW_FLOAT,
             //空值表示继承「客服端配置」里的租户全局设置，避免多应用租户重复配置
             'tourist_avatar' => [],
             'service_feedback' => '',
@@ -321,6 +343,19 @@ class ApplicationThemeServices extends BaseServices
      * @param string $color
      * @return string
      */
+    /**
+     * 窗口形态归一化，非法值回落悬浮对话框
+     * @param string $value
+     * @return string
+     */
+    public static function sanitizeWindowStyle(string $value): string
+    {
+        $value = trim($value);
+        return in_array($value, ApplicationTheme::WINDOW_STYLES, true)
+            ? $value
+            : ApplicationTheme::WINDOW_FLOAT;
+    }
+
     public static function sanitizeColor(string $color): string
     {
         $value = trim($color);
@@ -477,6 +512,8 @@ class ApplicationThemeServices extends BaseServices
             'banners' => json_encode(self::normalizeBanners($data['banners'] ?? []), JSON_UNESCAPED_UNICODE),
             'custom_html' => self::sanitizeHtml(self::stringValue($data, 'custom_html')),
             'show_platform_brand' => self::normalizeBrand($data['show_platform_brand'] ?? ApplicationTheme::BRAND_SHOW),
+            'show_tip' => isset($data['show_tip']) && !$data['show_tip'] ? ApplicationTheme::TIP_HIDE : ApplicationTheme::TIP_SHOW,
+            'window_style' => self::sanitizeWindowStyle(self::stringValue($data, 'window_style')),
             //留空即继承租户全局设置，不写死当前全局值，避免全局改动后应用不跟随
             'tourist_avatar' => json_encode(self::normalizeAvatars($data['tourist_avatar'] ?? []), JSON_UNESCAPED_UNICODE),
             'service_feedback' => self::stringValue($data, 'service_feedback'),
@@ -514,13 +551,21 @@ class ApplicationThemeServices extends BaseServices
      */
     protected function loadTheme(string $appid): array
     {
+        $read = function () use ($appid) {
+            return TenantContext::withoutTenant(function () use ($appid) {
+                $theme = $this->dao->getByAppid($appid);
+                return $theme ? $theme->toArray() : [];
+            });
+        };
         try {
-            return CacheService::redisHandler()->remember(self::CACHE_PREFIX . $appid, function () use ($appid) {
-                return TenantContext::withoutTenant(function () use ($appid) {
-                    $theme = $this->dao->getByAppid($appid);
-                    return $theme ? $theme->toArray() : [];
-                });
-            }, self::CACHE_TTL) ?: [];
+            return CacheService::redisHandler()->remember(self::CACHE_PREFIX . $appid, $read, self::CACHE_TTL) ?: [];
+        } catch (\Throwable $e) {
+            //缓存只是加速手段，不能是数据的唯一来源：
+            //原先这里直接返回空数组，Redis一挂所有租户的装修就静默变回平台默认外观
+            Log::error('装修配置缓存不可用，降级直查数据库：' . $e->getMessage());
+        }
+        try {
+            return $read() ?: [];
         } catch (\Throwable $e) {
             Log::error('读取装修配置失败：' . $e->getMessage());
             return [];

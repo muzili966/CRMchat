@@ -2,6 +2,8 @@
 /.idea
 /backup
 /public/uploads
+# 框架生成的路由缓存等运行时产物，不应进版本库
+/runtime
 *.log
 /public/install/install.lock
 /.env
