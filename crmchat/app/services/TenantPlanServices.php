@@ -328,15 +328,21 @@ class TenantPlanServices extends BaseServices
      */
     protected static function publicQuotas(array $plan): array
     {
+        //第4项为该配额依赖的能力：能力关闭时配额没有意义，
+        //否则会出现"AI能力关着、AI配额却显示不限"这种自相矛盾的展示
         $items = [
-            ['接入应用', 'app_limit', '个'],
-            ['客服坐席', 'seat_limit', '个'],
-            ['日消息量', 'daily_msg_limit', '条'],
-            ['AI日回复', 'daily_ai_limit', '次'],
-            ['存储空间', 'storage_limit_mb', 'MB'],
+            ['接入应用', 'app_limit', '个', ''],
+            ['客服坐席', 'seat_limit', '个', ''],
+            ['日消息量', 'daily_msg_limit', '条', ''],
+            ['AI日回复', 'daily_ai_limit', '次', 'ai_reply'],
+            ['存储空间', 'storage_limit_mb', 'MB', ''],
         ];
         $result = [];
-        foreach ($items as [$label, $field, $unit]) {
+        foreach ($items as [$label, $field, $unit, $requires]) {
+            if ($requires !== '' && empty($plan[$requires])) {
+                $result[] = ['label' => $label, 'text' => '不支持'];
+                continue;
+            }
             $value = (int)($plan[$field] ?? 0);
             $result[] = ['label' => $label, 'text' => $value > 0 ? $value . $unit : '不限'];
         }

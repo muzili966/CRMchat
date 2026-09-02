@@ -67,12 +67,15 @@ export const PLAN_FEATURE_FIELDS = [
 
 /**
  * 配额类字段，zeroText 为 0 值时的说法（0 一律表示不限制）
+ *
+ * requires 声明该配额依赖的能力：能力关闭时配额没有意义，
+ * 否则会出现"AI能力关着、AI配额却显示不限"这种自相矛盾的展示
  */
 export const PLAN_QUOTA_FIELDS = [
   { key: 'app_limit', label: '接入应用', unit: '个' },
   { key: 'seat_limit', label: '客服坐席', unit: '个' },
   { key: 'daily_msg_limit', label: '日消息量', unit: '条' },
-  { key: 'daily_ai_limit', label: 'AI日回复', unit: '次' },
+  { key: 'daily_ai_limit', label: 'AI日回复', unit: '次', requires: 'ai_reply' },
   { key: 'storage_limit_mb', label: '存储空间', unit: 'MB' },
   { key: 'record_keep_days', label: '记录保留', unit: '天', zeroText: '永久' }
 ]

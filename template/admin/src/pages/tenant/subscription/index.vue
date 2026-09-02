@@ -291,6 +291,9 @@
             },
             //0 一律表示不限制，记录保留等字段另有说法
             quotaText (plan, quota) {
+                //依赖的能力未开通时配额无意义，直接说不支持，
+                //否则会出现"AI能力关着、AI配额却显示不限"的自相矛盾
+                if (quota.requires && !plan[quota.requires]) return '不支持'
                 const value = Number(plan[quota.key] || 0)
                 if (value > 0) return value + quota.unit
                 return quota.zeroText || '不限'
