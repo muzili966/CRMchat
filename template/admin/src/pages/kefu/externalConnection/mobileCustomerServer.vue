@@ -11,10 +11,10 @@
         </div>
       </div>
       <div class="pc_customerServer_container_header_account" @click="openAccountBind" title="绑定手机，换设备继续会话">
-        <Icon type="md-person" />
+        <chatIcon name="user" :size="20" />
       </div>
       <div class="pc_customerServer_container_header_handle" @click="closeIframe" v-if="upperData.noCanClose != '1'">
-        <span class="iconfont">&#xe6c5;</span>
+        <chatIcon name="close" :size="20" />
       </div>
     </div>
     <!-- 客服头部结束 -->

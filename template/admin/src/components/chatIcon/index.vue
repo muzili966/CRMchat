@@ -34,6 +34,11 @@
     <template v-else-if="name === 'close'">
       <path d="M6 6l12 12M18 6L6 18" />
     </template>
+    <!-- 用户/账号 -->
+    <template v-else-if="name === 'user'">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
+    </template>
   </svg>
 </template>
 
