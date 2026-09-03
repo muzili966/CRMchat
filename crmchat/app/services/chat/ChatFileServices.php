@@ -59,9 +59,10 @@ class ChatFileServices
 
         /** @var SystemAttachmentServices $attachmentServices */
         $attachmentServices = app()->make(SystemAttachmentServices::class);
+        //pid=0=未被消息引用；发送成功后 ChatFileGcServices::markReferenced 置1，孤儿回收据此区分
         $attachmentServices->attachmentAdd(
             $res['name'], $res['size'], $res['type'], $res['dir'], $res['thumb_path'],
-            1, (int)sys_config('upload_type', 1), $res['time'], 2
+            0, (int)sys_config('upload_type', 1), $res['time'], 2
         );
 
         $url = path_to_url($res['dir']);
@@ -75,6 +76,21 @@ class ChatFileServices
             'size' => (int)$fileHandle->getSize(),
             'ext' => strtolower((string)$fileHandle->getOriginalExtension()),
         ];
+    }
+
+    /**
+     * 从文件消息（base64 JSON）里取出 url，解析失败返回空串
+     * @param string $msn
+     * @return string
+     */
+    public function urlFromMsg(string $msn): string
+    {
+        $json = base64_decode(trim($msn), true);
+        if ($json === false) {
+            return '';
+        }
+        $data = json_decode($json, true);
+        return is_array($data) ? (string)($data['url'] ?? '') : '';
     }
 
     /**

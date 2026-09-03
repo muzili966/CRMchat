@@ -62,6 +62,7 @@ class SwooleWorkerStart implements ListenerInterface
         if (0 == $this->server->worker_id) {
             $this->clearStaleFds();
             $this->timer($event);
+            $this->dailyMaintenance($event);
         }
         if ($this->server->worker_id == ($this->config->get('swoole.server.options.worker_num')) && $this->config->get('swoole.websocket.enable', false)) {
             $this->ping();
@@ -76,6 +77,30 @@ class SwooleWorkerStart implements ListenerInterface
      * 消息已入库却不再回帧，发送方看不到自己刚发的内容。每次部署都会踩到，故启动时清空。
      * @return void
      */
+    /**
+     * 每天维护一次：回收过期与孤儿聊天文件
+     *
+     * 部署环境不保证有外部cron，故放在常驻进程里。worker0每小时探一次，
+     * 用Redis当天标记做去重，保证一天只真正跑一次，重启也不会重复跑。
+     * @param App $app
+     */
+    protected function dailyMaintenance(App $app)
+    {
+        Timer::tick(3600000, function () use ($app) {
+            try {
+                $redis = \crmeb\services\CacheService::redisHandler();
+                $today = date('Ymd');
+                //SETNX当天键，抢到的worker才执行；键留2天，避免时区边界抖动重复
+                if (!$redis->set('chat_file_gc:' . $today, 1, ['nx', 'ex' => 172800])) {
+                    return;
+                }
+                $app->make(\app\services\chat\ChatFileGcServices::class)->run();
+            } catch (\Throwable $e) {
+                $app->log->error('聊天文件回收失败：' . $e->getMessage());
+            }
+        });
+    }
+
     protected function clearStaleFds()
     {
         try {

@@ -21,6 +21,7 @@ return [
         'make:service' => \crmeb\command\Service::class,
         'install'      => \crmeb\command\Install::class,
         'key'          => \crmeb\command\Key::class,
-        'upgrade'      => \crmeb\command\Upgrade::class
+        'upgrade'      => \crmeb\command\Upgrade::class,
+        'chat:gc'      => \crmeb\command\ChatFileGc::class
     ],
 ];

@@ -174,6 +174,13 @@ abstract class BaseHandler
             $data['other'] = '';
         }
         $data = $logServices->save($data);
+        //文件消息落库后把其文件标记为已引用，孤儿回收据此放过已发送成功的文件
+        if ($msn_type == ChatServiceDialogueRecordServices::MSN_TYPE_FILE) {
+            $fileUrl = app()->make(\app\services\chat\ChatFileServices::class)->urlFromMsg($msn);
+            if ($fileUrl !== '') {
+                app()->make(\app\services\chat\ChatFileGcServices::class)->markReferenced((int)TenantContext::id(), $fileUrl);
+            }
+        }
         $data = $data->toArray();
         $data['_add_time'] = $data['add_time'];
         $data['add_time'] = strtotime($data['add_time']);

@@ -587,23 +587,8 @@ class TenantPlanServices extends BaseServices
      */
     public function cleanExpiredRecords()
     {
-        $tenantPlans = TenantContext::withoutTenant(function () {
-            /** @var TenantDao $tenantDao */
-            $tenantDao = app()->make(TenantDao::class);
-            return $tenantDao->getColumn(['is_delete' => 0], 'plan_id', 'id');
-        });
-        foreach ($tenantPlans as $tenantId => $planId) {
-            $plan = $this->getTenantPlan((int)$tenantId);
-            $keepDays = (int)($plan['record_keep_days'] ?? 0);
-            if ($keepDays <= 0) {
-                continue;
-            }
-            TenantContext::runAs((int)$tenantId, function () use ($keepDays) {
-                /** @var \app\dao\chat\ChatServiceDialogueRecordDao $recordDao */
-                $recordDao = app()->make(\app\dao\chat\ChatServiceDialogueRecordDao::class);
-                $recordDao->deleteBeforeTime(time() - $keepDays * 86400);
-            });
-        }
+        //保留期清理与文件回收合并到 ChatFileGcServices，避免出现只删记录不删文件的第二套实现
+        app()->make(\app\services\chat\ChatFileGcServices::class)->run();
     }
 
     /**
