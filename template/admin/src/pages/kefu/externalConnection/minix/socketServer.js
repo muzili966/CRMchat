@@ -10,6 +10,9 @@ export default {
     return {
       inputConType: 1,
       userMessage: '',
+      //访客账号面板：401时弹登录，用户主动点击时弹绑定
+      accountAuth: { visible: false, mode: 'login' },
+      accountLoading: false,
       chatServerData: {
         avatar: '',
         nickname: '',
@@ -115,6 +118,18 @@ export default {
     }
   },
   methods: {
+    // 打开账号绑定面板（用户主动点击，非401触发）
+    openAccountBind() {
+      this.accountAuth = { visible: true, mode: 'bind' };
+    },
+    // 账号面板成功回调：存下uid与续接令牌后重载会话
+    onAccountSuccess(data) {
+      if (data && data.uid) { setLoc('uid', data.uid); }
+      if (data && data.resume_token) { setLoc('resume_token', data.resume_token); }
+      this.accountAuth.visible = false;
+      //换设备登录后uid可能已变，重载让整条链路以新身份重新初始化最稳妥
+      window.location.reload();
+    },
     // 查看当前是否有客服在线, 若不在线，跳转到反馈界面
     getUserRecord() {
       let postData = {
@@ -127,6 +142,8 @@ export default {
         openid: this.upperData.openid,
         kefu_id: this.upperData.kefu_id || 0,
         toUserId:getLoc('to_user_id') || 0,
+        //账号访客的续接令牌，绑定过的会话据此放行
+        resume_token: getLoc('resume_token') || '',
         type: this.upperData.deviceType == 'Mobile' ? '3' : '0'
       }
 
@@ -154,7 +171,10 @@ export default {
           this.connentServer(); // 建立socket 链接
 
       }).catch(rej => {
-        if(rej.status == 400) {
+        //401=会话已绑定账号，需登录接续；400=无客服在线，进留言页
+        if(rej.status == 401) {
+          this.accountAuth = { visible: true, mode: 'login' };
+        } else if(rej.status == 400) {
           this.$router.push({ name: 'customerOutLine', query: this.$route.query });
         }
       })

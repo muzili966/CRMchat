@@ -31,6 +31,13 @@ Route::group('api', function () {
         //挂件配置：嵌入脚本在渲染入口按钮前拉取，凭token定位，无需登录态
         Route::get('widget', 'Widget/index')->name('widgetConfig');
 
+        //访客账号：绑定手机号后可换设备接续会话，公开接口凭应用token定位
+        Route::group('account', function () {
+            Route::post('code', 'Account/code')->name('visitorCode');
+            Route::post('bind', 'Account/bind')->name('visitorBind');
+            Route::post('login', 'Account/login')->name('visitorLogin');
+        });
+
         Route::group('service', function () {
 
             Route::post('feedback', 'Feedback/saveFeedback')->name('saveFeedback');//保存客服反馈内容

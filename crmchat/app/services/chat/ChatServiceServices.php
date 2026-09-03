@@ -21,6 +21,8 @@ use app\services\ApplicationServices;
 use app\services\ApplicationThemeServices;
 use app\services\system\config\SystemConfigServices;
 use app\services\TenantPlanServices;
+use app\services\chat\VisitorAccountServices;
+use crmeb\exceptions\AuthException;
 use crmeb\services\tenant\TenantContext;
 use crmeb\basic\BaseServices;
 use crmeb\exceptions\AdminException;
@@ -211,6 +213,8 @@ class ChatServiceServices extends BaseServices
             }
             $userInfo = $userInfo->toArray();
         }
+        //账号访客：uid 单靠自身不再放行，必须持有效续接令牌，否则要求重新登录（401 与离线的 400 区分）
+        $this->assertResumeAllowed($appId, (int)$userId, (string)($user['resume_token'] ?? ''));
         //分配决策统一交给AiDispatcher：三条粘性路径（回传坐席/转接绑定/上次坐席）都必须服从接待模式
         $decision = $this->decideAgent($appId, (int)$userId, [
             'passed_id' => (int)$toUserId,
@@ -272,6 +276,27 @@ class ChatServiceServices extends BaseServices
      * @throws DbException
      * @throws ModelNotFoundException
      */
+    /**
+     * 账号访客的接续守卫
+     *
+     * 未绑定账号的游客照旧放行；一旦绑定，uid 就不再是自身凭据，必须带上
+     * 服务端签发、指向同一 user_id 的续接令牌，否则以 401 要求重新登录，
+     * 把“猜到 uid 即可读历史”对账号访客堵死。
+     * @param string $appId
+     * @param int $userId
+     * @param string $token
+     */
+    protected function assertResumeAllowed(string $appId, int $userId, string $token)
+    {
+        /** @var VisitorAccountServices $accountServices */
+        $accountServices = app()->make(VisitorAccountServices::class);
+        if (!$accountServices->isBound($userId)) {
+            return;
+        }
+        if ($accountServices->resolveToken($appId, $token) !== $userId) {
+            throw new AuthException('请登录后继续上次会话', 401);
+        }
+    }
     protected function decideAgent(string $appId, int $userId, array $passed): array
     {
         $passedId = (int)$passed['passed_id'];

@@ -1,5 +1,6 @@
 <template>
   <div class="pc_customerServer_container" :class="[themeClass, bubbleClass, { 'has-platform-brand': isShowPlatformBrand }]" :style="themeRootStyle">
+    <visitorAccount v-model="accountAuth" @success="onAccountSuccess" />
     <!-- 客服头部开始 -->
     <div class="pc_customerServer_container_header" :style="themeBgStyle">
       <div class="pc_customerServer_container_header_title">
@@ -8,6 +9,9 @@
           <span>{{headerTitle}}</span>
           <small><i></i>客服在线 · 为您服务</small>
         </div>
+      </div>
+      <div class="pc_customerServer_container_header_account" @click="openAccountBind" title="绑定手机，换设备继续会话">
+        <Icon type="md-person" />
       </div>
       <div class="pc_customerServer_container_header_handle" @click="closeIframe" v-if="upperData.noCanClose != '1'">
         <span class="iconfont">&#xe6c5;</span>
@@ -145,6 +149,7 @@
 import { HappyScroll } from 'vue-happy-scroll'
 import emojiList from "@/utils/emoji";
 import socketServer from './minix/socketServer';
+import visitorAccount from './components/visitorAccount';
 import appTheme from './minix/appTheme';
 
 const TRANSFER_HUMAN_TEXT = '转人工'; // 与后端转人工关键词保持一致，走关键词识别链路
@@ -153,7 +158,8 @@ const BANNER_HEIGHT = 80;
 
 export default {
   components: {
-    HappyScroll
+    HappyScroll,
+    visitorAccount
   },
   mixins: [socketServer, appTheme],
   data() {
@@ -258,6 +264,7 @@ export default {
   flex-direction: column;
   justify-content: space-between;
   background: #f5f5f5;
+.pc_customerServer_container_header_account { cursor: pointer; margin-left: auto; margin-right: 12px; font-size: 18px; opacity: .85; }
   &_header {
     display: flex;
     justify-content: space-between;

@@ -753,3 +753,39 @@ export function userToLeadApi(userId, data) {
     data
   })
 }
+
+/*
+  访客账号：发送验证码
+*/
+export function visitorSendCode(data) {
+  return request({
+    url: 'account/code',
+    method: 'post',
+    mobile: true,
+    data
+  })
+}
+
+/*
+  访客账号：验证码绑定/登录
+*/
+export function visitorBind(data) {
+  return request({
+    url: 'account/bind',
+    method: 'post',
+    mobile: true,
+    data
+  })
+}
+
+/*
+  访客账号：密码登录
+*/
+export function visitorLogin(data) {
+  return request({
+    url: 'account/login',
+    method: 'post',
+    mobile: true,
+    data
+  })
+}

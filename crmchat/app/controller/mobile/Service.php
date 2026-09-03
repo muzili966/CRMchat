@@ -64,6 +64,8 @@ class Service extends AuthController
             ['avatar', ''],
             ['openid', ''],
             ['type', ''],
+            //账号访客的续接令牌，服务端据此放行绑定过的会话
+            ['resume_token', ''],
         ]);
         //优先使用指定客服
         if ($kefuUd && $toUserId) {

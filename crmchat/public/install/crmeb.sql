@@ -1475,7 +1475,8 @@ INSERT INTO `eb_system_upgrade` (`version`,`name`,`create_time`) VALUES
 ('20260902_02','widget_config',UNIX_TIMESTAMP()),
 ('20260902_03','fix_lead_menu_path',UNIX_TIMESTAMP()),
 ('20260902_04','website_url_config',UNIX_TIMESTAMP()),
-('20260903_01','drop_website_url_config',UNIX_TIMESTAMP());
+('20260903_01','drop_website_url_config',UNIX_TIMESTAMP()),
+('20260903_02','visitor_account',UNIX_TIMESTAMP());
 
 CREATE TABLE IF NOT EXISTS `eb_platform_lead` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -1516,6 +1517,26 @@ CREATE TABLE IF NOT EXISTS `eb_platform_lead_follow` (
   PRIMARY KEY (`id`),
   KEY `idx_lead` (`lead_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='线索跟进记录';
+
+-- 访客账号：绑定手机号后可换设备接续会话。手机号可枚举故非凭据，
+-- 绑定/登录都要过验证码或密码；token_version 变更即吊销旧续接令牌。
+CREATE TABLE IF NOT EXISTS `eb_chat_visitor_account` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `tenant_id` int NOT NULL DEFAULT 0 COMMENT '所属租户ID',
+  `appid` varchar(32) NOT NULL DEFAULT '' COMMENT '所属应用',
+  `phone` varchar(20) NOT NULL DEFAULT '' COMMENT '绑定手机号',
+  `password_hash` varchar(255) NOT NULL DEFAULT '' COMMENT '密码哈希,空串=未设密码',
+  `user_id` int NOT NULL DEFAULT 0 COMMENT '关联的访客ID(eb_chat_user.id)',
+  `token_version` int NOT NULL DEFAULT 1 COMMENT '续接令牌版本,改密码或注销时自增',
+  `failed_attempts` int NOT NULL DEFAULT 0 COMMENT '连续失败次数',
+  `locked_until` int NOT NULL DEFAULT 0 COMMENT '锁定到期时间戳',
+  `last_login_time` int NOT NULL DEFAULT 0 COMMENT '最近登录时间',
+  `create_time` int NOT NULL DEFAULT 0,
+  `update_time` int NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_tenant_app_phone` (`tenant_id`, `appid`, `phone`),
+  KEY `idx_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='访客账号';
 
 -- 菜单挂在租户管理下，仅平台端可见
 INSERT INTO `eb_system_menus` (`id`,`pid`,`menu_name`,`menu_path`,`api_url`,`methods`,`is_show`,`is_tenant`,`is_platform`,`auth_type`,`is_del`,`is_show_path`,`sort`,`params`,`header`,`path`,`unique_auth`,`icon`,`module`,`controller`,`action`,`access`) VALUES
