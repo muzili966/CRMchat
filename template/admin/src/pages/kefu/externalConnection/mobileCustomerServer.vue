@@ -107,16 +107,16 @@
       <!-- 快捷操作条：低频动作从发送按钮旁移出，避免手机上误触发送 -->
       <div class="footer_quick_actions" v-if="showTransferHuman">
         <span class="quick_tag" @click="sendTransferHuman">
-          <i class="iconfont">&#xe6c5;</i>转人工
+          <chatIcon name="agent" :size="15" class="quick_tag_ic" />转人工
         </span>
       </div>
       <div class="mobel_customerServer_container_footer">
         <div class="mobel_customerServer_container_footer_uploag_image">
-          <span class="iconfont">&#xe6ca;</span>
+          <chatIcon name="image" :size="22" />
           <input type="file" class="file_input" @change="uploadFile">
         </div>
         <div v-if="chatServerData.file_send" class="mobel_customerServer_container_footer_uploag_image file_entry">
-          <Icon type="md-attach" size="22" />
+          <chatIcon name="file" :size="22" />
           <input type="file" :accept="fileAccept" class="file_input" @change="uploadChatFile">
         </div>
         <div class="mobel_customerServer_container_footer_input">
@@ -131,7 +131,7 @@
 
         <!-- 选择表情 -->
         <div class="mobel_customerServer_container_footer_emoji" @click="selectEmoji">
-          <span class="iconfont ">&#xe6cb;</span>
+          <chatIcon name="emoji" :size="22" />
         </div>
         <!-- 发送消息 -->
         <div class="sendMessage" :class="{'sendMessage-primary': userMessage}" :style="sendButtonStyle">
@@ -158,6 +158,7 @@ import { HappyScroll } from 'vue-happy-scroll'
 import emojiList from "@/utils/emoji";
 import socketServer from './minix/socketServer';
 import chatFileCard from '@/components/chatFileCard';
+import chatIcon from '@/components/chatIcon';
 import { FILE_ACCEPT } from '@/libs/chatFile';
 import visitorAccount from './components/visitorAccount';
 import appTheme from './minix/appTheme';
@@ -170,7 +171,8 @@ export default {
   components: {
     HappyScroll,
     visitorAccount,
-    chatFileCard
+    chatFileCard,
+    chatIcon
   },
   mixins: [socketServer, appTheme],
   data() {

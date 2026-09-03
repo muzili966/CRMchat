@@ -110,18 +110,18 @@
               </div>
               <div class="pc_customerServer_container_footer_header_handle">
                 <div @click="inputConType = 2;goPageBottom()">
-                  <img src="@/assets/images/customerServer/face.png" alt="">
+                  <chatIcon name="emoji" :size="22" />
                 </div>
                 <div>
-                  <img src="@/assets/images/customerServer/picture.png" alt="">
+                  <chatIcon name="image" :size="22" />
                   <input type="file" accept=".jp2,.jpe,.jpeg,.jpg,.png,.svf,.tif,.tiff" class="type_file" @change="uploadFile">
                 </div>
                 <div v-if="chatServerData.file_send" class="file_entry" title="发送文件">
-                  <Icon type="md-attach" size="20" />
+                  <chatIcon name="file" :size="22" />
                   <input type="file" :accept="fileAccept" class="type_file" @change="uploadChatFile">
                 </div>
                 <div class="transfer_service" title="转人工客服" @click="transferService" v-if="isShowTransfer">
-                  <Icon type="md-person" size="18" />
+                  <chatIcon name="agent" :size="22" />
                 </div>
               </div>
             </div>
@@ -182,6 +182,7 @@ import emojiList from "@/utils/emoji";
 import socketServer from './minix/socketServer';
 import visitorAccount from './components/visitorAccount';
 import chatFileCard from '@/components/chatFileCard';
+import chatIcon from '@/components/chatIcon';
 import { FILE_ACCEPT } from '@/libs/chatFile';
 import appTheme from './minix/appTheme';
 
@@ -195,7 +196,8 @@ export default {
   components: {
     HappyScroll,
     visitorAccount,
-    chatFileCard
+    chatFileCard,
+    chatIcon
   },
   mixins: [socketServer, appTheme],
   data() {
@@ -471,6 +473,8 @@ export default {
       &_handle {
         display: flex;
         align-items: center;
+        //工具栏图标统一走 chatIcon(内联SVG,currentColor)，此处定基色，四枚一致
+        color: #6b7280;
 
         > div {
           margin-right: 19px;
@@ -493,9 +497,10 @@ export default {
             opacity: 0;
           }
         }
-        //不写死尺寸，与表情/图片按钮共用同一套盒子，换主题时才不会各高各的
+        > div, .transfer_service, .file_entry { transition: color .2s; }
+        > div:hover, .transfer_service:hover, .file_entry:hover { color: #335cff; }
+        //转人工与文件入口共用工具栏基色，不再各自写死
         .transfer_service {
-          color: #666;
           cursor: pointer;
         }
         //文件入口与表情/图片同盒，图标居中，input覆盖点击区
