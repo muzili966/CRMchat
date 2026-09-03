@@ -160,4 +160,21 @@ class Service extends AuthController
         return $this->success('图片上传成功!', ['name' => $res['name'], 'url' => $res['dir']]);
     }
 
+    /**
+     * 上传聊天文件（文档/压缩包/原图附件）
+     * @param Request $request
+     * @param \app\services\chat\ChatFileServices $fileServices
+     * @return \think\Response
+     */
+    public function uploadFile(Request $request, \app\services\chat\ChatFileServices $fileServices)
+    {
+        try {
+            $data = $fileServices->upload($request, 'file');
+        } catch (\Throwable $e) {
+            return $this->fail($e->getMessage());
+        }
+        return $this->success('上传成功', $data);
+    }
+
+
 }

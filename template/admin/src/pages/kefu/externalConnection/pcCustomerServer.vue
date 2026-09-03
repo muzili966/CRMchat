@@ -66,6 +66,10 @@
                       <div class="chart_list_item_img" v-if="item.msn_type == 3">
                         <img v-lazy="item.msn" @load="imageLoad" />
                       </div>
+                      <!-- 文件信息 -->
+                      <div class="chart_list_item_file" v-if="item.msn_type == 7">
+                        <chatFileCard :msn="item.msn" />
+                      </div>
 
                       <!-- 图文信息 -->
                       <div class="chart_list_item_imgOrText" v-if="item.msn_type == 5">
@@ -111,6 +115,10 @@
                 <div>
                   <img src="@/assets/images/customerServer/picture.png" alt="">
                   <input type="file" accept=".jp2,.jpe,.jpeg,.jpg,.png,.svf,.tif,.tiff" class="type_file" @change="uploadFile">
+                </div>
+                <div v-if="chatServerData.file_send" class="file_entry" title="发送文件">
+                  <Icon type="md-attach" size="20" />
+                  <input type="file" :accept="fileAccept" class="type_file" @change="uploadChatFile">
                 </div>
                 <div class="transfer_service" title="转人工客服" @click="transferService" v-if="isShowTransfer">
                   <Icon type="md-person" size="18" />
@@ -173,6 +181,8 @@ import { HappyScroll } from 'vue-happy-scroll'
 import emojiList from "@/utils/emoji";
 import socketServer from './minix/socketServer';
 import visitorAccount from './components/visitorAccount';
+import chatFileCard from '@/components/chatFileCard';
+import { FILE_ACCEPT } from '@/libs/chatFile';
 import appTheme from './minix/appTheme';
 
 // 与后端转人工关键词保持一致，后端收到该文本后自动分配人工坐席
@@ -184,7 +194,8 @@ const BANNER_HEIGHT = 150;
 export default {
   components: {
     HappyScroll,
-    visitorAccount
+    visitorAccount,
+    chatFileCard
   },
   mixins: [socketServer, appTheme],
   data() {
@@ -207,6 +218,7 @@ export default {
     }
   },
   computed: {
+    fileAccept() { return FILE_ACCEPT; },
     // 仅与 AI 坐席对话时才需要转人工入口
     isShowTransfer() {
       //已转接过人工则不再展示；字段缺失(旧后端)时保持显示
@@ -483,6 +495,12 @@ export default {
         }
         //不写死尺寸，与表情/图片按钮共用同一套盒子，换主题时才不会各高各的
         .transfer_service {
+          color: #666;
+          cursor: pointer;
+        }
+        //文件入口与表情/图片同盒，图标居中，input覆盖点击区
+        .file_entry {
+          position: relative;
           color: #666;
           cursor: pointer;
         }

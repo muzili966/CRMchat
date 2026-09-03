@@ -43,6 +43,7 @@ Route::group('api', function () {
             Route::post('feedback', 'Feedback/saveFeedback')->name('saveFeedback');//保存客服反馈内容
             Route::get('feedback', 'Feedback/getFeedbackInfo')->name('getFeedbackInfo');//获取反馈页面广告位内容
             Route::post('upload', 'Service/upload')->name('upload');//图片上传
+            Route::post('upload_file', 'Service/uploadFile')->name('uploadFile');//聊天文件上传
             Route::get('cache/:key', 'Service/getCache')->name('getCache');//获取缓存
             Route::post('cache', 'Service/setCache')->name('setCache');//设置缓存
 

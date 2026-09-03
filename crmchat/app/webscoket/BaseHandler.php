@@ -138,6 +138,11 @@ abstract class BaseHandler
         if (!in_array($msn_type, ChatServiceDialogueRecordServices::MSN_TYPE)) {
             return $response->message('err_tip', ['msg' => '格式错误']);
         }
+        //文件消息按套餐开关：即便前端绕过上传直接发type=7也在此拦下
+        if ($msn_type == ChatServiceDialogueRecordServices::MSN_TYPE_FILE
+            && !$planServices->hasFeature(TenantContext::id(), 'file_send')) {
+            return $response->message('err_tip', ['msg' => '当前套餐不支持发送文件']);
+        }
         $msn = trim(strip_tags(str_replace(["\n", "\t", "\r", "&nbsp;"], '', htmlspecialchars_decode($msn))));
         $data = compact('to_user_id', 'msn_type', 'msn');
         $data['add_time'] = time();

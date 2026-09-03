@@ -250,6 +250,8 @@ class ChatServiceServices extends BaseServices
             'to_user_is_ai' => (int)($toUserInfo['is_ai'] ?? 0),
             //客户端装修：套餐不支持时服务端已回退为平台默认外观
             'theme' => app()->make(ApplicationThemeServices::class)->getPublicTheme($appId),
+            //文件收发是否可用，访客端据此显隐附件入口（服务端仍会二次校验）
+            'file_send' => (int)app()->make(TenantPlanServices::class)->hasFeature(TenantContext::id(), 'file_send'),
         ];
         //查找聊天记录
         $serviceLogList = $logServices->getServiceChatList(['appid' => $appId, 'to_user_id' => $userId], $limit, $idTo);

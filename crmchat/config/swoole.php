@@ -22,7 +22,8 @@ return is_win() ? [] : [
             'task_enable_coroutine' => true,
             'enable_static_handler' => true,
             'document_root'         => root_path('public'),
-            'package_max_length'    => 20 * 1024 * 1024,
+            //聊天文件上限20MB，multipart外壳会略微超出，留余量到24MB否则整包被Swoole拒收
+            'package_max_length'    => 24 * 1024 * 1024,
             'buffer_output_size'    => 10 * 1024 * 1024,
             'socket_buffer_size'    => 128 * 1024 * 1024,
         ],

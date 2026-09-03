@@ -36,6 +36,10 @@ export const PLAN_FEATURE_TEXT = {
   data_export: {
     name: '数据导出',
     desc: '将会话记录与经营数据导出为表格，用于存档与二次分析。'
+  },
+  file_send: {
+    name: '文件收发',
+    desc: '访客与客服可互发办公文档、压缩包与原图附件（单文件20MB），免费版仅图片与文字。'
   }
 }
 
@@ -62,7 +66,8 @@ export const PLAN_FEATURE_FIELDS = [
   'data_export',
   'app_push',
   'white_label',
-  'custom_domain'
+  'custom_domain',
+  'file_send'
 ]
 
 /**

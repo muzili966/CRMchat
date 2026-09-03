@@ -46,6 +46,10 @@
                           <img v-lazy="item.msn" alt="">
                         </div>
                       </template>
+                      <!-- 文件 -->
+                      <template v-if="item.msn_type==7">
+                        <chatFileCard :msn="item.msn" />
+                      </template>
                       <!-- 商品 -->
 
                       <template v-if="item.msn_type==5">
@@ -93,6 +97,11 @@
                 <div class="icon-item">
                   <Upload :show-upload-list="false" :headers="header" :data="uploadData" :on-success="handleSuccess" :format="['jpg','jpeg','png','gif']" :on-format-error="handleFormatError" :action="upload">
                     <span class="iconfont icontupian1"></span>
+                  </Upload>
+                </div>
+                <div class="icon-item" v-if="kefuInfo.file_send">
+                  <Upload :show-upload-list="false" :headers="header" :data="uploadData" :on-success="handleFileSuccess" :format="fileFormats" :max-size="20480" :on-format-error="handleFileFormatError" :on-exceeded-size="handleFileOversize" :action="uploadFileAction">
+                    <span class="iconfont iconfujian" title="发送文件"></span>
                   </Upload>
                 </div>
                 <div class="icon-item" @click.stop.stop="isMsg = true"><span class="iconfont iconliaotian"></span></div>
@@ -187,6 +196,8 @@
 //提示音统一走 notifySound：内部处理Chrome的自动播放限制
 import Setting from '@/setting';
 import { onAvatarError } from '@/libs/avatar';
+import chatFileCard from '@/components/chatFileCard';
+import { encodeFileMsg } from '@/libs/chatFile';
 import { HappyScroll } from 'vue-happy-scroll'
 import baseHeader from './components/baseHeader';
 const NARROW_WIDTH = 1100
@@ -230,7 +241,8 @@ export default {
     msgWindow,
     transfer,
     HappyScroll,
-    authReply
+    authReply,
+    chatFileCard
     // goodsDetail,
     // orderDetail
   },
@@ -262,6 +274,8 @@ export default {
       isOrder: false,
       orderId: '',
       upload: '',
+      uploadFileAction: '',
+      fileFormats: ['pdf','doc','docx','xls','xlsx','ppt','pptx','zip','rar','7z','jpg','jpeg','png','gif','bmp','webp'],
       header: {},
       uploadData: {
         filename: 'file'
@@ -335,6 +349,7 @@ export default {
   },
    created() {
     this.upload = Setting.apiBaseURL.replace('admin', 'kefu') + '/upload'
+    this.uploadFileAction = Setting.apiBaseURL.replace('admin', 'kefu') + '/upload_file'
     console.log(Setting.apiBaseURL, this.upload);
     serviceInfo().then(res => {
       this.kefuInfo = res.data;
@@ -474,6 +489,20 @@ export default {
       this.$Message.error("上传图片只能是 jpg、jpg、jpeg、gif 格式!");
     },
 
+    // 文件上传成功：把元数据编码进 msn 以 type=7 发送
+    handleFileSuccess(res) {
+      if (res.status === 200) {
+        this.sendMsg(encodeFileMsg(res.data), 7);
+      } else {
+        this.$Message.error(res.msg);
+      }
+    },
+    handleFileFormatError() {
+      this.$Message.error('不支持的文件类型');
+    },
+    handleFileOversize() {
+      this.$Message.error('文件不能超过 20MB');
+    },
     // 上传成功
     handleSuccess(res, file, fileList) {
       if(res.status === 200) {

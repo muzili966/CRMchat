@@ -43,7 +43,7 @@ class TenantPlan extends BaseModel
     /**
      * 功能开关字段清单
      */
-    const FEATURE_FIELDS = ['auto_reply', 'brand_custom', 'data_export', 'app_push', 'ai_reply', 'white_label', 'custom_ad', 'custom_domain'];
+    const FEATURE_FIELDS = ['auto_reply', 'brand_custom', 'data_export', 'app_push', 'ai_reply', 'white_label', 'custom_ad', 'custom_domain', 'file_send'];
 
     /**
      * 配额字段清单

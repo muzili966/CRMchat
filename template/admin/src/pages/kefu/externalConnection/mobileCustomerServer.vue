@@ -70,6 +70,10 @@
                 <div class="chart_list_item_img" v-if="item.msn_type == 3">
                   <img v-lazy="item.msn" @load="imageLoad" />
                 </div>
+                <!-- 文件信息 -->
+                <div class="chart_list_item_file" v-if="item.msn_type == 7">
+                  <chatFileCard :msn="item.msn" />
+                </div>
                 <!-- 图文信息 -->
                 <div class="chart_list_item_imgOrText" v-if="item.msn_type == 5">
                   <div class="order-wrapper">
@@ -111,6 +115,10 @@
           <span class="iconfont">&#xe6ca;</span>
           <input type="file" class="file_input" @change="uploadFile">
         </div>
+        <div v-if="chatServerData.file_send" class="mobel_customerServer_container_footer_uploag_image file_entry">
+          <Icon type="md-attach" size="22" />
+          <input type="file" :accept="fileAccept" class="file_input" @change="uploadChatFile">
+        </div>
         <div class="mobel_customerServer_container_footer_input">
           <div class="mobel_customerServer_container_footer_input_con">
             <textarea @keyup.enter="sendText" @focus="textareaInput" class="font" @input="textareaChange($event)" v-model='userMessage' placeholder="请输入内容"></textarea>
@@ -149,6 +157,8 @@
 import { HappyScroll } from 'vue-happy-scroll'
 import emojiList from "@/utils/emoji";
 import socketServer from './minix/socketServer';
+import chatFileCard from '@/components/chatFileCard';
+import { FILE_ACCEPT } from '@/libs/chatFile';
 import visitorAccount from './components/visitorAccount';
 import appTheme from './minix/appTheme';
 
@@ -159,7 +169,8 @@ const BANNER_HEIGHT = 80;
 export default {
   components: {
     HappyScroll,
-    visitorAccount
+    visitorAccount,
+    chatFileCard
   },
   mixins: [socketServer, appTheme],
   data() {
@@ -185,6 +196,7 @@ export default {
     }
   },
   computed: {
+    fileAccept() { return FILE_ACCEPT; },
     // 无输入内容时保持置灰态，不能被主题色覆盖
     sendButtonStyle() {
       return this.userMessage ? this.themeBgStyle : {};

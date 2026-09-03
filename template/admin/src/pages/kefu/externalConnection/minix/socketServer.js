@@ -1,5 +1,6 @@
 import { mobileScoket } from '@/libs/socket';
-import { userRecord, serviceUpload } from '@/api/kefu';
+import { userRecord, serviceUpload, serviceUploadFile } from '@/api/kefu';
+import { encodeFileMsg } from '@/libs/chatFile';
 import { setLoc, getLoc } from '@/libs/util'
 import Cookies from "js-cookie";
 
@@ -489,6 +490,24 @@ export default {
       })
     },
     // 上传图片
+    // 发送文件（文档/压缩包/原图）：不压缩，元数据编码进msn以type=7发送
+    uploadChatFile(e) {
+      const file = e.target.files[0];
+      if (!file) { return; }
+      if (file.size > 20 * 1024 * 1024) {
+        this.$Message.error('文件不能超过 20MB');
+        e.target.value = '';
+        return;
+      }
+      const formData = new FormData();
+      formData.append('filename', 'file');
+      formData.append('file', file);
+      serviceUploadFile(formData).then(res => {
+        if (res.status == 200) { this.sendMsg(encodeFileMsg(res.data), 7); }
+      }).catch(rej => {
+        this.$Message.error(rej.msg);
+      }).finally(() => { e.target.value = ''; });
+    },
     uploadFile(e) {
       this.compressImg(e.target.files[0]).then(file=>{
         let formData = new FormData();

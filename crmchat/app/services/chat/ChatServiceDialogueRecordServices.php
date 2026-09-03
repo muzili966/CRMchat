@@ -45,6 +45,25 @@ class ChatServiceDialogueRecordServices extends BaseServices
     const MSN_TYPE_GOODS = 5;
     //订单信息消息类型
     const MSN_TYPE_ORDER = 6;
+    //文件消息类型（文档/压缩包/原图附件）
+    const MSN_TYPE_FILE = 7;
+
+    /**
+     * 文件消息允许的扩展名白名单
+     *
+     * 这是核心安全控制：静态目录按扩展名决定如何被浏览器处理，
+     * 绝不放行 php/html/svg/js 等可执行或可内联脚本的类型。
+     */
+    const FILE_EXT = [
+        'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+        'zip', 'rar', '7z',
+        'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp',
+    ];
+
+    /**
+     * 文件消息单文件大小上限（字节），20MB
+     */
+    const FILE_MAX_SIZE = 20971520;
 
     /**
      * 消息类型
@@ -56,7 +75,8 @@ class ChatServiceDialogueRecordServices extends BaseServices
         self::MSN_TYPE_IME,
         self::MSN_TYPE_VOICE,
         self::MSN_TYPE_GOODS,
-        self::MSN_TYPE_ORDER
+        self::MSN_TYPE_ORDER,
+        self::MSN_TYPE_FILE
     ];
 
     /**

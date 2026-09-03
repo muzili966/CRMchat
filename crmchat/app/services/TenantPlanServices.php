@@ -381,6 +381,7 @@ class TenantPlanServices extends BaseServices
             'data_export' => '数据导出',
             'white_label' => '去除平台标识',
             'custom_domain' => '独立域名',
+            'file_send' => '文件收发',
         ];
         $result = [];
         foreach ($names as $field => $label) {

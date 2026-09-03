@@ -1385,6 +1385,8 @@ UPDATE `eb_system_role` SET `rules` = (SELECT GROUP_CONCAT(`id`) FROM (SELECT `i
 -- 独立域名：访客入口寻址依据，属高阶套餐能力
 ALTER TABLE `eb_tenant_plan` ADD `custom_domain` tinyint(1) NOT NULL DEFAULT '0' COMMENT '独立域名0=否,1=是' AFTER `custom_ad`;
 UPDATE `eb_tenant_plan` SET `custom_domain` = 1 WHERE `name` = '旗舰版';
+ALTER TABLE `eb_tenant_plan` ADD `file_send` tinyint(1) NOT NULL DEFAULT '0' COMMENT '文件收发0=否,1=是' AFTER `ai_reply`;
+UPDATE `eb_tenant_plan` SET `file_send` = 1 WHERE `price` > 0 AND `is_delete` = 0;
 -- 说明：系统设置的分类可见性不再依赖硬编码，改为按"分类下是否含租户可覆盖配置项"动态判定
 -- （见 SystemConfigServices::filterTenantTabs），新增配置项时可见性自动跟随，无需再改数据
 
@@ -1476,7 +1478,8 @@ INSERT INTO `eb_system_upgrade` (`version`,`name`,`create_time`) VALUES
 ('20260902_03','fix_lead_menu_path',UNIX_TIMESTAMP()),
 ('20260902_04','website_url_config',UNIX_TIMESTAMP()),
 ('20260903_01','drop_website_url_config',UNIX_TIMESTAMP()),
-('20260903_02','visitor_account',UNIX_TIMESTAMP());
+('20260903_02','visitor_account',UNIX_TIMESTAMP()),
+('20260903_03','plan_file_send',UNIX_TIMESTAMP());
 
 CREATE TABLE IF NOT EXISTS `eb_platform_lead` (
   `id` int NOT NULL AUTO_INCREMENT,

@@ -789,3 +789,15 @@ export function visitorLogin(data) {
     data
   })
 }
+
+/*
+  访客端，上传聊天文件（文档/压缩包/原图附件）
+*/
+export function serviceUploadFile(data) {
+  return request({
+    url: 'service/upload_file',
+    method: 'post',
+    mobile: true,
+    data
+  })
+}

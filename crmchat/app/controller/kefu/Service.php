@@ -321,6 +321,8 @@ class Service extends AuthController
         $this->kefuInfo['user_ids'] = $this->services->getColumn(['appid' => $this->kefuInfo['appid']], 'user_id');
         //会话转线索是平台自己的销售动作，租户客服看不到这个入口
         $this->kefuInfo['can_to_lead'] = (int)(\crmeb\services\tenant\TenantContext::id() === \app\models\Tenant::DEFAULT_TENANT_ID);
+        //文件收发按套餐开关，客服端据此显隐附件入口
+        $this->kefuInfo['file_send'] = (int)$planServices->hasFeature(\crmeb\services\tenant\TenantContext::id(), 'file_send');
         return $this->success($this->kefuInfo->toArray());
     }
 
