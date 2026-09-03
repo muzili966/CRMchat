@@ -291,6 +291,7 @@ function initCustomerServer(option) {
       if(e.data.type == 'closeWindow') {
         if(this.settingObj.deviceType == 'Mobile') {
           this.iframeLayout.style.top = '100%';
+          this.unlockPageScroll();
         } else if(this.settingObj.windowStyle == 'center') {
           this.setStyleOfCustomerServer(this.iframeLayout, {
             display: 'none'
@@ -337,11 +338,28 @@ function initCustomerServer(option) {
 
   };
   // 打开客服聊天框
+  // 锁/解背景页滚动：仅移动端全屏聊天时用，非侵入式（不改宿主 body 定位）
+  this.lockPageScroll = () => {
+    if (this._scrollLocked) return;
+    this._scrollLocked = true;
+    this._prevBodyOverflow = document.body.style.overflow;
+    this._prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+  };
+  this.unlockPageScroll = () => {
+    if (!this._scrollLocked) return;
+    this._scrollLocked = false;
+    document.body.style.overflow = this._prevBodyOverflow || '';
+    document.documentElement.style.overflow = this._prevHtmlOverflow || '';
+  };
+
   this.getCustomeServer = () => {
 
     let mobel = '';
     if(this.settingObj.deviceType == 'Mobile') {
       this.iframeLayout.style.top = '0';
+      this.lockPageScroll(); // 全屏聊天时锁住背景页，避免滚动穿透
     } else if(this.settingObj.windowStyle == 'center') {
       //防止第一次打开页面乱了
       if(!this.isrelaod) {
