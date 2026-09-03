@@ -1,10 +1,12 @@
 <template>
   <div class="kefu-login">
     <section class="brand-panel">
-      <header class="brand-panel__header">
+      <component :is="websiteUrl ? 'a' : 'header'" class="brand-panel__header"
+                 :class="{ 'brand-panel__header--link': websiteUrl }"
+                 :href="websiteUrl || null" :target="websiteUrl ? '_blank' : null" rel="noopener">
         <img :src="brandLogo" alt="QiaLink 洽联">
         <span>智能客服工作台</span>
-      </header>
+      </component>
       <div class="brand-panel__content">
         <div class="brand-panel__copy">
           <span class="eyebrow">QIALINK SERVICE DESK</span>
@@ -39,6 +41,11 @@
     </section>
 
     <section class="login-panel">
+      <div class="login-panel__top">
+        <a v-if="websiteUrl" class="website-link" :href="websiteUrl" target="_blank" rel="noopener">
+          官网首页<Icon type="ios-arrow-forward" />
+        </a>
+      </div>
       <div class="mobile-brand">
         <img :src="brandLogo" alt="QiaLink 洽联">
         <span>智能客服工作台</span>
@@ -135,6 +142,7 @@ export default {
       rxpired: false, // 扫码是否过期
       isMobile: false,
       version: '', //版本号
+      websiteUrl: '', //官网地址,未配置则不展示入口
       isScan: false,
       timeNum: 0
     }
@@ -142,6 +150,7 @@ export default {
   created() {
     kefuConfig().then(res => {
       this.version = res.data.version
+      this.websiteUrl = res.data.website_url || ''
       if(res.data.site_name) {
         document.title = res.data.site_name;
       }
@@ -355,6 +364,7 @@ export default {
 .brand-panel__header, .brand-panel__content, .brand-panel__footer { position: relative; z-index: 1; }
 .brand-panel__header { display: flex; align-items: center; justify-content: space-between; }
 .brand-panel__header img { width: 164px; height: auto; filter: brightness(0) invert(1) drop-shadow(0 4px 12px rgba(0, 53, 132, .18)); }
+.brand-panel__header--link { cursor: pointer; }
 .brand-panel__header span { padding: 7px 12px; border: 1px solid rgba(255,255,255,.2); border-radius: 999px; color: rgba(255,255,255,.78); background: rgba(255,255,255,.08); font-size: 12px; }
 .brand-panel__content { min-height: 0; display: grid; grid-template-columns: minmax(260px, .78fr) minmax(300px, 1.22fr); gap: 34px; align-items: center; }
 .eyebrow { display: block; margin-bottom: 18px; color: #cde3ff; font-size: 11px; font-weight: 600; letter-spacing: 2.4px; }
@@ -388,6 +398,9 @@ export default {
 .floating-card--message { left: -8%; bottom: 13%; }
 
 .login-panel { min-height: 100vh; padding: 42px clamp(42px, 6vw, 92px) 30px; position: relative; display: flex; flex-direction: column; justify-content: center; background: #fff; }
+.login-panel__top { position: absolute; top: 34px; right: clamp(42px, 6vw, 92px); font-size: 13px; }
+.website-link { display: inline-flex; align-items: center; gap: 2px; color: #8290aa; transition: color .2s; }
+.website-link:hover { color: #335cff; }
 .mobile-brand { display: none; }
 .login-card { width: 100%; max-width: 430px; margin: auto; }
 .login-mode { width: 100%; }

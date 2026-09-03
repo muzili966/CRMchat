@@ -11,6 +11,8 @@
 
 namespace app\controller\admin;
 
+use crmeb\utils\SiteUrl;
+
 
 use app\services\ApplicationServices;
 use crmeb\services\tenant\TenantContext;
@@ -51,9 +53,13 @@ class Application extends AuthController
             ['name', '', '', 'name_like'],
         ]);
 
-        return $this->success($this->withPlatformScope(function () use ($where) {
+        $data = $this->withPlatformScope(function () use ($where) {
             return $this->services->getList($where);
-        }));
+        });
+        //接入代码跑在客户自己的站点上，脚本地址必须是本服务的公网绝对地址；
+        //取后台的 location.origin 会把内网地址发出去。未配置则由前端退回原行为。
+        $data['service_url'] = SiteUrl::service();
+        return $this->success($data);
     }
 
     /**

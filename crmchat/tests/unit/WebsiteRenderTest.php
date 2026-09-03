@@ -2,7 +2,6 @@
 
 namespace tests\unit;
 
-use app\controller\WebsiteController;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -35,7 +34,7 @@ class WebsiteRenderTest extends TestCase
     public function testConsoleLinksAreNotHardcodedRelative()
     {
         $this->assertStringNotContainsString('href="/admin/"', $this->template);
-        $this->assertStringContainsString('href="{$app_url}/admin/"', $this->template);
+        $this->assertStringContainsString('href="{$console_url}/admin/"', $this->template);
     }
 
     /**
@@ -44,8 +43,8 @@ class WebsiteRenderTest extends TestCase
     public function testChatScriptUsesInjectedOrigin()
     {
         $this->assertStringNotContainsString('src="/customerServer.js"', $this->template);
-        $this->assertStringContainsString('{$app_url}/customerServer.js', $this->template);
-        $this->assertStringContainsString('"openUrl":"{$app_origin}"', $this->template);
+        $this->assertStringContainsString('{$service_url}/customerServer.js', $this->template);
+        $this->assertStringContainsString('"openUrl":"{$service_url}"', $this->template);
     }
 
     /**
@@ -76,21 +75,4 @@ class WebsiteRenderTest extends TestCase
         $this->assertStringContainsString('qialink-favicon', $this->template);
     }
 
-    /**
-     * 同域时必须退回相对路径
-     *
-     * 官网挂在 https 的 www 上而 site_url 还是 http 内网地址时,
-     * 绝对地址会被浏览器按混合内容拦掉，页面上的客服与控制台一起失效
-     */
-    public function testAppUrlFallsBackToRelativeOnSameHost()
-    {
-        $resolve = [WebsiteController::class, 'resolveAppUrl'];
-        //同主机：相对路径
-        $this->assertSame('', $resolve('http://app.example.com', 'app.example.com'));
-        $this->assertSame('', $resolve('http://APP.example.com/', 'app.example.com'));
-        //跨主机：绝对地址
-        $this->assertSame('http://app.example.com', $resolve('http://app.example.com/', 'www.example.com'));
-        //未配置 site_url：相对路径，保持原有行为
-        $this->assertSame('', $resolve('', 'www.example.com'));
-    }
 }

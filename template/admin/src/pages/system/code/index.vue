@@ -89,7 +89,7 @@ export default {
       current: {},
       codeModal: false,
       FromData: null,
-      siteUrl: `${location.origin}`,
+      siteUrl: '',
       columns: [
         { title: '图标', slot: 'icon', width: 90 },
         { title: '应用名称', key: 'name', minWidth: 140 },
@@ -118,6 +118,9 @@ export default {
       appListApi(this.searchWhere).then(res => {
         this.total = res.data.count
         this.list = res.data.list
+        //接入代码贴在客户站点上，脚本地址必须是本服务的公网地址；
+        //未配置 SERVICE_URL 时才退回当前后台地址
+        this.siteUrl = res.data.service_url || location.origin
         this.loading = false
       }).catch(res => {
         this.loading = false

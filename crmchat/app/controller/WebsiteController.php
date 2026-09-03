@@ -10,6 +10,7 @@ use app\models\Tenant;
 use app\services\platform\PlatformLeadServices;
 use app\services\TenantPlanServices;
 use crmeb\services\tenant\TenantContext;
+use crmeb\utils\SiteUrl;
 use think\facade\Log;
 use crmeb\services\CacheService;
 use think\Request;
@@ -47,11 +48,12 @@ class WebsiteController
      */
     public function index()
     {
+        $host = (string)$this->request->host(true);
         return view('website/index', [
             'plans' => $this->pricing(),
-            //去掉末尾斜杠，模板里统一拼 /admin/ 这类路径；留空则退回同源相对路径
-            'app_url' => $this->appUrl(),
-            'app_origin' => $this->appUrl(),
+            //同主机留空走相对路径，跨主机才给绝对地址
+            'console_url' => SiteUrl::relativeIfSameHost(SiteUrl::console(), $host),
+            'service_url' => SiteUrl::relativeIfSameHost(SiteUrl::service(), $host),
             'chat_token' => $this->chatToken(),
         ]);
     }
@@ -72,34 +74,6 @@ class WebsiteController
         }
     }
 
-    /**
-     * 官网上指向应用的地址
-     *
-     * 同域时返回空串走相对路径：官网若挂在 https 的 www 上而 site_url 还是
-     * http 的内网地址，绝对地址会被浏览器当混合内容拦掉。只有确实跨域
-     * （官网被单独解析出去）才需要绝对地址。
-     * @return string
-     */
-    protected function appUrl(): string
-    {
-        return self::resolveAppUrl((string)sys_config('site_url'), (string)$this->request->host(true));
-    }
-
-    /**
-     * 同主机返回空串（相对路径），跨主机返回绝对地址
-     * @param string $siteUrl
-     * @param string $requestHost
-     * @return string
-     */
-    public static function resolveAppUrl(string $siteUrl, string $requestHost): string
-    {
-        $siteUrl = rtrim($siteUrl, '/');
-        if (!$siteUrl) {
-            return '';
-        }
-        $siteHost = parse_url($siteUrl, PHP_URL_HOST);
-        return $siteHost && strcasecmp((string)$siteHost, $requestHost) !== 0 ? $siteUrl : '';
-    }
 
     /**
      * 官网自用的客服接入token

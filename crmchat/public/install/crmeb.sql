@@ -418,7 +418,6 @@ CREATE TABLE IF NOT EXISTS `eb_system_config` (
 INSERT INTO `eb_system_config` (`id`, `menu_name`, `type`, `input_type`, `config_tab_id`, `parameter`, `upload_type`, `required`, `width`, `high`, `value`, `info`, `desc`, `sort`, `status`) VALUES
 (1, 'site_name', 'text', 'input', 1, '', 0, 'required:true', 100, 0, '"QiaLink 洽联"', '网站名称', '网站名称很多地方会显示的，建议认真填写', 10, 1),
 (2, 'site_url', 'text', 'input', 1, '', 0, 'required:true,url:true', 100, 0, '""', '网站地址', '安装自动配置，不要轻易修改，更换会影响网站访问、接口请求、本地文件储存、支付回调、微信授权、支付、小程序图片访问、部分二维码、官方授权等', 5, 1),
-(385, 'website_url', 'text', 'input', 1, '', 0, '', 100, 0, '""', '官网地址', '官网被解析到独立域名时填写，例如 https://www.example.com；后台登录页据此展示返回官网的入口，留空则不展示', 6, 1),
 (3, 'site_logo', 'upload', '', 1, '', 1, '', 0, 0, '"/statics/brand/qialink-logo-horizontal.png"', '后台大LOGO', '菜单展开左上角logo,建议尺寸[170*50]', 3, 1),
 (5, 'seo_title', 'text', 'input', 1, '', 0, 'required:true', 100, 0, '"QiaLink 洽联 · 智能客户联络平台"', 'SEO标题', 'SEO标题', 0, 0),
 (108, 'upload_type', 'radio', '', 31, '1=>本地存储\n2=>七牛云存储\n3=>阿里云OSS\n4=>腾讯COS', 1, '', 0, 0, '1', '上传类型', '文件储存配置，注意：一旦配置就不要轻易修改，会导致文件不能使用', 40, 1),
@@ -1475,7 +1474,8 @@ INSERT INTO `eb_system_upgrade` (`version`,`name`,`create_time`) VALUES
 ('20260902_01','platform_crm',UNIX_TIMESTAMP()),
 ('20260902_02','widget_config',UNIX_TIMESTAMP()),
 ('20260902_03','fix_lead_menu_path',UNIX_TIMESTAMP()),
-('20260902_04','website_url_config',UNIX_TIMESTAMP());
+('20260902_04','website_url_config',UNIX_TIMESTAMP()),
+('20260903_01','drop_website_url_config',UNIX_TIMESTAMP());
 
 CREATE TABLE IF NOT EXISTS `eb_platform_lead` (
   `id` int NOT NULL AUTO_INCREMENT,

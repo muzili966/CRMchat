@@ -34,6 +34,9 @@ services:
       REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
       AI_BASE_URL: "${AI_BASE_URL:-https://api.deepseek.com}"
       AI_API_KEY: "${AI_API_KEY:-}"
+      SERVICE_URL: "${SERVICE_URL:-}"
+      CONSOLE_URL: "${CONSOLE_URL:-}"
+      WEBSITE_URL: "${WEBSITE_URL:-}"
     volumes:
       - crmchat-uploads:/var/www/crmchat/public/uploads
       - crmchat-runtime:/var/www/crmchat/runtime

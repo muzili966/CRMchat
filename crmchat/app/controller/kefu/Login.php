@@ -16,6 +16,7 @@ use app\Request;
 use app\services\kefu\LoginServices;
 use app\validate\kefu\LoginValidate;
 use crmeb\services\CacheService;
+use crmeb\utils\SiteUrl;
 use think\db\exception\DataNotFoundException;
 use think\db\exception\DbException;
 use think\db\exception\ModelNotFoundException;
@@ -38,6 +39,22 @@ class Login extends AuthController
         $this->services = $services;
     }
 
+    /**
+     * 客服端登录页配置
+     *
+     * 路由早就指向本方法，但方法一直不存在，前端那次请求始终失败——
+     * 页面上的版本号取不到，官网入口也无从下发。
+     * @return mixed
+     */
+    public function getAppid()
+    {
+        return $this->success([
+            'site_name' => sys_config('site_name'),
+            'version' => get_crmeb_version(),
+            //留空表示未配置官网，前端据此不展示入口
+            'website_url' => SiteUrl::website(),
+        ]);
+    }
     /**
      * 客服登录
      * @param Request $request

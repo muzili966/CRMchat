@@ -20,6 +20,10 @@ SWOOLE_DAEMONIZE = false
 # AI客服：密钥不入库不进后台，仅从环境变量注入；留空即关闭AI能力
 AI_BASE_URL = ${AI_BASE_URL:-https://api.deepseek.com}
 AI_API_KEY = ${AI_API_KEY:-}
+# 对外地址：接入代码、官网控制台入口与登录页官网入口都取这里，留空各自退回默认
+SERVICE_URL = ${SERVICE_URL:-}
+CONSOLE_URL = ${CONSOLE_URL:-}
+WEBSITE_URL = ${WEBSITE_URL:-}
 
 [APP]
 DEFAULT_TIMEZONE = Asia/Shanghai
