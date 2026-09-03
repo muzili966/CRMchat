@@ -133,9 +133,9 @@
                                     <span class="launcher-default-txt">默认</span>
                                 </div>
                                 <div v-for="p in launcherPresets" :key="p.key" class="launcher-tile"
-                                     :class="{ 'launcher-tile-on': selectedLauncher === p.key }"
+                                     :class="{ 'launcher-tile-on': launcher.icon === p.key }"
                                      :title="p.label" @click="brandCustom && pickLauncherPreset(p.key)">
-                                    <img :src="launcherUri(p.key)">
+                                    <img :src="launcherThumb(p.key)">
                                 </div>
                                 <div class="launcher-tile launcher-upload" :class="{ 'launcher-tile-on': isCustomLauncher }"
                                      @click="brandCustom && openPic('launcher')" title="上传自定义">
@@ -143,8 +143,22 @@
                                     <Icon v-else type="ios-cloud-upload-outline" size="22"/>
                                 </div>
                             </div>
-                            <p class="field-tip" v-if="brandCustom">气泡预设跟随主题色；也可上传自定义图标，留空即用平台默认。</p>
+                            <p class="field-tip" v-if="brandCustom">预设跟随主题色；也可上传自定义图标，留空即用平台默认。</p>
                             <template v-else><Tag color="gold" class="brand-tag">{{ requiredPlan('brand_custom') }}</Tag></template>
+                        </FormItem>
+                        <FormItem label="图标形状：" v-if="brandCustom && hasLauncherPreset">
+                            <RadioGroup :value="launcher.shape" type="button" @on-change="setLauncherShape">
+                                <Radio v-for="sp in launcherShapes" :key="sp.key" :label="sp.key">{{ sp.label }}</Radio>
+                            </RadioGroup>
+                            <p class="field-tip">胶囊形可在图标后跟一段文案，与默认按钮一致</p>
+                        </FormItem>
+                        <FormItem label="按钮文案：" v-if="brandCustom && hasLauncherPreset && launcherShapeWithText">
+                            <Input v-model="launcher.text" :maxlength="launcherTextMax" style="width:220px"
+                                   placeholder="如：在线咨询" @on-change="onLauncherText"/>
+                            <p class="field-tip">最多 {{ launcherTextMax }} 字，仅 PC 端展示；移动端保持小圆图标</p>
+                        </FormItem>
+                        <FormItem label="入口预览：" v-if="form.pc_icon">
+                            <div class="launcher-preview"><img :src="form.pc_icon"></div>
                         </FormItem>
                         <FormItem label="悬浮按钮：">
                             <i-switch v-model="form.show_tip" :true-value="1" :false-value="0" size="large">
@@ -245,7 +259,7 @@
     import { mySubscriptionApi, planFeatureApi } from '@/api/tenant'
     import uploadPictures from '@/components/uploadPictures'
     import defaultBrandIcon from '@/assets/images/qialink-logo-icon.png'
-    import { LAUNCHER_PRESETS, buildLauncherDataUri, readLauncherPreset, isLauncherPreset } from '@/libs/chatLauncher'
+    import { LAUNCHER_PRESETS, LAUNCHER_SHAPES, LAUNCHER_TEXT_MAX, buildLauncherPc, buildLauncherMobile, buildLauncherThumb, readLauncherConfig, isLauncherPreset } from '@/libs/chatLauncher'
     import {
         CHAT_BUBBLE_PRESETS,
         CHAT_LAYOUT_PRESETS,
@@ -321,6 +335,9 @@
         components: { uploadPictures },
         data () {
             return {
+                // 悬浮图标编辑态（icon 空=默认/自定义）
+                launcher: { icon: '', shape: 'circle', text: '' },
+
                 saving: false,
                 appid: '',
                 appList: [],
@@ -354,10 +371,14 @@
         },
         computed: {
             launcherPresets () { return LAUNCHER_PRESETS },
-            // 当前悬浮图标选中的是哪个预设（自定义/默认返回空）
-            selectedLauncher () { return readLauncherPreset(this.form.pc_icon) },
+            launcherShapes () { return LAUNCHER_SHAPES },
+            launcherTextMax () { return LAUNCHER_TEXT_MAX },
+            // 是否选了预设图标（非默认/自定义）
+            hasLauncherPreset () { return !!this.launcher.icon },
+            // 当前形状是否支持文案
+            launcherShapeWithText () { return this.launcher.shape === 'pill' },
             // 非预设、非空 = 自定义上传
-            isCustomLauncher () { return !!this.form.pc_icon && !this.selectedLauncher },
+            isCustomLauncher () { return !!this.form.pc_icon && !isLauncherPreset(this.form.pc_icon) },
             currentApp () {
                 return this.appList.find(item => item.appid === this.appid) || {}
             },
@@ -395,21 +416,27 @@
         },
         watch: {
             // 改主题色时，预设气泡跟随重生成；自定义/默认不动
-            'form.theme_color' (color) {
-                if (isLauncherPreset(this.form.pc_icon)) {
-                    this.pickLauncherPreset(this.selectedLauncher)
-                }
+            'form.theme_color' () {
+                if (this.launcher.icon) { this.regenLauncher() }
             }
         },
         methods: {
-            launcherUri (key) { return buildLauncherDataUri(key, this.previewColor) },
-            // 选预设：pc/移动写同一个带主题色的气泡图标
-            pickLauncherPreset (key) {
-                const uri = buildLauncherDataUri(key, this.previewColor)
-                this.form.pc_icon = uri
-                this.form.mobile_icon = uri
+            // 图库缩略图（跟随当前形状与主题色）
+            launcherThumb (key) { return buildLauncherThumb(key, this.launcher.shape, this.previewColor) },
+            // 依据当前编辑态重生成 PC 与移动端两张图
+            regenLauncher () {
+                if (!this.launcher.icon) { this.form.pc_icon = ''; this.form.mobile_icon = ''; return }
+                this.form.pc_icon = buildLauncherPc(this.launcher, this.previewColor)
+                this.form.mobile_icon = buildLauncherMobile(this.launcher, this.previewColor)
+            },
+            pickLauncherPreset (key) { this.launcher.icon = key; this.regenLauncher() },
+            setLauncherShape (shape) { this.launcher.shape = shape; this.regenLauncher() },
+            onLauncherText () {
+                this.launcher.text = (this.launcher.text || '').slice(0, LAUNCHER_TEXT_MAX)
+                this.regenLauncher()
             },
             pickLauncherDefault () {
+                this.launcher = { icon: '', shape: 'circle', text: '' }
                 this.form.pc_icon = ''
                 this.form.mobile_icon = ''
             },
@@ -467,6 +494,8 @@
                 if (plan.white_label !== undefined) this.whiteLabel = !!plan.white_label
                 if (plan.custom_ad !== undefined) this.customAd = !!plan.custom_ad
                 if (plan.brand_custom !== undefined) this.brandCustom = !!plan.brand_custom
+                // 从已存的 pc_icon 反解编辑态；非预设则回到默认态
+                this.launcher = readLauncherConfig(this.form.pc_icon) || { icon: '', shape: 'circle', text: '' }
             },
             //门禁提示里的套餐名取自真实套餐数据，运营调整权益后自动跟随
             loadUpgradePlans () {
@@ -496,7 +525,7 @@
             },
             getPic (pc) {
                 const { field, index } = this.picTarget
-                if (field === 'launcher') { this.form.pc_icon = pc.att_dir; this.form.mobile_icon = pc.att_dir }
+                if (field === 'launcher') { this.form.pc_icon = pc.att_dir; this.form.mobile_icon = pc.att_dir; this.launcher = { icon: '', shape: 'circle', text: '' } }
                 else if (index === NO_BANNER) this.form[field] = pc.att_dir
                 else this.form.banners[index].image = pc.att_dir
                 this.modalPic = false
@@ -1184,4 +1213,11 @@
     .launcher-tile img { width: 38px; height: 38px; display: block; }
     .launcher-default-txt { font-size: 13px; color: #8a95a6; }
     .launcher-upload { border-style: dashed; color: #97a1b2; }
+
+    .launcher-preview {
+        display: inline-flex; align-items: center;
+        min-height: 52px; padding: 6px 10px;
+        background: #f6f8fc; border: 1px solid #eef1f6; border-radius: 12px;
+    }
+    .launcher-preview img { height: 44px; width: auto; display: block; }
 </style>

@@ -1,10 +1,13 @@
-// 悬浮入口图标预设。
-// 每个预设是一个「主题色圆形气泡 + 白色线性图标」，跟随客户设置的主题色。
-// 生成为内联 SVG data-URI 存进 pc_icon/mobile_icon —— 嵌入脚本本就以 <img src> 渲染，
-// 无需改动。预设 key 以 data-p 标记嵌进 SVG，便于回显选中态与改色时重生成。
+// 悬浮入口图标。
+// 一份配置（图标 + 形状 + 文案）生成两张内联 SVG：PC 与移动端。
+// 嵌入脚本本就以 <img src> 渲染，无需改动。配置以 data-* 标记嵌进 PC 的 SVG，
+// 便于回显选中态、改主题色时重生成。
+//
+// PC 默认按钮本就是「图标+文字」的宽按钮，移动端是固定 52 的小圆，所以：
+//   PC   —— 按形状渲染，胶囊形可带文案；
+//   移动 —— 一律主题色方块+图标（容器 border-radius:50% 会裁成圆），不带文案。
 
-// 图标路径统一用 24 视窗，白色描边，居中放进 56 的气泡里。
-// 造型与工具栏那套 chatIcon 同源，保证整个产品一套图标语言。
+// 图标路径统一 24 视窗，白色描边，与工具栏那套 chatIcon 同源。
 const ICONS = {
   chat: '<path d="M4 6.5h16a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-8l-5 4v-4H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z"/>',
   message: '<path d="M4 6.5h16a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-8l-5 4v-4H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z"/><path d="M8 12h.01M12 12h.01M16 12h.01"/>',
@@ -13,8 +16,10 @@ const ICONS = {
   help: '<circle cx="12" cy="12" r="9"/><path d="M9.2 9.5a2.8 2.8 0 0 1 5.4 1c0 1.8-2.6 2.2-2.6 3.8"/><path d="M12 17.5h.01"/>'
 }
 
+const STROKE = 'fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"'
+
 /**
- * 预设清单，供图库渲染
+ * 图标预设
  */
 export const LAUNCHER_PRESETS = [
   { key: 'chat', label: '对话气泡' },
@@ -25,47 +30,134 @@ export const LAUNCHER_PRESETS = [
 ]
 
 /**
- * 生成预设 SVG 字符串（气泡填主题色，图标白色描边）
- * @param {string} key
- * @param {string} color
- * @returns {string}
+ * 形状。pill 支持文案
  */
-function buildSvg(key, color) {
-  const icon = ICONS[key] || ICONS.chat
-  return '<svg xmlns="http://www.w3.org/2000/svg" data-p="' + key + '" width="56" height="56" viewBox="0 0 56 56">' +
-    '<circle cx="28" cy="28" r="28" fill="' + color + '"/>' +
-    '<g transform="translate(16 16)" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
-    icon + '</g></svg>'
-}
+export const LAUNCHER_SHAPES = [
+  { key: 'circle', label: '圆形', withText: false },
+  { key: 'rounded', label: '圆角方', withText: false },
+  { key: 'pill', label: '胶囊·带文字', withText: true }
+]
 
 /**
- * 预设 → data-URI，用作 <img src> 与 pc_icon 存储值
- * @param {string} key
- * @param {string} color
- * @returns {string}
+ * 文案最大字数（控制生成的 SVG 长度，落库列上限 1000）
  */
-export function buildLauncherDataUri(key, color) {
-  return 'data:image/svg+xml,' + encodeURIComponent(buildSvg(key, color))
+export const LAUNCHER_TEXT_MAX = 6
+
+function icon(key) {
+  return ICONS[key] || ICONS.chat
 }
 
-/**
- * 从存储值反解预设 key；不是预设（自定义上传/默认/空）则返回空串
- * @param {string} value
- * @returns {string}
- */
-export function readLauncherPreset(value) {
-  if (typeof value !== 'string' || value.indexOf('data:image/svg+xml') !== 0) {
-    return ''
+function esc(text) {
+  return String(text).replace(/[<>&"]/g, function (c) {
+    return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]
+  })
+}
+
+// 估算文案宽度：中文按整宽、其余按 0.6，供胶囊定宽
+function textWidth(text, fontSize) {
+  let w = 0
+  for (const ch of String(text)) {
+    w += /[一-龥＀-￯]/.test(ch) ? fontSize : fontSize * 0.6
   }
-  const m = decodeURIComponent(value).match(/data-p="([a-z]+)"/)
-  return m ? m[1] : ''
+  return Math.ceil(w)
+}
+
+function svg(attrs, body, w, h) {
+  return '<svg xmlns="http://www.w3.org/2000/svg" ' + attrs +
+    ' width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">' + body + '</svg>'
+}
+
+// 圆形/圆角方：56 见方，主题色底 + 居中图标
+function shapeSvg(cfg, color) {
+  const bg = cfg.shape === 'rounded'
+    ? '<rect x="0" y="0" width="56" height="56" rx="16" fill="' + color + '"/>'
+    : '<circle cx="28" cy="28" r="28" fill="' + color + '"/>'
+  return bg + '<g transform="translate(16 16)" ' + STROKE + '>' + icon(cfg.icon) + '</g>'
+}
+
+// 胶囊：主题色底 + 左图标 + 右文案（文案空则退化为圆形）
+function pillSvg(cfg, color) {
+  const text = (cfg.text || '').slice(0, LAUNCHER_TEXT_MAX)
+  if (!text) {
+    return { body: shapeSvg({ icon: cfg.icon, shape: 'circle' }, color), w: 56, h: 56 }
+  }
+  const fs = 17
+  const w = 20 + 24 + 8 + textWidth(text, fs) + 18
+  // font-family 用 generic sans-serif：编码后更短，且系统默认 sans 本就含中文字形
+  const body = '<rect x="0" y="0" width="' + w + '" height="48" rx="24" fill="' + color + '"/>' +
+    '<g transform="translate(16 12)" ' + STROKE + '>' + icon(cfg.icon) + '</g>' +
+    '<text x="' + (20 + 24 + 8) + '" y="24" fill="#ffffff" font-size="' + fs + '"' +
+    ' font-family="sans-serif" dominant-baseline="central">' + esc(text) + '</text>'
+  return { body: body, w: w, h: 48 }
+}
+
+function toUri(str) {
+  return 'data:image/svg+xml,' + encodeURIComponent(str)
 }
 
 /**
- * value 是否为预设（用于改主题色时判断要不要重生成）
+ * PC 悬浮图标 data-URI（按形状，胶囊可带文案）
+ * @param {{icon:string,shape:string,text:string}} cfg
+ * @param {string} color
+ * @returns {string}
+ */
+export function buildLauncherPc(cfg, color) {
+  const marker = 'data-p="' + cfg.icon + '" data-shape="' + cfg.shape + '"'
+  if (cfg.shape === 'pill') {
+    const p = pillSvg(cfg, color)
+    return toUri(svg(marker, p.body, p.w, p.h))
+  }
+  return toUri(svg(marker, shapeSvg(cfg, color), 56, 56))
+}
+
+/**
+ * 移动端悬浮图标 data-URI（一律方块+图标，容器裁成圆，不带文案）
+ * @param {{icon:string}} cfg
+ * @param {string} color
+ * @returns {string}
+ */
+export function buildLauncherMobile(cfg, color) {
+  const body = '<rect x="0" y="0" width="56" height="56" fill="' + color + '"/>' +
+    '<g transform="translate(16 16)" ' + STROKE + '>' + icon(cfg.icon) + '</g>'
+  return toUri(svg('data-p="' + cfg.icon + '"', body, 56, 56))
+}
+
+/**
+ * 图库缩略图用：把图标以指定形状渲染成小图
+ * @param {string} iconKey
+ * @param {string} shape
+ * @param {string} color
+ * @returns {string}
+ */
+export function buildLauncherThumb(iconKey, shape, color) {
+  return buildLauncherPc({ icon: iconKey, shape: shape === 'pill' ? 'circle' : shape, text: '' }, color)
+}
+
+/**
+ * 从 PC 存储值反解配置；非预设（自定义/默认/空）返回 null
+ * @param {string} value
+ * @returns {{icon:string,shape:string,text:string}|null}
+ */
+export function readLauncherConfig(value) {
+  if (typeof value !== 'string' || value.indexOf('data:image/svg+xml') !== 0) {
+    return null
+  }
+  const svgStr = decodeURIComponent(value)
+  const p = svgStr.match(/data-p="([a-z]+)"/)
+  if (!p) {
+    return null
+  }
+  const shape = (svgStr.match(/data-shape="([a-z]+)"/) || [])[1] || 'circle'
+  const t = svgStr.match(/<text[^>]*>([^<]*)<\/text>/)
+  const text = t ? t[1].replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"') : ''
+  return { icon: p[1], shape: shape, text: text }
+}
+
+/**
+ * value 是否为预设（改主题色时判断要不要重生成）
  * @param {string} value
  * @returns {boolean}
  */
 export function isLauncherPreset(value) {
-  return readLauncherPreset(value) !== ''
+  return readLauncherConfig(value) !== null
 }
