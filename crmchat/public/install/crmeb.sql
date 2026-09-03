@@ -1286,8 +1286,8 @@ CREATE TABLE IF NOT EXISTS `eb_application_theme` (
   `theme_color` varchar(20) NOT NULL DEFAULT '#2d8cf0' COMMENT '主题色',
   `theme_style` varchar(20) NOT NULL DEFAULT 'modern' COMMENT '布局风格modern/minimal/soft/midnight',
   `bubble_style` varchar(20) NOT NULL DEFAULT 'soft' COMMENT '气泡风格soft/clean/pill/outline/card',
-  `pc_icon` varchar(255) NOT NULL DEFAULT '' COMMENT 'PC悬浮按钮图标',
-  `mobile_icon` varchar(255) NOT NULL DEFAULT '' COMMENT '移动端悬浮按钮图标',
+  `pc_icon` varchar(1000) NOT NULL DEFAULT '' COMMENT 'PC悬浮按钮图标,预设为SVG data-URI或自定义URL',
+  `mobile_icon` varchar(1000) NOT NULL DEFAULT '' COMMENT '移动端悬浮按钮图标',
   `banners` text COMMENT '轮播广告json[{image,link,sort}]',
   `custom_html` text COMMENT '自定义广告HTML',
   `show_platform_brand` tinyint(1) NOT NULL DEFAULT '1' COMMENT '是否显示平台标识1=显示,0=白标(需套餐支持)',
@@ -1479,7 +1479,8 @@ INSERT INTO `eb_system_upgrade` (`version`,`name`,`create_time`) VALUES
 ('20260902_04','website_url_config',UNIX_TIMESTAMP()),
 ('20260903_01','drop_website_url_config',UNIX_TIMESTAMP()),
 ('20260903_02','visitor_account',UNIX_TIMESTAMP()),
-('20260903_03','plan_file_send',UNIX_TIMESTAMP());
+('20260903_03','plan_file_send',UNIX_TIMESTAMP()),
+('20260903_04','launcher_icon_len',UNIX_TIMESTAMP());
 
 CREATE TABLE IF NOT EXISTS `eb_platform_lead` (
   `id` int NOT NULL AUTO_INCREMENT,

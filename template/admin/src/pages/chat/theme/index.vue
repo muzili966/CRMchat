@@ -19,6 +19,7 @@
             <Row :gutter="24" v-else>
                 <Col :xl="14" :lg="14" :md="24" :sm="24" :xs="24">
                     <Form :model="form" :label-width="110" @submit.native.prevent>
+                        <Divider orientation="left" size="small" class="deco-divider">聊天窗口</Divider>
                         <FormItem label="窗口标题：">
                             <Input v-model="form.title" :maxlength="titleMax" placeholder="留空则显示应用名称"/>
                             <div class="counter">{{ form.title.length }}/{{ titleMax }}</div>
@@ -77,30 +78,6 @@
                                 </button>
                             </div>
                         </FormItem>
-                        <FormItem label="PC悬浮图标：">
-                            <div class="pic-box" :class="{ 'pic-box-locked': !brandCustom }"
-                                 @click="brandCustom && openPic('pc_icon')">
-                                <img v-if="form.pc_icon" :src="form.pc_icon">
-                                <div class="pic-empty" v-else><Icon type="ios-camera-outline" size="26"/></div>
-                            </div>
-                            <a class="pic-clear" v-if="form.pc_icon && brandCustom" @click="clearPic('pc_icon')">清除</a>
-                            <p class="field-tip" v-if="brandCustom">留空使用默认图标</p>
-                            <template v-else>
-                                <Tag color="gold" class="brand-tag">{{ requiredPlan('brand_custom') }}</Tag>
-                            </template>
-                        </FormItem>
-                        <FormItem label="移动端图标：">
-                            <div class="pic-box" :class="{ 'pic-box-locked': !brandCustom }"
-                                 @click="brandCustom && openPic('mobile_icon')">
-                                <img v-if="form.mobile_icon" :src="form.mobile_icon">
-                                <div class="pic-empty" v-else><Icon type="ios-camera-outline" size="26"/></div>
-                            </div>
-                            <a class="pic-clear" v-if="form.mobile_icon && brandCustom" @click="clearPic('mobile_icon')">清除</a>
-                            <p class="field-tip" v-if="brandCustom">留空使用默认图标</p>
-                            <template v-else>
-                                <Tag color="gold" class="brand-tag">{{ requiredPlan('brand_custom') }}</Tag>
-                            </template>
-                        </FormItem>
                         <FormItem label="轮播广告：">
                             <div class="banner-empty" v-if="!form.banners.length">
                                 暂未配置轮播广告，访客窗口不展示广告位
@@ -138,6 +115,37 @@
                                 </Panel>
                             </Collapse>
                         </FormItem>
+                        <FormItem label="平台标识：">
+                            <i-switch v-model="form.show_platform_brand" :true-value="brandShow" :false-value="brandHide"
+                                      :disabled="!whiteLabel" size="large">
+                                <span slot="open">显示</span>
+                                <span slot="close">隐藏</span>
+                            </i-switch>
+                            <Tag color="gold" class="brand-tag" v-if="!whiteLabel">{{ requiredPlan('white_label') }}</Tag>
+                            <p class="field-tip" v-if="!whiteLabel">升级套餐后可隐藏平台标识</p>
+                            <p class="field-tip" v-else>关闭后访客窗口底部不再显示「{{ platformBrand }}」</p>
+                        </FormItem>
+                        <Divider orientation="left" size="small" class="deco-divider">悬浮入口</Divider>
+                        <FormItem label="悬浮图标：">
+                            <div class="launcher-gallery">
+                                <div class="launcher-tile" :class="{ 'launcher-tile-on': !form.pc_icon }"
+                                     @click="brandCustom && pickLauncherDefault()" title="平台默认">
+                                    <span class="launcher-default-txt">默认</span>
+                                </div>
+                                <div v-for="p in launcherPresets" :key="p.key" class="launcher-tile"
+                                     :class="{ 'launcher-tile-on': selectedLauncher === p.key }"
+                                     :title="p.label" @click="brandCustom && pickLauncherPreset(p.key)">
+                                    <img :src="launcherUri(p.key)">
+                                </div>
+                                <div class="launcher-tile launcher-upload" :class="{ 'launcher-tile-on': isCustomLauncher }"
+                                     @click="brandCustom && openPic('launcher')" title="上传自定义">
+                                    <img v-if="isCustomLauncher" :src="form.pc_icon">
+                                    <Icon v-else type="ios-cloud-upload-outline" size="22"/>
+                                </div>
+                            </div>
+                            <p class="field-tip" v-if="brandCustom">气泡预设跟随主题色；也可上传自定义图标，留空即用平台默认。</p>
+                            <template v-else><Tag color="gold" class="brand-tag">{{ requiredPlan('brand_custom') }}</Tag></template>
+                        </FormItem>
                         <FormItem label="悬浮按钮：">
                             <i-switch v-model="form.show_tip" :true-value="1" :false-value="0" size="large">
                                 <span slot="open">显示</span>
@@ -155,16 +163,6 @@
                             <p class="field-tip">
                                 悬浮对话框贴在页面右下角；居中弹窗带遮罩、面积更大，可展示广告位
                             </p>
-                        </FormItem>
-                        <FormItem label="平台标识：">
-                            <i-switch v-model="form.show_platform_brand" :true-value="brandShow" :false-value="brandHide"
-                                      :disabled="!whiteLabel" size="large">
-                                <span slot="open">显示</span>
-                                <span slot="close">隐藏</span>
-                            </i-switch>
-                            <Tag color="gold" class="brand-tag" v-if="!whiteLabel">{{ requiredPlan('white_label') }}</Tag>
-                            <p class="field-tip" v-if="!whiteLabel">升级套餐后可隐藏平台标识</p>
-                            <p class="field-tip" v-else>关闭后访客窗口底部不再显示「{{ platformBrand }}」</p>
                         </FormItem>
                         <div class="save-bar">
                             <Button type="primary" :loading="saving" @click="save">保存</Button>
@@ -247,6 +245,7 @@
     import { mySubscriptionApi, planFeatureApi } from '@/api/tenant'
     import uploadPictures from '@/components/uploadPictures'
     import defaultBrandIcon from '@/assets/images/qialink-logo-icon.png'
+    import { LAUNCHER_PRESETS, buildLauncherDataUri, readLauncherPreset, isLauncherPreset } from '@/libs/chatLauncher'
     import {
         CHAT_BUBBLE_PRESETS,
         CHAT_LAYOUT_PRESETS,
@@ -354,6 +353,11 @@
             }
         },
         computed: {
+            launcherPresets () { return LAUNCHER_PRESETS },
+            // 当前悬浮图标选中的是哪个预设（自定义/默认返回空）
+            selectedLauncher () { return readLauncherPreset(this.form.pc_icon) },
+            // 非预设、非空 = 自定义上传
+            isCustomLauncher () { return !!this.form.pc_icon && !this.selectedLauncher },
             currentApp () {
                 return this.appList.find(item => item.appid === this.appid) || {}
             },
@@ -389,7 +393,26 @@
             this.getWhiteLabel()
             this.loadUpgradePlans()
         },
+        watch: {
+            // 改主题色时，预设气泡跟随重生成；自定义/默认不动
+            'form.theme_color' (color) {
+                if (isLauncherPreset(this.form.pc_icon)) {
+                    this.pickLauncherPreset(this.selectedLauncher)
+                }
+            }
+        },
         methods: {
+            launcherUri (key) { return buildLauncherDataUri(key, this.previewColor) },
+            // 选预设：pc/移动写同一个带主题色的气泡图标
+            pickLauncherPreset (key) {
+                const uri = buildLauncherDataUri(key, this.previewColor)
+                this.form.pc_icon = uri
+                this.form.mobile_icon = uri
+            },
+            pickLauncherDefault () {
+                this.form.pc_icon = ''
+                this.form.mobile_icon = ''
+            },
             handlePreviewLogoError (event) {
                 const image = event && event.target
                 if (!image || image.dataset.fallbackApplied) return
@@ -473,7 +496,8 @@
             },
             getPic (pc) {
                 const { field, index } = this.picTarget
-                if (index === NO_BANNER) this.form[field] = pc.att_dir
+                if (field === 'launcher') { this.form.pc_icon = pc.att_dir; this.form.mobile_icon = pc.att_dir }
+                else if (index === NO_BANNER) this.form[field] = pc.att_dir
                 else this.form.banners[index].image = pc.att_dir
                 this.modalPic = false
             },
@@ -1128,4 +1152,36 @@
             min-height: 0;
         }
     }
+
+    .deco-divider {
+        margin: 6px 0 18px;
+        font-weight: 600;
+        color: #1f2d3d;
+    }
+    .launcher-gallery {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .launcher-tile {
+        width: 52px;
+        height: 52px;
+        border: 1px solid #e4e8f0;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        overflow: hidden;
+        transition: border-color .2s, box-shadow .2s;
+        background: #fff;
+    }
+    .launcher-tile:hover { border-color: #b9c6e6; }
+    .launcher-tile-on {
+        border-color: #335cff;
+        box-shadow: 0 0 0 2px rgba(51,92,255,.16);
+    }
+    .launcher-tile img { width: 38px; height: 38px; display: block; }
+    .launcher-default-txt { font-size: 13px; color: #8a95a6; }
+    .launcher-upload { border-style: dashed; color: #97a1b2; }
 </style>
