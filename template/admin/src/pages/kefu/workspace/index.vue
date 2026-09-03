@@ -12,7 +12,7 @@
           </div>
           <div class="conversation-header" v-if="!isNarrow">
             <div class="conversation-user">
-              <img v-if="userActive && userActive.avatar" :src="userActive.avatar" alt="">
+              <img v-if="userActive && userActive.avatar" :src="userActive.avatar" alt="" @error="handleAvatarError">
               <span v-else class="conversation-user__placeholder"><Icon type="ios-person-outline" /></span>
               <div>
                 <strong>{{ userActive && userActive.nickname ? userActive.nickname : '请选择会话' }}</strong>
@@ -33,7 +33,7 @@
                   <div class="time" v-show="item.show">{{item.time }}</div>
                   <div class="flex-box">
                     <div class="avatar">
-                      <img v-lazy="item.avatar" alt="">
+                      <img :src="item.avatar" alt="" @error="handleAvatarError">
                     </div>
                     <div class="msg-wrapper">
                       <!-- 文档 -->
@@ -148,7 +148,7 @@
           <Input v-model="aiNickname" prefix="ios-search" placeholder="搜索用户名称" @on-enter="getAiSessionList" />
           <div class="ai-list" v-if="aiSessionList.length > 0">
             <div class="ai-item" v-for="(item,index) in aiSessionList" :key="index">
-              <div class="avatar"><img :src="item.avatar" alt=""></div>
+              <div class="avatar"><img :src="item.avatar" alt="" @error="handleAvatarError"></div>
               <div class="info">
                 <div class="name line1">{{item.nickname}}</div>
                 <div class="msg line1">
@@ -186,6 +186,7 @@
 
 //提示音统一走 notifySound：内部处理Chrome的自动播放限制
 import Setting from '@/setting';
+import { onAvatarError } from '@/libs/avatar';
 import { HappyScroll } from 'vue-happy-scroll'
 import baseHeader from './components/baseHeader';
 const NARROW_WIDTH = 1100
@@ -382,6 +383,10 @@ export default {
     this.onResize && window.removeEventListener('resize', this.onResize)
   },
   methods: {
+    // 头像加载失败兜底为默认头像
+    handleAvatarError(event) {
+      onAvatarError(event);
+    },
     // 建立scoket 连接
     wsAgain() {
       this.bus.pageWs.then((ws) => {

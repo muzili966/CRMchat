@@ -3,7 +3,7 @@
     <template>
       <div class="user-wrapper" v-if="activeUserInfo">
         <div class="user">
-          <div class="avatar"><img v-lazy="activeUserInfo.avatar" alt=""></div>
+          <div class="avatar"><img :src="activeUserInfo.avatar" alt="" @error="handleAvatarError"></div>
           <div class="name line1">
             <span v-if="editUserNameModel == false" @click="editUserNameModel= true">{{activeUserInfo.remark_nickname?activeUserInfo.remark_nickname: activeUserInfo.nickname}}</span>
             <Input v-if="editUserNameModel" v-model="activeUserInfo.nickname" placeholder="请输入昵称" @on-blur="editUserData('editUserNameModel')"></Input>
@@ -154,6 +154,7 @@
 
 <script>
 import delivery from './delivery'
+import { onAvatarError } from '@/libs/avatar';
 import remarks from './remarks'
 import userLabel from "./userLabel";
 import userGroup from './userGroup';
@@ -329,6 +330,8 @@ export default {
 
   },
   methods: {
+    // 头像加载失败兜底为默认头像
+    handleAvatarError(event) { onAvatarError(event); },
 
     openLeadModal() {
       //表单留空即走后端自动填充，这里只做回显

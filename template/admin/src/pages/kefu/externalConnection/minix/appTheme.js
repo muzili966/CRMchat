@@ -10,6 +10,7 @@ import {
   getChatThemeVariables
 } from '@/config/chatThemes';
 import defaultBrandIcon from '@/assets/images/qialink-logo-icon.png';
+import { onAvatarError } from '@/libs/avatar';
 
 const DEFAULT_THEME_COLOR = '#2d8cf0';
 const PLATFORM_BRAND_TEXT = '技术支持 by QiaLink 洽联';
@@ -97,6 +98,10 @@ export default {
     }
   },
   methods: {
+    // 聊天头像加载失败兜底为默认头像
+    handleAvatarError(event) {
+      onAvatarError(event);
+    },
     handleHeaderLogoError(event) {
       const image = event && event.target;
       if(!image || image.dataset.fallbackApplied) return;

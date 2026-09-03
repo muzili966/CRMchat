@@ -56,7 +56,7 @@
                     <div class="chart_list_item_time" v-show="item.show">{{item.time}}</div>
                     <div class="chart_list_item_content" :class="{'right-box': item.user_id == chatServerData.user_id}">
                       <div class="chart_list_item_avatar">
-                        <img :src="item.avatar" alt="">
+                        <img :src="item.avatar" alt="" @error="handleAvatarError">
                       </div>
                       <!-- 文字及表情信息 -->
                       <div class="chart_list_item_text" v-if="item.msn_type <= 2" :style="messageBubbleStyle(item)">

@@ -13,7 +13,7 @@
         <div class="chat-item" v-for="(item,index) in userList" :key="index"
              :class="{ active: curId == item.id, waiting: item.mssage_num > 0 }" @click="selectUser(item,index)">
           <div class="avatar">
-            <img v-lazy="item.avatar" alt="">
+            <img :src="item.avatar" alt="" @error="handleAvatarError">
             <div class="status" :class="{off:item.online == 0}"></div>
           </div>
           <div class="user-info">
@@ -72,6 +72,7 @@ import dayjs from 'dayjs'
 import { record } from '@/api/kefu'
 import { HappyScroll } from 'vue-happy-scroll'
 import empty from "../../components/empty";
+import { onAvatarError } from '@/libs/avatar';
 import { forEach } from "../../../../libs/tools";
 export default {
   name: "chatList",
@@ -229,6 +230,10 @@ export default {
     }
   },
   methods: {
+    // 头像加载失败兜底为默认头像
+    handleAvatarError(event) {
+      onAvatarError(event);
+    },
     // 搜索
     bindSearch(e) {
       this.$emit('search', e.target.value);
