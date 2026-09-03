@@ -444,13 +444,19 @@ export default {
       position: relative;
       &_handle {
         display: flex;
+        align-items: center;
 
         > div {
           margin-right: 19px;
           position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           img {
             width: 18px;
             height: 18px;
+            //内联图片会带基线留白，与旁边的字体图标差几像素
+            display: block;
           }
           .type_file {
             position: absolute;
@@ -461,9 +467,8 @@ export default {
             opacity: 0;
           }
         }
+        //不写死尺寸，与表情/图片按钮共用同一套盒子，换主题时才不会各高各的
         .transfer_service {
-          height: 18px;
-          line-height: 18px;
           color: #666;
           cursor: pointer;
         }

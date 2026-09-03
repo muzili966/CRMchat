@@ -1,12 +1,13 @@
 <template>
   <div class="kefu-login">
     <section class="brand-panel">
-      <component :is="websiteUrl ? 'a' : 'header'" class="brand-panel__header"
-                 :class="{ 'brand-panel__header--link': websiteUrl }"
-                 :href="websiteUrl || null" :target="websiteUrl ? '_blank' : null" rel="noopener">
-        <img :src="brandLogo" alt="QiaLink 洽联">
+      <header class="brand-panel__header">
+        <component :is="websiteUrl ? 'a' : 'span'" class="brand-panel__logo"
+                   :href="websiteUrl || null" :target="websiteUrl ? '_blank' : null" rel="noopener">
+          <img :src="brandLogo" alt="QiaLink 洽联">
+        </component>
         <span>智能客服工作台</span>
-      </component>
+      </header>
       <div class="brand-panel__content">
         <div class="brand-panel__copy">
           <span class="eyebrow">QIALINK SERVICE DESK</span>
@@ -364,7 +365,9 @@ export default {
 .brand-panel__header, .brand-panel__content, .brand-panel__footer { position: relative; z-index: 1; }
 .brand-panel__header { display: flex; align-items: center; justify-content: space-between; }
 .brand-panel__header img { width: 164px; height: auto; filter: brightness(0) invert(1) drop-shadow(0 4px 12px rgba(0, 53, 132, .18)); }
-.brand-panel__header--link { cursor: pointer; }
+.brand-panel__logo { display: inline-flex; color: inherit; text-decoration: none; }
+.brand-panel__logo:hover, .brand-panel__logo:focus { color: inherit; text-decoration: none; }
+a.brand-panel__logo { cursor: pointer; }
 .brand-panel__header span { padding: 7px 12px; border: 1px solid rgba(255,255,255,.2); border-radius: 999px; color: rgba(255,255,255,.78); background: rgba(255,255,255,.08); font-size: 12px; }
 .brand-panel__content { min-height: 0; display: grid; grid-template-columns: minmax(260px, .78fr) minmax(300px, 1.22fr); gap: 34px; align-items: center; }
 .eyebrow { display: block; margin-bottom: 18px; color: #cde3ff; font-size: 11px; font-weight: 600; letter-spacing: 2.4px; }

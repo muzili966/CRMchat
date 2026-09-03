@@ -268,7 +268,8 @@ export default {
 
 .visual-panel__header, .visual-panel__art, .visual-panel__copy { position: relative; z-index: 1; }
 .visual-panel__header { display: flex; align-items: center; gap: 12px; }
-.visual-panel__header--link { cursor: pointer; }
+.visual-panel__header--link { cursor: pointer; color: inherit; text-decoration: none; }
+.visual-panel__header--link:hover, .visual-panel__header--link:focus { color: inherit; text-decoration: none; }
 .visual-panel__header img { width: 44px; height: 44px; object-fit: contain; filter: brightness(0) invert(1) drop-shadow(0 0 8px rgba(255, 255, 255, .42)); }
 .visual-panel__header strong, .visual-panel__header small { display: block; }
 .visual-panel__header strong { font-size: 19px; line-height: 1.1; letter-spacing: .2px; }
