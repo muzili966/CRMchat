@@ -30,11 +30,13 @@ export const LAUNCHER_PRESETS = [
 ]
 
 /**
- * 形状。pill 支持文案
+ * 形状。pill 支持文案，其余为图标气泡
  */
 export const LAUNCHER_SHAPES = [
   { key: 'circle', label: '圆形', withText: false },
-  { key: 'rounded', label: '圆角方', withText: false },
+  { key: 'ellipse', label: '椭圆', withText: false },
+  { key: 'square', label: '方形', withText: false },
+  { key: 'rounded', label: '方形圆角', withText: false },
   { key: 'pill', label: '胶囊·带文字', withText: true }
 ]
 
@@ -67,19 +69,37 @@ function svg(attrs, body, w, h) {
     ' width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">' + body + '</svg>'
 }
 
-// 圆形/圆角方：56 见方，主题色底 + 居中图标
+// 图标气泡：主题色底 + 居中图标。椭圆为横向，其余 56 见方
+// 返回 { body, w, h }
 function shapeSvg(cfg, color) {
-  const bg = cfg.shape === 'rounded'
-    ? '<rect x="0" y="0" width="56" height="56" rx="16" fill="' + color + '"/>'
-    : '<circle cx="28" cy="28" r="28" fill="' + color + '"/>'
-  return bg + '<g transform="translate(16 16)" ' + STROKE + '>' + icon(cfg.icon) + '</g>'
+  const ic = icon(cfg.icon)
+  if (cfg.shape === 'ellipse') {
+    // 72×52 横椭圆，图标 24 居中：translate((72-24)/2, (52-24)/2)
+    return {
+      body: '<ellipse cx="36" cy="26" rx="36" ry="26" fill="' + color + '"/>' +
+        '<g transform="translate(24 14)" ' + STROKE + '>' + ic + '</g>',
+      w: 72, h: 52
+    }
+  }
+  let bg
+  if (cfg.shape === 'square') {
+    bg = '<rect x="0" y="0" width="56" height="56" fill="' + color + '"/>'
+  } else if (cfg.shape === 'rounded') {
+    bg = '<rect x="0" y="0" width="56" height="56" rx="16" fill="' + color + '"/>'
+  } else {
+    bg = '<circle cx="28" cy="28" r="28" fill="' + color + '"/>'
+  }
+  return {
+    body: bg + '<g transform="translate(16 16)" ' + STROKE + '>' + ic + '</g>',
+    w: 56, h: 56
+  }
 }
 
 // 胶囊：主题色底 + 左图标 + 右文案（文案空则退化为圆形）
 function pillSvg(cfg, color) {
   const text = (cfg.text || '').slice(0, LAUNCHER_TEXT_MAX)
   if (!text) {
-    return { body: shapeSvg({ icon: cfg.icon, shape: 'circle' }, color), w: 56, h: 56 }
+    return shapeSvg({ icon: cfg.icon, shape: 'circle' }, color)
   }
   const fs = 17
   const w = 20 + 24 + 8 + textWidth(text, fs) + 18
@@ -103,11 +123,8 @@ function toUri(str) {
  */
 export function buildLauncherPc(cfg, color) {
   const marker = 'data-p="' + cfg.icon + '" data-shape="' + cfg.shape + '"'
-  if (cfg.shape === 'pill') {
-    const p = pillSvg(cfg, color)
-    return toUri(svg(marker, p.body, p.w, p.h))
-  }
-  return toUri(svg(marker, shapeSvg(cfg, color), 56, 56))
+  const g = cfg.shape === 'pill' ? pillSvg(cfg, color) : shapeSvg(cfg, color)
+  return toUri(svg(marker, g.body, g.w, g.h))
 }
 
 /**
