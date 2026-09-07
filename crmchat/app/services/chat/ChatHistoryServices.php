@@ -11,7 +11,7 @@ use crmeb\utils\ExportFile;
 use think\facade\Db;
 
 /**
- * 历史会话
+ * 历史对话
  *
  * 后台此前只有接口没有页面，管理者看不到任何历史对话——而套餐里却在卖
  * 「记录保留天数」，卖了保留却不给看，这里补上。
@@ -41,6 +41,26 @@ class ChatHistoryServices
      * 导出时每批读取条数，避免一次 select 拉回全部消息
      */
     const EXPORT_CHUNK = 500;
+
+    /**
+     * 全局导出的会话个数上限
+     */
+    const EXPORT_SESSION_MAX = 200;
+
+    /**
+     * 全局导出的消息总条数上限
+     */
+    const EXPORT_TOTAL_MAX = 20000;
+
+    /**
+     * 导出表格的消息列表头
+     */
+    const MESSAGE_HEADER = ['时间', '发送者', '身份', '类型', '内容'];
+
+    /**
+     * 全局导出额外的会话归属列，拼在消息列之前
+     */
+    const SESSION_HEADER = ['接待客服', '访客'];
 
     /**
      * 消息类型的中文名，导出表格用
@@ -183,6 +203,83 @@ class ChatHistoryServices
     }
 
     /**
+     * 全局导出：把当前筛选条件下的所有会话导成一份对话明细
+     *
+     * 一行一条消息，前两列标明归属哪次接待，这样一份文件即可覆盖
+     * 一段时间/某个客服的全部往来，不必逐个会话点开导。
+     * @param array $where 与列表相同的筛选条件，另含 format
+     * @return string 可下载的相对URL
+     */
+    public function exportSessions(array $where): string
+    {
+        $agents = $this->agentMap();
+        if (!$agents) {
+            throw new AdminException('当前没有客服，无可导出的会话');
+        }
+        $sessions = $this->sessionQuery($where, array_keys($agents))
+            ->order('update_time DESC, id DESC')
+            //多取一条用于判断是否超出会话上限
+            ->limit(self::EXPORT_SESSION_MAX + 1)
+            ->field('user_id,to_user_id,nickname')
+            ->select();
+        $sessions = is_object($sessions) ? $sessions->toArray() : (array)$sessions;
+        if (!$sessions) {
+            throw new AdminException('当前筛选条件下没有会话');
+        }
+        $sessionCut = count($sessions) > self::EXPORT_SESSION_MAX;
+        $rows = $this->sessionRows(array_slice($sessions, 0, self::EXPORT_SESSION_MAX), $agents, $msgCut);
+        if (count($rows) <= 1) {
+            throw new AdminException('当前筛选条件下没有对话内容');
+        }
+        //宁可少给也不能悄悄少给：两种截断都要在文件里看得见
+        if ($sessionCut) {
+            $rows[] = $this->noteRow('仅导出最近的 ' . self::EXPORT_SESSION_MAX . ' 个会话，其余已截断');
+        }
+        if ($msgCut) {
+            $rows[] = $this->noteRow('已达 ' . self::EXPORT_TOTAL_MAX . ' 条消息上限，其余已截断');
+        }
+        return ExportFile::write('chat_all_', $rows, ExportFile::normalizeFormat($where['format'] ?? ''), '对话记录');
+    }
+
+    /**
+     * 逐个会话取消息并拼成带归属列的表格
+     * @param array $sessions
+     * @param array $agents
+     * @param bool $msgCut 出参：是否触达消息总数上限
+     * @return array
+     */
+    protected function sessionRows(array $sessions, array $agents, &$msgCut): array
+    {
+        $msgCut = false;
+        $rows = [array_merge(self::SESSION_HEADER, self::MESSAGE_HEADER)];
+        $total = 0;
+        foreach ($sessions as $session) {
+            $agentName = $agents[(int)$session['user_id']]['nickname'] ?? '已删除客服';
+            $visitorName = $session['nickname'] ?: '未命名访客';
+            foreach ($this->collectRecords((int)$session['user_id'], (int)$session['to_user_id']) as $item) {
+                if ($total >= self::EXPORT_TOTAL_MAX) {
+                    $msgCut = true;
+                    return $rows;
+                }
+                $rows[] = array_merge([$agentName, $visitorName], $this->messageRow($item));
+                $total++;
+            }
+        }
+        return $rows;
+    }
+
+    /**
+     * 截断说明行：内容落在最后一列
+     * @param string $note
+     * @return array
+     */
+    protected function noteRow(string $note): array
+    {
+        $width = count(self::SESSION_HEADER) + count(self::MESSAGE_HEADER);
+        return array_merge(array_fill(0, $width - 1, ''), ['（' . $note . '）']);
+    }
+
+    /**
      * 分批取整段会话，并夹在导出上限内
      * @param int $agent
      * @param int $visitor
@@ -224,18 +321,30 @@ class ChatHistoryServices
      */
     protected function exportRows(array $records): array
     {
-        $rows = [['时间', '发送者', '身份', '类型', '内容']];
+        $rows = [self::MESSAGE_HEADER];
         foreach ($records as $item) {
-            $time = (int)$item['add_time'];
-            $rows[] = [
-                $time ? date('Y-m-d H:i:s', $time) : '',
-                $item['nickname'],
-                $time ? ($item['is_agent'] ? '客服' : '访客') : '',
-                $time ? (self::TYPE_TEXT[(int)$item['msn_type']] ?? '其他') : '',
-                $this->plainContent((int)$item['msn_type'], (string)$item['msn']),
-            ];
+            $rows[] = $this->messageRow($item);
         }
         return $rows;
+    }
+
+    /**
+     * 单条消息的表格行
+     *
+     * 截断说明行没有时间，不能被当成真实消息渲染出身份和类型。
+     * @param array $item
+     * @return array
+     */
+    protected function messageRow(array $item): array
+    {
+        $time = (int)$item['add_time'];
+        return [
+            $time ? date('Y-m-d H:i:s', $time) : '',
+            $item['nickname'],
+            $time ? ($item['is_agent'] ? '客服' : '访客') : '',
+            $time ? (self::TYPE_TEXT[(int)$item['msn_type']] ?? '其他') : '',
+            $this->plainContent((int)$item['msn_type'], (string)$item['msn']),
+        ];
     }
 
     /**

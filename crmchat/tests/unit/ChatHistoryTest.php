@@ -8,7 +8,7 @@ use crmeb\utils\ExportFile;
 use PHPUnit\Framework\TestCase;
 
 /**
- * 历史会话测试
+ * 历史对话测试
  *
  * 这个接口对外暴露分页参数，limit 不设上限时客户端一次就能把整张消息表拉走；
  * 边界收敛在 pageValue 里，故重点钉死它。
@@ -123,6 +123,36 @@ class ChatHistoryTest extends TestCase
     {
         $this->assertGreaterThan(0, ChatHistoryServices::EXPORT_CHUNK);
         $this->assertLessThanOrEqual(ChatHistoryServices::EXPORT_MAX, ChatHistoryServices::EXPORT_CHUNK);
+        $this->assertGreaterThan(0, ChatHistoryServices::EXPORT_SESSION_MAX);
+        $this->assertGreaterThan(0, ChatHistoryServices::EXPORT_TOTAL_MAX);
+    }
+
+    /**
+     * 全局导出多两列会话归属，截断说明行必须与表头等宽，否则 Excel 错位
+     */
+    public function testNoteRowMatchesGlobalHeaderWidth()
+    {
+        $width = count(ChatHistoryServices::SESSION_HEADER) + count(ChatHistoryServices::MESSAGE_HEADER);
+        $note = $this->invoke('noteRow', ['已截断']);
+        $this->assertCount($width, $note);
+        $this->assertSame('（已截断）', $note[$width - 1]);
+        //说明只落在最后一列，前面必须留空
+        $this->assertSame(array_fill(0, $width - 1, ''), array_slice($note, 0, $width - 1));
+    }
+
+    /**
+     * 全局导出的每一行都要带上会话归属，且与表头列数一致
+     */
+    public function testSessionRowsCarryOwnershipColumns()
+    {
+        $header = array_merge(ChatHistoryServices::SESSION_HEADER, ChatHistoryServices::MESSAGE_HEADER);
+        $row = array_merge(['小王', '游客A'], $this->invoke('messageRow', [
+            ['add_time' => 1700000000, 'nickname' => '小王', 'is_agent' => 1, 'msn_type' => 1, 'msn' => '在的'],
+        ]));
+        $this->assertCount(count($header), $row);
+        $this->assertSame('小王', $row[0]);
+        $this->assertSame('游客A', $row[1]);
+        $this->assertSame('客服', $row[4]);
     }
 
     /**

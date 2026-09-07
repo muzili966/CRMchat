@@ -12,7 +12,7 @@ use crmeb\services\tenant\TenantContext;
 use crmeb\utils\ExportFile;
 
 /**
- * 历史会话
+ * 历史对话
  *
  * 管理者视角回看全部客服的历史对话：质检、纠纷举证、提炼FAQ。
  * 支持两种聚合——按会话（一次接待）与按访客（一个客户的全部往来）。
@@ -79,19 +79,42 @@ class History extends AuthController
      */
     public function export()
     {
-        //前端只是隐藏按钮，能力约束必须在服务端兜底，否则直接调接口即可绕过
-        $tenantId = (int)TenantContext::id();
-        if ($tenantId) {
-            /** @var TenantPlanServices $planServices */
-            $planServices = app()->make(TenantPlanServices::class);
-            $planServices->assertFeature($tenantId, 'data_export', '当前套餐不支持数据导出，请升级套餐');
-        }
+        $this->assertCanExport();
         $data = $this->request->getMore([
             [['agent_user_id', 'd'], 0],
             [['visitor_user_id', 'd'], 0],
             ['format', ExportFile::FORMAT_CSV],
         ]);
         return $this->success('导出成功', ['url' => $this->services->exportTranscript($data)]);
+    }
+
+    /**
+     * 按当前筛选条件全局导出对话
+     * @return mixed
+     */
+    public function exportAll()
+    {
+        $this->assertCanExport();
+        $where = $this->listWhere();
+        $where['format'] = (string)$this->request->param('format', ExportFile::FORMAT_CSV);
+        return $this->success('导出成功', ['url' => $this->services->exportSessions($where)]);
+    }
+
+    /**
+     * 导出的套餐门禁
+     *
+     * 前端只是隐藏按钮，能力约束必须在服务端兜底，否则直接调接口即可绕过。
+     * @return void
+     */
+    protected function assertCanExport()
+    {
+        $tenantId = (int)TenantContext::id();
+        if (!$tenantId) {
+            return;
+        }
+        /** @var TenantPlanServices $planServices */
+        $planServices = app()->make(TenantPlanServices::class);
+        $planServices->assertFeature($tenantId, 'data_export', '当前套餐不支持数据导出，请升级套餐');
     }
 
     /**

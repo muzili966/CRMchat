@@ -22,12 +22,22 @@
                     </Select>
                     <Input v-model="where.keyword" search enter-button="搜索" placeholder="访客昵称"
                            style="width: 200px" @on-search="reload"/>
+                    <!-- 导出的是当前筛选条件下的全部对话，与翻到第几页无关 -->
+                    <Dropdown @on-click="exportAll">
+                        <Button icon="ios-download-outline" :loading="!!exportingAll">
+                            全局导出<Icon type="ios-arrow-down"/>
+                        </Button>
+                        <DropdownMenu slot="list">
+                            <DropdownItem name="xlsx">导出Excel</DropdownItem>
+                            <DropdownItem name="csv">导出CSV</DropdownItem>
+                        </DropdownMenu>
+                    </Dropdown>
                 </div>
             </div>
 
             <!-- 会话视角 -->
             <Table v-if="mode === 'session'" :columns="sessionColumns" :data="list" :loading="loading"
-                   no-data-text="暂无历史会话" @on-row-click="openSession">
+                   no-data-text="暂无历史对话" @on-row-click="openSession">
                 <template slot-scope="{ row }" slot="visitor">
                     <div class="cell-user">
                         <img class="cell-avatar" :src="row.avatar" @error="handleAvatarError">
@@ -121,7 +131,8 @@
 
 <script>
     import {
-        historySessionsApi, historyVisitorsApi, historyVisitorSessionsApi, historyRecordsApi, historyExportApi
+        historySessionsApi, historyVisitorsApi, historyVisitorSessionsApi, historyRecordsApi,
+        historyExportApi, historyExportAllApi
     } from '@/api/chatHistory'
     import { kefuListApi } from '@/api/setting'
     import { onAvatarError } from '@/libs/avatar'
@@ -150,6 +161,7 @@
                 recordPage: 1,
                 recordsLoading: false,
                 exporting: '',
+                exportingAll: '',
                 sessionColumns: [
                     { title: '访客', slot: 'visitor', minWidth: 160 },
                     { title: '接待客服', slot: 'agent', width: 140 },
@@ -236,24 +248,32 @@
                 this.exporting = ''
                 this.fetchRecords()
             },
-            //导出的是整段会话，与当前翻到第几页无关
-            exportChat (format) {
-                if (!this.current) return
-                this.exporting = format
-                historyExportApi({
-                    agent_user_id: this.current.agent_user_id,
-                    visitor_user_id: this.current.visitor_id,
-                    format
-                }).then(res => {
-                    this.exporting = ''
+            //单会话与全局导出共用的落地处理：提示 + 打开下载
+            handleExport (request, flag, format) {
+                this[flag] = format
+                request.then(res => {
+                    this[flag] = ''
                     this.$Message.success(res.msg)
                     if (res.data && res.data.url) {
                         window.open(location.origin + res.data.url)
                     }
                 }).catch(res => {
-                    this.exporting = ''
+                    this[flag] = ''
                     this.$Message.error(res.msg)
                 })
+            },
+            //导出的是整段会话，与当前翻到第几页无关
+            exportChat (format) {
+                if (!this.current) return
+                this.handleExport(historyExportApi({
+                    agent_user_id: this.current.agent_user_id,
+                    visitor_user_id: this.current.visitor_id,
+                    format
+                }), 'exporting', format)
+            },
+            //导出当前筛选条件下的全部会话明细，一行一条消息
+            exportAll (format) {
+                this.handleExport(historyExportAllApi({ ...this.where, format }), 'exportingAll', format)
             },
             loadMore () {
                 this.recordPage += 1

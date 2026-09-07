@@ -35,7 +35,7 @@ export default {
       name: `${pre}history`,
       meta: {
         auth: ['chat-history'],
-        title: '历史会话'
+        title: '历史对话'
       },
       component: () => import('@/pages/chat/history/index')
     },

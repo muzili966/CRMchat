@@ -1,7 +1,7 @@
 import request from '@/libs/request'
 
 /**
- * 历史会话：会话视角列表（一行一次「客服×访客」接待）
+ * 历史对话：会话视角列表（一行一次「客服×访客」接待）
  * @param {Object} params keyword/kefu_user_id/appid/start/end/page/limit
  */
 export function historySessionsApi (params) {
@@ -13,7 +13,7 @@ export function historySessionsApi (params) {
 }
 
 /**
- * 历史会话：访客视角列表（按访客聚合其全部会话）
+ * 历史对话：访客视角列表（按访客聚合其全部会话）
  * @param {Object} params
  */
 export function historyVisitorsApi (params) {
@@ -54,6 +54,18 @@ export function historyRecordsApi (params) {
 export function historyExportApi (params) {
   return request({
     url: 'chat/history/export',
+    method: 'get',
+    params
+  })
+}
+
+/**
+ * 按当前筛选条件全局导出对话，返回可下载的相对URL
+ * @param {Object} params 与列表相同的筛选条件，另含 format
+ */
+export function historyExportAllApi (params) {
+  return request({
+    url: 'chat/history/export_all',
     method: 'get',
     params
   })

@@ -67,8 +67,31 @@ class Upgrade extends Command
         foreach ($pending as $script) {
             $baseline ? $this->markApplied($script, 0) : $this->apply($script, $output);
         }
+        if (!$baseline) {
+            $this->flushCache($output);
+        }
         $output->writeln('<info>' . ($baseline ? '已登记 ' : '已执行 ') . count($pending) . ' 个版本</info>');
         return 0;
+    }
+
+    /**
+     * 清空缓存
+     *
+     * 角色→接口的授权表按角色缓存，菜单类脚本改完库若不清缓存，
+     * 新接口会一直 403 到缓存自然过期——升级后功能"看着装上了却不能用"
+     * 就是这么来的，所以放在执行成功之后自动做掉。
+     * @param Output $output
+     * @return void
+     */
+    protected function flushCache(Output $output)
+    {
+        try {
+            \crmeb\services\CacheService::clear();
+            $output->writeln('<info>已清空缓存</info>');
+        } catch (\Throwable $e) {
+            //缓存清不掉不该让升级本身失败，但必须让执行者看见并手工补
+            $output->writeln('<error>缓存清空失败，请手工清理后再验证：' . $e->getMessage() . '</error>');
+        }
     }
 
     /**

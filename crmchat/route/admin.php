@@ -107,12 +107,13 @@ Route::group('api', function () {
             Route::get('kefu/record/:id', 'Service/chat_user')->option(['real_name' => '聊天记录']);
             //查看对话
             Route::get('kefu/chat_list', 'Service/chat_list')->option(['real_name' => '查看对话']);
-            //历史会话：管理者回看全部客服的历史对话
-            Route::get('history/sessions', 'History/sessions')->option(['real_name' => '历史会话列表']);
+            //历史对话：管理者回看全部客服的历史对话
+            Route::get('history/sessions', 'History/sessions')->option(['real_name' => '历史对话列表']);
             Route::get('history/visitors', 'History/visitors')->option(['real_name' => '历史访客列表']);
             Route::get('history/visitor/:id', 'History/visitorSessions')->option(['real_name' => '访客会话列表']);
             Route::get('history/records', 'History/records')->option(['real_name' => '历史对话内容']);
             Route::get('history/export', 'History/export')->option(['real_name' => '导出对话']);
+            Route::get('history/export_all', 'History/exportAll')->option(['real_name' => '全局导出对话']);
             //客服话术资源路由
             Route::resource('speechcraft', 'ServiceSpeechcraft')->option(['real_name' => [
                 'index' => '获取话术列表接口',
