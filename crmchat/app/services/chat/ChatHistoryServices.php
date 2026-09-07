@@ -5,7 +5,9 @@
 
 namespace app\services\chat;
 
+use crmeb\exceptions\AdminException;
 use crmeb\services\tenant\TenantContext;
+use crmeb\utils\ExportFile;
 use think\facade\Db;
 
 /**
@@ -26,6 +28,32 @@ class ChatHistoryServices
      * 列表每页条数上限，防止前端传入过大值拖垮查询
      */
     const MAX_LIMIT = 100;
+
+    /**
+     * 单次导出的消息条数上限
+     *
+     * 导出要把整段会话读进内存再拼表，不设上限时一段超长会话足以打爆内存；
+     * 超出部分按时间正序保留最早的 N 条，并在末行注明被截断。
+     */
+    const EXPORT_MAX = 5000;
+
+    /**
+     * 导出时每批读取条数，避免一次 select 拉回全部消息
+     */
+    const EXPORT_CHUNK = 500;
+
+    /**
+     * 消息类型的中文名，导出表格用
+     */
+    const TYPE_TEXT = [
+        ChatServiceDialogueRecordServices::MSN_TYPE_TXT => '文本',
+        ChatServiceDialogueRecordServices::MSN_TYPE_EMOT => '表情',
+        ChatServiceDialogueRecordServices::MSN_TYPE_IME => '图片',
+        ChatServiceDialogueRecordServices::MSN_TYPE_VOICE => '语音',
+        ChatServiceDialogueRecordServices::MSN_TYPE_GOODS => '商品',
+        ChatServiceDialogueRecordServices::MSN_TYPE_ORDER => '订单',
+        ChatServiceDialogueRecordServices::MSN_TYPE_FILE => '文件',
+    ];
 
     /**
      * 会话视角：一行一个「客服 × 访客」会话
@@ -119,13 +147,8 @@ class ChatHistoryServices
      */
     public function getTranscript(array $params): array
     {
-        $agent = (int)($params['agent_user_id'] ?? 0);
-        $visitor = (int)($params['visitor_user_id'] ?? 0);
-        if (!$agent || !$visitor) {
-            return ['list' => [], 'count' => 0];
-        }
-        //越权防线：会话必须属于当前租户的客服
-        if (!isset($this->agentMap()[$agent])) {
+        [$agent, $visitor] = $this->transcriptParty($params);
+        if (!$agent) {
             return ['list' => [], 'count' => 0];
         }
         /** @var ChatServiceDialogueRecordServices $recordServices */
@@ -137,6 +160,121 @@ class ChatHistoryServices
             'list' => $this->formatRecords($list, $agent, $visitor),
             'count' => $recordServices->getMessageCount($where),
         ];
+    }
+
+    /**
+     * 导出一段会话的完整对话
+     * @param array $params agent_user_id/visitor_user_id/format
+     * @return string 可下载的相对URL
+     */
+    public function exportTranscript(array $params): string
+    {
+        [$agent, $visitor] = $this->transcriptParty($params);
+        if (!$agent) {
+            throw new AdminException('会话不存在或无权访问');
+        }
+        $records = $this->collectRecords($agent, $visitor);
+        if (!$records) {
+            throw new AdminException('该会话没有可导出的内容');
+        }
+        $format = ExportFile::normalizeFormat($params['format'] ?? '');
+        $prefix = 'chat_' . $agent . '_' . $visitor . '_';
+        return ExportFile::write($prefix, $this->exportRows($records), $format, '对话记录');
+    }
+
+    /**
+     * 分批取整段会话，并夹在导出上限内
+     * @param int $agent
+     * @param int $visitor
+     * @return array
+     */
+    protected function collectRecords(int $agent, int $visitor): array
+    {
+        /** @var ChatServiceDialogueRecordServices $recordServices */
+        $recordServices = app()->make(ChatServiceDialogueRecordServices::class);
+        $where = ['chat' => [$agent, $visitor]];
+        $records = [];
+        //多读一个批次越过上限才能确知是否真的被截断，否则「恰好等于上限」会误报
+        for ($page = 1; ; $page++) {
+            $rows = $recordServices->getMessageList($where, $page, self::EXPORT_CHUNK);
+            $records = array_merge($records, $rows);
+            if (count($rows) < self::EXPORT_CHUNK || count($records) > self::EXPORT_MAX) {
+                break;
+            }
+        }
+        $truncated = count($records) > self::EXPORT_MAX;
+        $records = $this->formatRecords(array_slice($records, 0, self::EXPORT_MAX), $agent, $visitor);
+        if ($truncated) {
+            //宁可少给也不能悄悄少给：导出被截断必须在文件里看得见
+            $records[] = [
+                'add_time' => 0,
+                'nickname' => '',
+                'is_agent' => 0,
+                'msn_type' => 0,
+                'msn' => '（仅导出最早的 ' . self::EXPORT_MAX . ' 条消息，其余已截断）',
+            ];
+        }
+        return $records;
+    }
+
+    /**
+     * 组装导出表格：首行表头
+     * @param array $records
+     * @return array
+     */
+    protected function exportRows(array $records): array
+    {
+        $rows = [['时间', '发送者', '身份', '类型', '内容']];
+        foreach ($records as $item) {
+            $time = (int)$item['add_time'];
+            $rows[] = [
+                $time ? date('Y-m-d H:i:s', $time) : '',
+                $item['nickname'],
+                $time ? ($item['is_agent'] ? '客服' : '访客') : '',
+                $time ? (self::TYPE_TEXT[(int)$item['msn_type']] ?? '其他') : '',
+                $this->plainContent((int)$item['msn_type'], (string)$item['msn']),
+            ];
+        }
+        return $rows;
+    }
+
+    /**
+     * 消息正文转成一行可读文本
+     *
+     * 表格里没有富文本：图片/语音留URL，文件留文件名与URL，
+     * 文本去掉标签并压平换行，避免撑破单元格。
+     * @param int $type
+     * @param string $msn
+     * @return string
+     */
+    protected function plainContent(int $type, string $msn): string
+    {
+        if ($type === ChatServiceDialogueRecordServices::MSN_TYPE_FILE) {
+            $json = base64_decode(trim($msn), true);
+            $file = $json === false ? null : json_decode($json, true);
+            if (is_array($file)) {
+                return trim(($file['name'] ?? '文件') . ' ' . ($file['url'] ?? ''));
+            }
+            return '[文件]';
+        }
+        $text = html_entity_decode(strip_tags($msn), ENT_QUOTES, 'UTF-8');
+        return trim(preg_replace('/\s+/u', ' ', $text));
+    }
+
+    /**
+     * 解析并校验会话双方
+     * @param array $params
+     * @return array [agentUserId, visitorUserId]；无权访问时返回 [0, 0]
+     */
+    protected function transcriptParty(array $params): array
+    {
+        $agent = (int)($params['agent_user_id'] ?? 0);
+        $visitor = (int)($params['visitor_user_id'] ?? 0);
+        //越权防线：会话必须属于当前租户的客服
+        if (!$agent || !$visitor || !isset($this->agentMap()[$agent])) {
+            return [0, 0];
+        }
+        return [$agent, $visitor];
     }
 
     /**

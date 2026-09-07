@@ -21,7 +21,7 @@ use app\models\TenantPlanOrder;
 use crmeb\basic\BaseServices;
 use crmeb\exceptions\AdminException;
 use crmeb\services\tenant\TenantContext;
-use crmeb\utils\XlsxWriter;
+use crmeb\utils\ExportFile;
 
 /**
  * 租户套餐订购对账service
@@ -34,15 +34,15 @@ class TenantPlanOrderServices extends BaseServices
     /**
      * 对账导出目录（public下）
      */
-    const EXPORT_DIR = 'uploads/export/';
+    const EXPORT_DIR = ExportFile::DIR;
 
     /** 导出格式：逗号分隔，供财务系统直接导入 */
-    const FORMAT_CSV = 'csv';
+    const FORMAT_CSV = ExportFile::FORMAT_CSV;
 
     /** 导出格式：xlsx，表头加粗、列宽自适应，便于人工核对 */
-    const FORMAT_XLSX = 'xlsx';
+    const FORMAT_XLSX = ExportFile::FORMAT_XLSX;
 
-    const EXPORT_FORMATS = [self::FORMAT_CSV, self::FORMAT_XLSX];
+    const EXPORT_FORMATS = ExportFile::FORMATS;
 
     /**
      * TenantPlanOrderServices constructor.
@@ -219,56 +219,7 @@ class TenantPlanOrderServices extends BaseServices
      */
     protected function writeRows(string $prefix, array $rows, string $format): string
     {
-        if ($format !== self::FORMAT_XLSX) {
-            return $this->writeCsv($prefix, $rows);
-        }
-        //xlsx 依赖 zip 扩展，缺失时回落CSV而不是直接失败，导出功能不能因环境差异不可用
-        if (!XlsxWriter::isSupported()) {
-            return $this->writeCsv($prefix, $rows);
-        }
-        $dir = $this->exportDir();
-        $fileName = $prefix . date('YmdHis') . mt_rand(100, 999) . '.xlsx';
-        if (!XlsxWriter::write($dir . $fileName, $rows, '订阅订单')) {
-            throw new AdminException('导出文件写入失败');
-        }
-        return '/' . self::EXPORT_DIR . $fileName;
-    }
-
-    /**
-     * 导出目录，不存在则创建
-     * @return string
-     */
-    protected function exportDir(): string
-    {
-        $dir = root_path() . 'public/' . self::EXPORT_DIR;
-        if (!is_dir($dir) && !mkdir($dir, 0755, true)) {
-            throw new AdminException('创建导出目录失败');
-        }
-        return $dir;
-    }
-
-    /**
-     * 写出CSV文件（带BOM便于Excel识别），返回相对URL路径
-     * @param string $prefix
-     * @param array $rows
-     * @return string
-     */
-    protected function writeCsv(string $prefix, array $rows): string
-    {
-        $dir = $this->exportDir();
-        mt_srand();
-        $fileName = $prefix . date('YmdHis') . mt_rand(100, 999) . '.csv';
-        $lines = [];
-        foreach ($rows as $row) {
-            $lines[] = implode(',', array_map(function ($cell) {
-                return '"' . str_replace('"', '""', (string)$cell) . '"';
-            }, $row));
-        }
-        $content = "\xEF\xBB\xBF" . implode("\r\n", $lines);
-        if (false === file_put_contents($dir . $fileName, $content)) {
-            throw new AdminException('导出文件写入失败');
-        }
-        return '/' . self::EXPORT_DIR . $fileName;
+        return ExportFile::write($prefix, $rows, $format, '订阅订单');
     }
 
     /**

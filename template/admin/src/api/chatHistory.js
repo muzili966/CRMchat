@@ -46,3 +46,15 @@ export function historyRecordsApi (params) {
     params
   })
 }
+
+/**
+ * 导出整段对话，返回可下载的相对URL
+ * @param {Object} params agent_user_id/visitor_user_id/format
+ */
+export function historyExportApi (params) {
+  return request({
+    url: 'chat/history/export',
+    method: 'get',
+    params
+  })
+}

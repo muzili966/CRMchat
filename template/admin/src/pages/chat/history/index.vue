@@ -87,6 +87,13 @@
                 </div>
             </div>
 
+            <div v-if="current" class="sess-export">
+                <Button size="small" icon="ios-download-outline" :loading="exporting === 'xlsx'"
+                        :disabled="!records.length" @click="exportChat('xlsx')">导出Excel</Button>
+                <Button size="small" icon="ios-download-outline" :loading="exporting === 'csv'"
+                        :disabled="!records.length" @click="exportChat('csv')">导出CSV</Button>
+            </div>
+
             <div v-if="recordsLoading" class="chat-empty">加载中…</div>
             <div v-else-if="!records.length" class="chat-empty">暂无对话内容</div>
             <div v-else class="chat-box">
@@ -114,7 +121,7 @@
 
 <script>
     import {
-        historySessionsApi, historyVisitorsApi, historyVisitorSessionsApi, historyRecordsApi
+        historySessionsApi, historyVisitorsApi, historyVisitorSessionsApi, historyRecordsApi, historyExportApi
     } from '@/api/chatHistory'
     import { kefuListApi } from '@/api/setting'
     import { onAvatarError } from '@/libs/avatar'
@@ -142,6 +149,7 @@
                 recordTotal: 0,
                 recordPage: 1,
                 recordsLoading: false,
+                exporting: '',
                 sessionColumns: [
                     { title: '访客', slot: 'visitor', minWidth: 160 },
                     { title: '接待客服', slot: 'agent', width: 140 },
@@ -225,7 +233,27 @@
                 this.current = row
                 this.recordPage = 1
                 this.records = []
+                this.exporting = ''
                 this.fetchRecords()
+            },
+            //导出的是整段会话，与当前翻到第几页无关
+            exportChat (format) {
+                if (!this.current) return
+                this.exporting = format
+                historyExportApi({
+                    agent_user_id: this.current.agent_user_id,
+                    visitor_user_id: this.current.visitor_id,
+                    format
+                }).then(res => {
+                    this.exporting = ''
+                    this.$Message.success(res.msg)
+                    if (res.data && res.data.url) {
+                        window.open(location.origin + res.data.url)
+                    }
+                }).catch(res => {
+                    this.exporting = ''
+                    this.$Message.error(res.msg)
+                })
             },
             loadMore () {
                 this.recordPage += 1
@@ -326,6 +354,13 @@
     .sess-item-time {
         color: #a3aab8;
         font-size: 12px;
+    }
+    .sess-export {
+        display: flex;
+        gap: 8px;
+        padding-bottom: 12px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid #eef1f6;
     }
     .chat-empty {
         color: #a3aab8;

@@ -112,6 +112,7 @@ Route::group('api', function () {
             Route::get('history/visitors', 'History/visitors')->option(['real_name' => '历史访客列表']);
             Route::get('history/visitor/:id', 'History/visitorSessions')->option(['real_name' => '访客会话列表']);
             Route::get('history/records', 'History/records')->option(['real_name' => '历史对话内容']);
+            Route::get('history/export', 'History/export')->option(['real_name' => '导出对话']);
             //客服话术资源路由
             Route::resource('speechcraft', 'ServiceSpeechcraft')->option(['real_name' => [
                 'index' => '获取话术列表接口',

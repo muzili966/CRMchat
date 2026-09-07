@@ -7,6 +7,9 @@ namespace app\controller\admin\chat;
 
 use app\controller\admin\AuthController;
 use app\services\chat\ChatHistoryServices;
+use app\services\TenantPlanServices;
+use crmeb\services\tenant\TenantContext;
+use crmeb\utils\ExportFile;
 
 /**
  * 历史会话
@@ -68,6 +71,27 @@ class History extends AuthController
             [['limit', 'd'], 30],
         ]);
         return $this->success($this->services->getTranscript($data));
+    }
+
+    /**
+     * 导出当前会话的完整对话
+     * @return mixed
+     */
+    public function export()
+    {
+        //前端只是隐藏按钮，能力约束必须在服务端兜底，否则直接调接口即可绕过
+        $tenantId = (int)TenantContext::id();
+        if ($tenantId) {
+            /** @var TenantPlanServices $planServices */
+            $planServices = app()->make(TenantPlanServices::class);
+            $planServices->assertFeature($tenantId, 'data_export', '当前套餐不支持数据导出，请升级套餐');
+        }
+        $data = $this->request->getMore([
+            [['agent_user_id', 'd'], 0],
+            [['visitor_user_id', 'd'], 0],
+            ['format', ExportFile::FORMAT_CSV],
+        ]);
+        return $this->success('导出成功', ['url' => $this->services->exportTranscript($data)]);
     }
 
     /**
