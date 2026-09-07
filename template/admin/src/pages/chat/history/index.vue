@@ -22,16 +22,18 @@
                     </Select>
                     <Input v-model="where.keyword" search enter-button="搜索" placeholder="访客昵称"
                            style="width: 200px" @on-search="reload"/>
-                    <!-- 导出的是当前筛选条件下的全部对话，与翻到第几页无关 -->
-                    <Dropdown @on-click="exportAll">
-                        <Button icon="ios-download-outline" :loading="!!exportingAll">
-                            全局导出<Icon type="ios-arrow-down"/>
-                        </Button>
-                        <DropdownMenu slot="list">
-                            <DropdownItem name="xlsx">导出Excel</DropdownItem>
-                            <DropdownItem name="csv">导出CSV</DropdownItem>
-                        </DropdownMenu>
-                    </Dropdown>
+                    <!-- 导出的是当前筛选条件下的全部对话，与翻到第几页无关；量大故走下载中心 -->
+                    <Tooltip content="生成后到「设置管理 - 下载中心」下载" placement="top">
+                        <Dropdown @on-click="exportAll">
+                            <Button icon="ios-download-outline" :loading="!!exportingAll">
+                                全局导出<Icon type="ios-arrow-down"/>
+                            </Button>
+                            <DropdownMenu slot="list">
+                                <DropdownItem name="xlsx">导出Excel</DropdownItem>
+                                <DropdownItem name="csv">导出CSV</DropdownItem>
+                            </DropdownMenu>
+                        </Dropdown>
+                    </Tooltip>
                 </div>
             </div>
 
@@ -271,9 +273,16 @@
                     format
                 }), 'exporting', format)
             },
-            //导出当前筛选条件下的全部会话明细，一行一条消息
+            //导出当前筛选条件下的全部会话明细，走下载中心异步产出
             exportAll (format) {
-                this.handleExport(historyExportAllApi({ ...this.where, format }), 'exportingAll', format)
+                this.exportingAll = format
+                historyExportAllApi({ ...this.where, format }).then(res => {
+                    this.exportingAll = ''
+                    this.$Message.success(res.msg)
+                }).catch(res => {
+                    this.exportingAll = ''
+                    this.$Message.error(res.msg)
+                })
             },
             loadMore () {
                 this.recordPage += 1

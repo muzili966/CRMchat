@@ -60,13 +60,15 @@ export function historyExportApi (params) {
 }
 
 /**
- * 按当前筛选条件全局导出对话，返回可下载的相对URL
+ * 按当前筛选条件全局导出对话
+ *
+ * 数据量不可预期，走下载中心异步产出，接口只负责排队，不直接返回文件。
  * @param {Object} params 与列表相同的筛选条件，另含 format
  */
 export function historyExportAllApi (params) {
   return request({
     url: 'chat/history/export_all',
-    method: 'get',
+    method: 'post',
     params
   })
 }

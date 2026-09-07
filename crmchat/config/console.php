@@ -22,6 +22,7 @@ return [
         'install'      => \crmeb\command\Install::class,
         'key'          => \crmeb\command\Key::class,
         'upgrade'      => \crmeb\command\Upgrade::class,
-        'chat:gc'      => \crmeb\command\ChatFileGc::class
+        'chat:gc'      => \crmeb\command\ChatFileGc::class,
+        'export:run'   => \crmeb\command\ExportRun::class
     ],
 ];

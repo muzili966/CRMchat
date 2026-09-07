@@ -45,12 +45,15 @@ class ChatHistoryServices
     /**
      * 全局导出的会话个数上限
      */
-    const EXPORT_SESSION_MAX = 200;
+    const EXPORT_SESSION_MAX = 2000;
 
     /**
      * 全局导出的消息总条数上限
+     *
+     * 导出走下载中心异步执行，已无请求超时约束，这里只为单进程内存兜底：
+     * 实测 5 万行 xlsx 峰值约 72MB，再往上要先改成流式写入。
      */
-    const EXPORT_TOTAL_MAX = 20000;
+    const EXPORT_TOTAL_MAX = 50000;
 
     /**
      * 导出表格的消息列表头
@@ -203,14 +206,16 @@ class ChatHistoryServices
     }
 
     /**
-     * 全局导出：把当前筛选条件下的所有会话导成一份对话明细
+     * 全局导出的行数据：把当前筛选条件下的所有会话摊成一份对话明细
      *
      * 一行一条消息，前两列标明归属哪次接待，这样一份文件即可覆盖
      * 一段时间/某个客服的全部往来，不必逐个会话点开导。
-     * @param array $where 与列表相同的筛选条件，另含 format
-     * @return string 可下载的相对URL
+     *
+     * 只产出行数据，落盘交给下载中心的任务执行器，便于异步跑与统一保留期。
+     * @param array $where 与列表相同的筛选条件
+     * @return array 二维数组，首行为表头
      */
-    public function exportSessions(array $where): string
+    public function sessionExportRows(array $where): array
     {
         $agents = $this->agentMap();
         if (!$agents) {
@@ -238,7 +243,7 @@ class ChatHistoryServices
         if ($msgCut) {
             $rows[] = $this->noteRow('已达 ' . self::EXPORT_TOTAL_MAX . ' 条消息上限，其余已截断');
         }
-        return ExportFile::write('chat_all_', $rows, ExportFile::normalizeFormat($where['format'] ?? ''), '对话记录');
+        return $rows;
     }
 
     /**

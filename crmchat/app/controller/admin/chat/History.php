@@ -7,6 +7,7 @@ namespace app\controller\admin\chat;
 
 use app\controller\admin\AuthController;
 use app\services\chat\ChatHistoryServices;
+use app\services\export\ExportTaskServices;
 use app\services\TenantPlanServices;
 use crmeb\services\tenant\TenantContext;
 use crmeb\utils\ExportFile;
@@ -90,14 +91,23 @@ class History extends AuthController
 
     /**
      * 按当前筛选条件全局导出对话
+     *
+     * 数据量不可预期，走下载中心异步产出，接口只负责排队。
      * @return mixed
      */
     public function exportAll()
     {
         $this->assertCanExport();
-        $where = $this->listWhere();
-        $where['format'] = (string)$this->request->param('format', ExportFile::FORMAT_CSV);
-        return $this->success('导出成功', ['url' => $this->services->exportSessions($where)]);
+        /** @var ExportTaskServices $taskServices */
+        $taskServices = app()->make(ExportTaskServices::class);
+        $taskServices->create([
+            'type' => ExportTaskServices::TYPE_CHAT_HISTORY,
+            'params' => $this->listWhere(),
+            'format' => (string)$this->request->param('format', ExportFile::FORMAT_CSV),
+            'admin_id' => (int)$this->adminId,
+            'admin_name' => (string)($this->adminInfo['real_name'] ?? ''),
+        ]);
+        return $this->success('已加入下载中心，生成后可在「设置管理 - 下载中心」下载');
     }
 
     /**

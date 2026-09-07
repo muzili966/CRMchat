@@ -1564,4 +1564,36 @@ INSERT INTO `eb_system_menus` (`id`,`pid`,`menu_name`,`menu_path`,`api_url`,`met
 (1323,1320,'访客会话列表','','api/admin/chat/history/visitor/<id>','GET',0,1,0,2,0,0,0,'[]','','165/1320','','','admin','','',1),
 (1324,1320,'历史对话内容','','api/admin/chat/history/records','GET',0,1,0,2,0,0,0,'[]','','165/1320','','','admin','','',1),
 (1325,1320,'导出对话','','api/admin/chat/history/export','GET',0,1,0,2,0,0,0,'[]','','165/1320','','','admin','','',1),
-(1326,1320,'全局导出对话','','api/admin/chat/history/export_all','GET',0,1,0,2,0,0,0,'[]','','165/1320','','','admin','','',1);
+(1326,1320,'全局导出对话','','api/admin/chat/history/export_all','POST',0,1,0,2,0,0,0,'[]','','165/1320','','','admin','','',1);
+
+-- 下载中心：导出任务表与菜单
+-- 同步导出受限于请求超时与单进程内存，改为落任务由常驻进程异步产出，
+-- 文件带保留期，到期由 GC 连同记录一起清掉。
+CREATE TABLE IF NOT EXISTS `eb_export_task` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `tenant_id` int(11) NOT NULL DEFAULT '0' COMMENT '租户ID',
+  `admin_id` int(11) NOT NULL DEFAULT '0' COMMENT '发起人ID',
+  `admin_name` varchar(64) NOT NULL DEFAULT '' COMMENT '发起人名称，冗余保留',
+  `type` varchar(32) NOT NULL DEFAULT '' COMMENT '导出类型',
+  `type_name` varchar(64) NOT NULL DEFAULT '' COMMENT '导出类型中文名',
+  `params` varchar(2000) NOT NULL DEFAULT '' COMMENT '筛选条件JSON',
+  `format` varchar(8) NOT NULL DEFAULT 'csv' COMMENT '文件格式 csv/xlsx',
+  `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0待处理 1处理中 2成功 3失败',
+  `file_url` varchar(255) NOT NULL DEFAULT '' COMMENT '成功后的下载地址',
+  `file_size` int(11) NOT NULL DEFAULT '0' COMMENT '文件字节数',
+  `row_count` int(11) NOT NULL DEFAULT '0' COMMENT '数据行数，不含表头',
+  `message` varchar(255) NOT NULL DEFAULT '' COMMENT '失败原因或截断说明',
+  `expire_time` int(11) NOT NULL DEFAULT '0' COMMENT '文件过期时间',
+  `create_time` int(11) NOT NULL DEFAULT '0',
+  `start_time` int(11) NOT NULL DEFAULT '0',
+  `finish_time` int(11) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `idx_tenant_status` (`tenant_id`,`status`),
+  KEY `idx_status_id` (`status`,`id`),
+  KEY `idx_expire` (`expire_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='导出任务';
+
+INSERT INTO `eb_system_menus` (`id`,`pid`,`menu_name`,`menu_path`,`api_url`,`methods`,`is_show`,`is_tenant`,`is_platform`,`auth_type`,`is_del`,`is_show_path`,`sort`,`params`,`header`,`path`,`unique_auth`,`icon`,`module`,`controller`,`action`,`access`) VALUES
+(1330,12,'下载中心','/admin/export/list','','',1,1,1,1,0,0,5,'[]','setting','12','export-center','','admin','','',1),
+(1331,1330,'导出任务列表','','api/admin/export/task','GET',0,1,1,2,0,0,0,'[]','','12/1330','','','admin','','',1),
+(1332,1330,'删除导出任务','','api/admin/export/task/<id>','DELETE',0,1,1,2,0,0,0,'[]','','12/1330','','','admin','','',1);

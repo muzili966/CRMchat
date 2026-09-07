@@ -66,6 +66,18 @@ Route::group('api', function () {
         ]);
 
         /**
+         * 下载中心 相关路由
+         */
+        Route::group('export', function () {
+            Route::get('task', 'Task/index')->option(['real_name' => '导出任务列表']);
+            Route::delete('task/:id', 'Task/delete')->option(['real_name' => '删除导出任务']);
+        })->middleware([
+            AdminAuthTokenMiddleware::class,
+            AdminCkeckRoleMiddleware::class,
+            AdminLogMiddleware::class
+        ])->prefix('admin.export.');
+
+        /**
          * 客服 相关路由
          */
         Route::group('chat', function () {
@@ -113,7 +125,7 @@ Route::group('api', function () {
             Route::get('history/visitor/:id', 'History/visitorSessions')->option(['real_name' => '访客会话列表']);
             Route::get('history/records', 'History/records')->option(['real_name' => '历史对话内容']);
             Route::get('history/export', 'History/export')->option(['real_name' => '导出对话']);
-            Route::get('history/export_all', 'History/exportAll')->option(['real_name' => '全局导出对话']);
+            Route::post('history/export_all', 'History/exportAll')->option(['real_name' => '全局导出对话']);
             //客服话术资源路由
             Route::resource('speechcraft', 'ServiceSpeechcraft')->option(['real_name' => [
                 'index' => '获取话术列表接口',

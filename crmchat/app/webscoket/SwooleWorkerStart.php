@@ -63,6 +63,7 @@ class SwooleWorkerStart implements ListenerInterface
             $this->clearStaleFds();
             $this->timer($event);
             $this->dailyMaintenance($event);
+            $this->exportRunner($event);
         }
         if ($this->server->worker_id == ($this->config->get('swoole.server.options.worker_num')) && $this->config->get('swoole.websocket.enable', false)) {
             $this->ping();
@@ -84,6 +85,24 @@ class SwooleWorkerStart implements ListenerInterface
      * 用Redis当天标记做去重，保证一天只真正跑一次，重启也不会重复跑。
      * @param App $app
      */
+    /**
+     * 扫描并执行下载中心的待处理导出任务
+     *
+     * 部署环境不保证有外部cron，与文件回收一样放在常驻进程里。
+     * 领取用条件更新做原子占位，多实例部署也不会把同一条任务跑两遍。
+     * @param App $app
+     */
+    protected function exportRunner(App $app)
+    {
+        Timer::tick(10000, function () use ($app) {
+            try {
+                $app->make(\app\services\export\ExportRunnerServices::class)->run();
+            } catch (\Throwable $e) {
+                $app->log->error('导出任务执行失败：' . $e->getMessage());
+            }
+        });
+    }
+
     protected function dailyMaintenance(App $app)
     {
         Timer::tick(3600000, function () use ($app) {
@@ -95,6 +114,7 @@ class SwooleWorkerStart implements ListenerInterface
                     return;
                 }
                 $app->make(\app\services\chat\ChatFileGcServices::class)->run();
+                $app->make(\app\services\export\ExportTaskServices::class)->gc();
             } catch (\Throwable $e) {
                 $app->log->error('聊天文件回收失败：' . $e->getMessage());
             }
