@@ -31,6 +31,15 @@ export default {
       component: () => import('@/pages/chat/ai/index')
     },
     {
+      path: 'history',
+      name: `${pre}history`,
+      meta: {
+        auth: ['chat-history'],
+        title: '历史会话'
+      },
+      component: () => import('@/pages/chat/history/index')
+    },
+    {
       path: 'theme',
       name: `${pre}theme`,
       meta: {

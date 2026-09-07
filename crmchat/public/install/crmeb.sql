@@ -1481,7 +1481,8 @@ INSERT INTO `eb_system_upgrade` (`version`,`name`,`create_time`) VALUES
 ('20260903_02','visitor_account',UNIX_TIMESTAMP()),
 ('20260903_03','plan_file_send',UNIX_TIMESTAMP()),
 ('20260903_04','launcher_icon_len',UNIX_TIMESTAMP()),
-('20260903_05','launcher_icon_len_2000',UNIX_TIMESTAMP());
+('20260903_05','launcher_icon_len_2000',UNIX_TIMESTAMP()),
+('20260904_01','chat_history_menu',UNIX_TIMESTAMP());
 
 CREATE TABLE IF NOT EXISTS `eb_platform_lead` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -1554,3 +1555,11 @@ INSERT INTO `eb_system_menus` (`id`,`pid`,`menu_name`,`menu_path`,`api_url`,`met
 (1316,1310,'转派线索','','api/admin/setting/lead/assign/<id>','POST',0,0,1,2,0,0,0,'[]','','1200/1310','','','admin','','',0),
 (1317,1310,'关联租户','','api/admin/setting/lead/link/<id>','POST',0,0,1,2,0,0,0,'[]','','1200/1310','','','admin','','',0),
 (1318,1310,'删除线索','','api/admin/setting/lead/<id>','DELETE',0,0,1,2,0,0,0,'[]','','1200/1310','','','admin','','',0);
+
+-- 历史会话：挂在客服管理下，租户专属（平台视角无租户上下文）
+INSERT INTO `eb_system_menus` (`id`,`pid`,`menu_name`,`menu_path`,`api_url`,`methods`,`is_show`,`is_tenant`,`is_platform`,`auth_type`,`is_del`,`is_show_path`,`sort`,`params`,`header`,`path`,`unique_auth`,`icon`,`module`,`controller`,`action`,`access`) VALUES
+(1320,165,'历史会话','/admin/chat/history','','',1,1,0,1,0,0,25,'[]','kefu','165','chat-history','','admin','','',1),
+(1321,1320,'历史会话列表','','api/admin/chat/history/sessions','GET',0,1,0,2,0,0,0,'[]','','165/1320','','','admin','','',1),
+(1322,1320,'历史访客列表','','api/admin/chat/history/visitors','GET',0,1,0,2,0,0,0,'[]','','165/1320','','','admin','','',1),
+(1323,1320,'访客会话列表','','api/admin/chat/history/visitor/<id>','GET',0,1,0,2,0,0,0,'[]','','165/1320','','','admin','','',1),
+(1324,1320,'历史对话内容','','api/admin/chat/history/records','GET',0,1,0,2,0,0,0,'[]','','165/1320','','','admin','','',1);
