@@ -19,7 +19,7 @@ use crmeb\services\FormBuilder;
 /**
  * Class ChatAutoReplyServices
  * @package app\services\chat
- * @method array getReplyList(array $where) 获取回复列表
+ * @method array getReplyList(array $where) 按访客原话匹配关键词回复，$where 需含 message/appid/user_id
  * @method ChatAutoReplyDao setApp($app) 设置app
  */
 class ChatAutoReplyServices extends BaseServices

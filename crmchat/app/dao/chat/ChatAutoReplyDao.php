@@ -14,6 +14,7 @@ namespace app\dao\chat;
 
 use app\models\chat\ChatAutoReply;
 use crmeb\basic\BaseDao;
+use crmeb\utils\KeywordMatcher;
 
 /**
  * Class ChatAutoReplyDao
@@ -66,25 +67,34 @@ class ChatAutoReplyDao extends BaseDao
             ->where('user_id', \app\services\chat\ChatFaqServices::SCOPE_GLOBAL);
     }
 
+    /**
+     * 单次参与匹配的候选条数上限
+     *
+     * 匹配在 PHP 里做（见 KeywordMatcher），SQL 无法按「关键词出现在消息中」筛选，
+     * 只能先把候选取回来。关键词回复是运营手工维护的，量级在几十到几百条，
+     * 这个上限足够覆盖；超出部分按 sort 截断，与列表页展示优先级一致。
+     */
+    const CANDIDATE_LIMIT = 500;
+
+    /**
+     * 返回的匹配结果条数，与改造前保持一致
+     */
+    const REPLY_LIMIT = 5;
+
     public function getReplyList(array $where)
     {
-        return $this->getModel()->when(isset($where['keyword']), function ($query) use ($where) {
-            $field = 'keyword';
-            $query->where(function ($q) use ($where, $field) {
-                foreach ($where['keyword'] as $k => $v) {
-                    if ($k === 0) {
-                        $q->where($field, 'like', "%" . trim($v) . "%");
-                    } else {
-                        $q->whereOr($field, 'like', "%" . trim($v) . "%");
-                    }
-                }
-            });
-        })->when(isset($where['appid']), function ($query) use ($where) {
+        $message = trim((string)($where['message'] ?? ''));
+        if ($message === '') {
+            return [];
+        }
+        $rows = $this->getModel()->when(isset($where['appid']), function ($query) use ($where) {
             $query->where('appid', $where['appid']);
         })->when(isset($where['user_id']), function ($query) use ($where) {
             //0 是全站通用（常见问题），与客服私有的关键词回复一并参与匹配，
             //否则会出现「点卡片有答案、打同样的字没答案」的不一致
             $query->whereIn('user_id', [\app\services\chat\ChatFaqServices::SCOPE_GLOBAL, (int)$where['user_id']]);
-        })->limit(5)->order('sort desc,id desc')->select()->toArray();
+        })->limit(self::CANDIDATE_LIMIT)->order('sort desc,id desc')->select()->toArray();
+
+        return KeywordMatcher::match($message, $rows, self::REPLY_LIMIT);
     }
 }

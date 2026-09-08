@@ -30,7 +30,6 @@ use crmeb\services\DisyllabicWords;
 use crmeb\services\FormBuilder;
 use crmeb\services\SwooleTaskService;
 use FormBuilder\Exception\FormBuilderException;
-use PullWord\PullWord;
 use Swoole\Timer;
 use think\db\exception\DataNotFoundException;
 use think\db\exception\DbException;
@@ -399,22 +398,13 @@ class ChatServiceServices extends BaseServices
             return false;
         }
         $data['msn'] = '';
-        /** @var PullWord $words */
-        $pullWord = $app->make(PullWord::class);
-        $result = $pullWord->pull($msg)->toJson()->get();
-        $result = json_decode($result, true);
-        $keyword = [];
-        foreach ($result as $item) {
-            $keyword[] = $item['t'];
-        }
-        array_push($keyword, $msg);
-        if ($keyword) {
-            /** @var ChatAutoReplyServices $authReplyService */
-            $authReplyService = $app->make(ChatAutoReplyServices::class);
-            $reply = $authReplyService->setApp($app)->getReplyList(['keyword' => $keyword, 'appid' => $appId, 'user_id' => $userId]);
-            if ($reply) {
-                $data['msn'] = $reply[0]['content'];
-            }
+        //整句交给匹配器：判断的是「运营配的关键词有没有出现在这句话里」，
+        //不需要先对访客消息分词，也就不再依赖外部分词服务
+        /** @var ChatAutoReplyServices $authReplyService */
+        $authReplyService = $app->make(ChatAutoReplyServices::class);
+        $reply = $authReplyService->setApp($app)->getReplyList(['message' => $msg, 'appid' => $appId, 'user_id' => $userId]);
+        if ($reply) {
+            $data['msn'] = $reply[0]['content'];
         }
         if (!$data['msn']) {
             return false;
@@ -432,8 +422,8 @@ class ChatServiceServices extends BaseServices
      * 常见问题卡片应答
      *
      * 按 id 直取答案后走与自动回复相同的落库/推送形状。不复用关键词链路：
-     * 匹配依赖 PullWord 分词，且整条自动回复受客服个人 auto_reply 开关约束，
-     * 而卡片点击是访客的明确意图，不该被这两者掐断。
+     * 关键词匹配未必命中，且整条自动回复受客服个人 auto_reply 开关与套餐功能位
+     * 约束，而卡片点击是访客的明确意图，不该被这些掐断。
      * 答案由调用方同步取好后传入：能否命中决定了要不要抑制AI，那个判断
      * 必须在进异步回调前就有结果。
      * @param App $app

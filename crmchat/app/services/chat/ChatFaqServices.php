@@ -76,7 +76,7 @@ class ChatFaqServices extends BaseServices
     /**
      * 按 id 直取答案
      *
-     * 不走关键词匹配：匹配依赖 PullWord 分词服务，且整条自动回复链路受
+     * 不走关键词匹配：匹配未必命中，且整条自动回复链路受
      * 客服个人的 auto_reply 开关约束；卡片点击是访客的明确意图，不该被
      * 这两者影响可用性。
      * @param int $id
