@@ -49,6 +49,14 @@ class ChatServiceDialogueRecordServices extends BaseServices
     const MSN_TYPE_FILE = 7;
 
     /**
+     * 满意度评价邀请卡片
+     *
+     * 刻意不列入 MSN_TYPE：那是客户端可发送类型的白名单，
+     * 放进去访客就能自己伪造邀请卡片。本类型只由服务端插入。
+     */
+    const MSN_TYPE_RATE = 8;
+
+    /**
      * 文件消息允许的扩展名白名单
      *
      * 这是核心安全控制：静态目录按扩展名决定如何被浏览器处理，

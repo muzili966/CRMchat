@@ -327,6 +327,56 @@ class Service extends AuthController
     }
 
     /**
+     * 邀请访客评价本次接待
+     *
+     * 由客服主动发起而非等会话结束：超时结束时访客多半已经离开，
+     * 那时再邀请基本收不到评价。
+     * @return mixed
+     */
+    public function inviteRate()
+    {
+        [$userId] = $this->request->postMore([['user_id', 0]], true);
+        if (!$userId) {
+            return $this->fail('缺少访客id');
+        }
+        /** @var \app\services\performance\ChatRateServices $rateServices */
+        $rateServices = app()->make(\app\services\performance\ChatRateServices::class);
+        $record = $rateServices->invite($this->kefuInfo['appid'], (int)$this->kefuInfo['user_id'], (int)$userId);
+        return $this->success('已发出评价邀请', $record);
+    }
+
+    /**
+     * 当前接待的评价状态，供客服端显隐邀请入口
+     * @return mixed
+     */
+    public function rateStatus()
+    {
+        [$userId] = $this->request->getMore([['user_id', 0]], true);
+        if (!$userId) {
+            return $this->fail('缺少访客id');
+        }
+        /** @var \app\services\performance\ChatRateServices $rateServices */
+        $rateServices = app()->make(\app\services\performance\ChatRateServices::class);
+        return $this->success($rateServices->status((int)$this->kefuInfo['user_id'], (int)$userId));
+    }
+
+    /**
+     * 结束当前接待
+     * @return mixed
+     */
+    public function closeSession()
+    {
+        [$userId] = $this->request->postMore([['user_id', 0]], true);
+        if (!$userId) {
+            return $this->fail('缺少访客id');
+        }
+        /** @var \app\services\performance\ChatSessionServices $sessionServices */
+        $sessionServices = app()->make(\app\services\performance\ChatSessionServices::class);
+        $closed = $sessionServices->closeByKefu((int)$this->kefuInfo['user_id'], (int)$userId);
+        return $closed ? $this->success('已结束本次接待') : $this->fail('当前没有进行中的会话');
+    }
+
+    /**
      * 客服转接
      * @return mixed
      */

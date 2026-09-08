@@ -71,6 +71,12 @@
                         <chatFileCard :msn="item.msn" />
                       </div>
 
+                      <!-- 满意度评价邀请 -->
+                      <div class="chart_list_item_rate" v-if="item.msn_type == 8">
+                        <chatRateCard :msn="item.msn" :theme-color="themeColor"
+                                      @submit="submitRate" @error="msg => $Message.error(msg)"/>
+                      </div>
+
                       <!-- 图文信息 -->
                       <div class="chart_list_item_imgOrText" v-if="item.msn_type == 5">
                         <div class="order-wrapper">
@@ -182,6 +188,7 @@ import emojiList from "@/utils/emoji";
 import socketServer from './minix/socketServer';
 import visitorAccount from './components/visitorAccount';
 import chatFileCard from '@/components/chatFileCard';
+import chatRateCard from '@/components/chatRateCard';
 import chatIcon from '@/components/chatIcon';
 import { FILE_ACCEPT } from '@/libs/chatFile';
 import appTheme from './minix/appTheme';
@@ -197,6 +204,7 @@ export default {
     HappyScroll,
     visitorAccount,
     chatFileCard,
+    chatRateCard,
     chatIcon
   },
   mixins: [socketServer, appTheme],

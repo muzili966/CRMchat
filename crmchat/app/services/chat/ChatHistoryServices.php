@@ -101,6 +101,7 @@ class ChatHistoryServices
         ChatServiceDialogueRecordServices::MSN_TYPE_GOODS => '商品',
         ChatServiceDialogueRecordServices::MSN_TYPE_ORDER => '订单',
         ChatServiceDialogueRecordServices::MSN_TYPE_FILE => '文件',
+        ChatServiceDialogueRecordServices::MSN_TYPE_RATE => '评价邀请',
     ];
 
     /**
@@ -503,6 +504,10 @@ class ChatHistoryServices
      */
     protected function plainContent(int $type, string $msn): string
     {
+        if ($type === ChatServiceDialogueRecordServices::MSN_TYPE_RATE) {
+            //邀请卡片的正文是内部结构，导出成 base64 串对人没有意义
+            return '[邀请评价]';
+        }
         if ($type === ChatServiceDialogueRecordServices::MSN_TYPE_FILE) {
             $json = base64_decode(trim($msn), true);
             $file = $json === false ? null : json_decode($json, true);

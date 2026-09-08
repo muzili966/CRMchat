@@ -50,6 +50,10 @@
                       <template v-if="item.msn_type==7">
                         <chatFileCard :msn="item.msn" />
                       </template>
+                      <!-- 满意度评价邀请 -->
+                      <template v-if="item.msn_type==8">
+                        <chatRateCard :msn="item.msn" :rated="rateStatus.rate"/>
+                      </template>
                       <!-- 商品 -->
 
                       <template v-if="item.msn_type==5">
@@ -112,6 +116,19 @@
                 </div>
               </div>
               <div class="right-wrapper">
+                <!-- 邀请评价：由客服主动发起，等会话超时结束时访客多半已经离开 -->
+                <div class="icon-item" v-if="rateStatus.can_invite" @click.stop="inviteRate">
+                  <Icon style="font-weight: bold" size="20" color="#515a6e" type="ios-star-outline" />
+                  <span>邀请评价</span>
+                </div>
+                <div class="icon-item icon-item-done" v-else-if="rateStatus.rate">
+                  <Icon style="font-weight: bold" size="20" color="#ff9900" type="ios-star" />
+                  <span>已评 {{ rateStatus.rate }} 分</span>
+                </div>
+                <div class="icon-item" @click.stop="closeSession">
+                  <Icon style="font-weight: bold" size="20" color="#515a6e" type="ios-log-out" />
+                  <span>结束接待</span>
+                </div>
                 <div class="icon-item" @click.stop="isTransfer = !isTransfer">
                   <span class="iconfont iconzhuanjie"></span>
                   <span>转接</span>
@@ -197,6 +214,7 @@
 import Setting from '@/setting';
 import { onAvatarError } from '@/libs/avatar';
 import chatFileCard from '@/components/chatFileCard';
+import chatRateCard from '@/components/chatRateCard';
 import { encodeFileMsg } from '@/libs/chatFile';
 import { HappyScroll } from 'vue-happy-scroll'
 import baseHeader from './components/baseHeader';
@@ -210,7 +228,7 @@ import { initNotifySound, playNotifySound } from '@/libs/notifySound';
 import msgWindow from "./components/msgWindow";
 import authReply from "./components/authReply";
 import transfer from './components/transfer'
-import { serviceList, aiSessionListApi, aiTakeOverApi } from '@/api/kefu'
+import { serviceList, aiSessionListApi, aiTakeOverApi, inviteRateApi, rateStatusApi, closeSessionApi } from '@/api/kefu'
 // import goodsDetail from "./components/goods_detail";
 // import orderDetail from "./components/order_detail";
 import { mapState } from 'vuex'
@@ -242,7 +260,8 @@ export default {
     transfer,
     HappyScroll,
     authReply,
-    chatFileCard
+    chatFileCard,
+    chatRateCard
     // goodsDetail,
     // orderDetail
   },
@@ -285,6 +304,8 @@ export default {
       searchData: '', // 搜索文字
       scrollNum: 0, //滚动次数
       transferId: '', //转接id
+      //当前接待的评价状态，切换会话时重新拉取
+      rateStatus: { session_id: 0, rate: 0, invited: 0, can_invite: 0 },
       bodyClose: false,
       tourist: 0,
       isShow:false,
@@ -335,6 +356,13 @@ export default {
     },
   },
   watch: {
+    //切到别的访客就换了一次接待，评价状态必须跟着刷新
+    'userActive.to_user_id': {
+      handler(val) {
+        this.getRateStatus(val)
+      },
+      immediate: true
+    },
     // socketStatus:{
     //     handler(nVal,Val){
     //         if(nVal){
@@ -398,6 +426,44 @@ export default {
     this.onResize && window.removeEventListener('resize', this.onResize)
   },
   methods: {
+    // 拉取当前接待的评价状态
+    getRateStatus(userId) {
+      if (!userId) {
+        this.rateStatus = { session_id: 0, rate: 0, invited: 0, can_invite: 0 }
+        return
+      }
+      rateStatusApi({ user_id: userId }).then(res => {
+        this.rateStatus = res.data || { session_id: 0, rate: 0, invited: 0, can_invite: 0 }
+      }).catch(() => {
+        //拿不到状态时按不可邀请处理，不影响接待本身
+        this.rateStatus = { session_id: 0, rate: 0, invited: 0, can_invite: 0 }
+      })
+    },
+    // 邀请访客评价
+    inviteRate() {
+      const userId = this.userActive && this.userActive.to_user_id
+      if (!userId) return this.$Message.error('请先选择会话')
+      inviteRateApi({ user_id: userId }).then(res => {
+        this.$Message.success(res.msg)
+        this.getRateStatus(userId)
+      }).catch(res => this.$Message.error(res.msg))
+    },
+    // 结束本次接待
+    closeSession() {
+      const userId = this.userActive && this.userActive.to_user_id
+      if (!userId) return this.$Message.error('请先选择会话')
+      this.$Modal.confirm({
+        title: '结束本次接待',
+        content: '结束后本次接待计入绩效统计，访客再发消息将开启新的一次接待。',
+        onOk: () => {
+          closeSessionApi({ user_id: userId }).then(res => {
+            this.$Message.success(res.msg)
+            this.getRateStatus(userId)
+          }).catch(res => this.$Message.error(res.msg))
+        }
+      })
+    },
+
     // 头像加载失败兜底为默认头像
     handleAvatarError(event) {
       onAvatarError(event);

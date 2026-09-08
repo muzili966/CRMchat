@@ -801,3 +801,39 @@ export function serviceUploadFile(data) {
     data
   })
 }
+
+/**
+ * 邀请访客评价本次接待
+ * @param {Object} data user_id
+ */
+export function inviteRateApi (data) {
+  return request({
+    url: 'service/rate/invite',
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * 当前接待的评价状态
+ * @param {Object} params user_id
+ */
+export function rateStatusApi (params) {
+  return request({
+    url: 'service/rate/status',
+    method: 'get',
+    params
+  })
+}
+
+/**
+ * 结束本次接待
+ * @param {Object} data user_id
+ */
+export function closeSessionApi (data) {
+  return request({
+    url: 'service/session/close',
+    method: 'post',
+    data
+  })
+}

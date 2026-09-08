@@ -9,6 +9,8 @@ import { initNotifySound, playNotifySound } from '@/libs/notifySound';
 export default {
   data() {
     return {
+      //评价卡片的提交回调，按会话号暂存，等服务端回执
+      rateCallbacks: {},
       inputConType: 1,
       userMessage: '',
       //访客账号面板：401时弹登录，用户主动点击时弹绑定
@@ -194,6 +196,16 @@ export default {
         ws.$on('close',()=>{
           this.toChat = false;
           this.chatStatus = false;
+        })
+
+        //评价结果回执：卡片自身不接触通信层，由此处把结果交回去
+        ws.$on('rate_ok', data => {
+          const cb = this.rateCallbacks[data.session_id]
+          if (cb) {
+            cb(true)
+            this.$delete(this.rateCallbacks, data.session_id)
+          }
+          this.$Message && this.$Message.success('感谢您的评价')
         })
 
         ws.$on('kefu_logout',data=>{
@@ -401,6 +413,29 @@ export default {
       this.bus.pageWs.then((ws) => {
         ws.send(sendData);
       })
+    },
+
+    // 提交满意度评价
+    submitRate(payload) {
+      if (!this.chatStatus) {
+        payload.done(false)
+        return this.$Message.error('正在连接中')
+      }
+      //回执是异步到达的，先按会话号记下回调，收到 rate_ok 再解锁卡片
+      this.$set(this.rateCallbacks, payload.session_id, payload.done)
+      this.bus.pageWs.then((ws) => {
+        ws.send({
+          type: 'rate',
+          data: { session_id: payload.session_id, rate: payload.rate, remark: payload.remark }
+        })
+      })
+      //超时未收到回执就放开按钮，否则卡片会一直卡在"提交中"
+      setTimeout(() => {
+        if (this.rateCallbacks[payload.session_id]) {
+          this.rateCallbacks[payload.session_id](false)
+          this.$delete(this.rateCallbacks, payload.session_id)
+        }
+      }, 8000)
     },
 
     // 滑动到顶部

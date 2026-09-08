@@ -27,6 +27,30 @@ use think\response\Json;
  */
 class UserHandler extends BaseHandler
 {
+    /**
+     * 提交满意度评价
+     *
+     * 走 websocket 而非 HTTP：访客端的 HTTP 中间件只认应用 token、拿不到访客身份，
+     * 而这里的 fd 已绑定登录时校验过的访客，评价才不会被冒名提交。
+     * @param array $data session_id/rate/remark
+     * @param Response $response
+     * @return mixed
+     */
+    public function rate(array $data = [], Response $response)
+    {
+        $user = $this->room->get($this->fd);
+        if (!$user) {
+            return $response->fail('聊天用户不存在');
+        }
+        try {
+            app()->make(\app\services\performance\ChatRateServices::class)
+                ->submit((int)$user['user_id'], $data);
+        } catch (\Throwable $e) {
+            return $response->message('err_tip', ['msg' => $e->getMessage()]);
+        }
+        return $response->message('rate_ok', ['session_id' => (int)($data['session_id'] ?? 0)]);
+    }
+
 
     /**
      * 用户登陆

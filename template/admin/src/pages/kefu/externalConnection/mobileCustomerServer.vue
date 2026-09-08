@@ -71,6 +71,10 @@
                   <img v-lazy="item.msn" @load="imageLoad" />
                 </div>
                 <!-- 文件信息 -->
+                <div class="chart_list_item_rate" v-if="item.msn_type == 8">
+                  <chatRateCard :msn="item.msn" :theme-color="themeColor"
+                                @submit="submitRate" @error="msg => $Message.error(msg)"/>
+                </div>
                 <div class="chart_list_item_file" v-if="item.msn_type == 7">
                   <chatFileCard :msn="item.msn" />
                 </div>
@@ -158,6 +162,7 @@ import { HappyScroll } from 'vue-happy-scroll'
 import emojiList from "@/utils/emoji";
 import socketServer from './minix/socketServer';
 import chatFileCard from '@/components/chatFileCard';
+import chatRateCard from '@/components/chatRateCard';
 import chatIcon from '@/components/chatIcon';
 import { FILE_ACCEPT } from '@/libs/chatFile';
 import visitorAccount from './components/visitorAccount';
@@ -172,6 +177,7 @@ export default {
     HappyScroll,
     visitorAccount,
     chatFileCard,
+    chatRateCard,
     chatIcon
   },
   mixins: [socketServer, appTheme],
