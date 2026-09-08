@@ -5,6 +5,7 @@ namespace tests\unit;
 use app\services\chat\ChatHistoryServices;
 use app\services\chat\ChatServiceDialogueRecordServices;
 use crmeb\utils\ExportFile;
+use crmeb\utils\XlsxWriter;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -157,10 +158,16 @@ class ChatHistoryTest extends TestCase
 
     /**
      * 格式来自前端，非白名单一律回落CSV，避免拼进文件名
+     *
+     * xlsx 还额外依赖 ext-zip：缺扩展时 normalizeFormat 按设计降级为 csv。
+     * 生产镜像装了 zip，而单测容器是裸 php:7.4-cli 没有，故这一条随环境断言，
+     * 写死 'xlsx' 会让 CI 恒挂。
      */
     public function testExportFormatIsWhitelisted()
     {
-        $this->assertSame('xlsx', ExportFile::normalizeFormat('xlsx'));
+        //白名单成员资格与环境无关，单独钉住，避免上面那条随环境的断言退化成照抄实现
+        $this->assertContains('xlsx', ExportFile::FORMATS);
+        $this->assertSame(XlsxWriter::isSupported() ? 'xlsx' : 'csv', ExportFile::normalizeFormat('xlsx'));
         $this->assertSame('csv', ExportFile::normalizeFormat('csv'));
         $this->assertSame('csv', ExportFile::normalizeFormat('../../evil.php'));
         $this->assertSame('csv', ExportFile::normalizeFormat(null));
