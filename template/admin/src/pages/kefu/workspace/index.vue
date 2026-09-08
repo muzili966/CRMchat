@@ -426,6 +426,13 @@ export default {
     this.onResize && window.removeEventListener('resize', this.onResize)
   },
   methods: {
+    // 等待时长转人读格式
+    formatWait(seconds) {
+      const s = Number(seconds) || 0
+      if (s < 60) return s + ' 秒'
+      if (s < 3600) return Math.floor(s / 60) + ' 分钟'
+      return (s / 3600).toFixed(1) + ' 小时'
+    },
     // 拉取当前接待的评价状态
     getRateStatus(userId) {
       if (!userId) {
@@ -527,6 +534,19 @@ export default {
         ws.$on("reply", (data) => {
           playNotifySound();
         });
+        //无人应答提醒：服务端扫到访客等待超阈值时推来
+        ws.$on("reply_alert", (data) => {
+          this.$Notice.warning({
+            title: '访客正在等待回复',
+            desc: `有访客已等待 ${this.formatWait(data.waited)}，请尽快回复`,
+            duration: 0
+          })
+          //同时在会话列表上打标：弹窗会被关掉，列表标记才是持续可见的那个
+          if (this.$refs.chatList) {
+            this.$refs.chatList.markWaiting(data.user_id, data.waited)
+          }
+        })
+
         ws.$on("socket_error", () => {
           this.$Message.error("连接失败");
         });
@@ -728,6 +748,10 @@ export default {
       this.bus.pageWs.then((ws) => {
         ws.send(obj);
       });
+      //回复出去了就不再是"无人应答"，标记要跟着消失
+      if (this.$refs.chatList) {
+        this.$refs.chatList.clearWaiting(this.userActive.to_user_id)
+      }
     },
     send(type, data) {
       Socket.send({

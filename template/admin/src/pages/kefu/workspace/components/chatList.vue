@@ -11,7 +11,7 @@
 
       <vue-scroll :ops="ops" @handle-scroll="handleScroll" v-if="userList.length>0">
         <div class="chat-item" v-for="(item,index) in userList" :key="index"
-             :class="{ active: curId == item.id, waiting: item.mssage_num > 0 }" @click="selectUser(item,index)">
+             :class="{ active: curId == item.id, waiting: item.mssage_num > 0, overdue: !!waitAlerts[item.to_user_id] }" @click="selectUser(item,index)">
           <div class="avatar">
             <img :src="item.avatar" alt="" @error="handleAvatarError">
             <div class="status" :class="{off:item.online == 0}"></div>
@@ -19,6 +19,8 @@
           <div class="user-info">
             <div class="hd">
               <span class="name line1">{{item.nickname}}</span>
+              <!-- 无人应答：让客服在列表上就看见谁在等，不只依赖弹窗 -->
+              <span v-if="waitAlerts[item.to_user_id]" class="label overdue-label">等待 {{ formatWait(waitAlerts[item.to_user_id]) }}</span>
               <template v-if="item.type == 2">
                 <span class="label">小程序</span>
               </template>
@@ -147,6 +149,8 @@ export default {
   },
   data() {
     return {
+      //无人应答标记：访客ID => 已等待秒数，由父组件收到推送后写入
+      waitAlerts: {},
       hdTabCur: 1,
       hdTab: [
         //scope=all 会带出其他客服与AI坐席接待的会话，行内标记接待人
@@ -230,6 +234,21 @@ export default {
     }
   },
   methods: {
+    // 标记某访客正在等待回复
+    markWaiting(userId, waited) {
+      this.$set(this.waitAlerts, userId, waited)
+    },
+    // 该访客已被回复，清掉标记
+    clearWaiting(userId) {
+      this.$delete(this.waitAlerts, userId)
+    },
+    formatWait(seconds) {
+      const s = Number(seconds) || 0
+      if (s < 60) return s + '秒'
+      if (s < 3600) return Math.floor(s / 60) + '分钟'
+      return (s / 3600).toFixed(1) + '小时'
+    },
+
     // 头像加载失败兜底为默认头像
     handleAvatarError(event) {
       onAvatarError(event);
@@ -635,6 +654,17 @@ export default {
 
 .search_box {
   margin: 10px 5px 0 5px;
+}
+
+/* 无人应答：整条会话变红边，扫一眼列表就能定位 */
+.chat-item.overdue {
+  background: #fff5f5;
+  box-shadow: inset 3px 0 0 #ed4014;
+}
+.overdue-label {
+  background: #ed4014 !important;
+  color: #fff !important;
+  border-color: #ed4014 !important;
 }
 </style>
 

@@ -100,6 +100,8 @@ class SwooleWorkerStart implements ListenerInterface
                 //会话超时收尾与导出同频即可：不收尾的话进行中的会话越积越多，
                 //且这些接待永远进不了已结束的绩效口径
                 $app->make(\app\services\performance\ChatSessionServices::class)->closeIdle();
+                //无人应答扫描：访客在等而客服没回，越早提醒越有救
+                $app->make(\app\services\performance\ReplyAlertServices::class)->scan();
             } catch (\Throwable $e) {
                 $app->log->error('导出任务执行失败：' . $e->getMessage());
             }

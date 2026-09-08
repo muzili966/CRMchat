@@ -147,6 +147,7 @@ Route::group('api', function () {
             Route::get('performance/agents', 'Performance/agents')->option(['real_name' => '客服绩效明细']);
             Route::get('performance/trend', 'Performance/trend')->option(['real_name' => '绩效趋势']);
             Route::get('performance/sessions', 'Performance/sessions')->option(['real_name' => '会话明细']);
+            Route::get('performance/pending', 'Performance/pending')->option(['real_name' => '超时未应答会话']);
             Route::post('history/export_all', 'History/exportAll')->option(['real_name' => '全局导出对话']);
             //客服话术资源路由
             Route::resource('speechcraft', 'ServiceSpeechcraft')->option(['real_name' => [

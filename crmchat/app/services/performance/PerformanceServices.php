@@ -41,7 +41,25 @@ class PerformanceServices
         SUM(IF(rate > 0, 1, 0)) AS rated,
         SUM(rate) AS rate_sum,
         SUM(is_ai) AS ai_sessions,
-        SUM(transferred) AS transferred';
+        SUM(transferred) AS transferred,
+        SUM(max_pending_cost) AS wait_sum,
+        MAX(max_pending_cost) AS wait_max';
+
+    /**
+     * 聚合表达式
+     *
+     * 「超时未应答会话数」要拿租户配置的阈值现算，故不能写死在常量里。
+     * 阈值来自配置且强制转为整型，可以安全拼进 SQL。
+     * @return string
+     */
+    protected function aggregate(): string
+    {
+        $timeout = (int)app()->make(ReplyAlertServices::class)->timeout();
+        if ($timeout <= 0) {
+            return self::AGGREGATE . ', 0 AS timeout_sessions';
+        }
+        return self::AGGREGATE . ', SUM(IF(max_pending_cost >= ' . $timeout . ', 1, 0)) AS timeout_sessions';
+    }
 
     /**
      * 概览指标
@@ -50,7 +68,7 @@ class PerformanceServices
      */
     public function overview(array $where): array
     {
-        $row = $this->query($where)->field(self::AGGREGATE)->find();
+        $row = $this->query($where)->field($this->aggregate())->find();
         return $this->metrics(is_array($row) ? $row : []);
     }
 
@@ -63,7 +81,7 @@ class PerformanceServices
     {
         $rows = $this->query($where)
             ->group('kefu_user_id')
-            ->field('kefu_user_id, ' . self::AGGREGATE)
+            ->field('kefu_user_id, ' . $this->aggregate())
             ->select();
         $rows = is_object($rows) ? $rows->toArray() : (array)$rows;
         $agents = $this->agentMap();
@@ -94,7 +112,7 @@ class PerformanceServices
         [$start, $end] = $this->range($where);
         $rows = $this->query($where)
             ->group('day')
-            ->field('FROM_UNIXTIME(start_time, "%Y-%m-%d") AS day, ' . self::AGGREGATE)
+            ->field('FROM_UNIXTIME(start_time, "%Y-%m-%d") AS day, ' . $this->aggregate())
             ->select();
         $rows = is_object($rows) ? $rows->toArray() : (array)$rows;
         $byDay = [];
@@ -167,6 +185,11 @@ class PerformanceServices
             'transferred' => (int)($row['transferred'] ?? 0),
             //转人工率的分母是AI接待的会话，不是全部会话
             'transfer_rate' => $this->ratio((int)($row['transferred'] ?? 0), $aiSessions),
+            //最长等待：一次接待里访客等得最久的那段，超时告警看的就是它
+            'wait_avg' => $sessions ? (int)round((int)($row['wait_sum'] ?? 0) / $sessions) : 0,
+            'wait_max' => (int)($row['wait_max'] ?? 0),
+            'timeout_sessions' => (int)($row['timeout_sessions'] ?? 0),
+            'timeout_rate' => $this->ratio((int)($row['timeout_sessions'] ?? 0), $sessions),
         ];
     }
 

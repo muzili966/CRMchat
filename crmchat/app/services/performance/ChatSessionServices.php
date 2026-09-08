@@ -163,8 +163,11 @@ class ChatSessionServices extends BaseServices
             if (!(int)$session['first_reply_cost']) {
                 $update['first_reply_cost'] = $cost;
             }
-            //回复完即无待回复，下一条访客消息重新起算
+            //最长等待要在三处结算才始终真实：此处（客服回复）、超时扫描、会话收尾
+            $update['max_pending_cost'] = Db::raw('GREATEST(max_pending_cost, ' . $cost . ')');
+            //回复完即无待回复，下一条访客消息重新起算，告警也随之复位
             $update['pending_since'] = 0;
+            $update['alerted_at'] = 0;
         }
         $this->table()->where('id', $session['id'])->update($update);
     }
@@ -253,16 +256,22 @@ class ChatSessionServices extends BaseServices
                 ->where('status', ChatSession::STATUS_OPEN)
                 ->where('last_time', '<', $deadline)
                 ->limit(self::CLOSE_BATCH)
-                ->field('id,last_time')
+                ->field('id,last_time,pending_since')
                 ->select();
             $rows = is_object($rows) ? $rows->toArray() : (array)$rows;
             foreach ($rows as $row) {
-                Db::name('chat_session')->where('id', $row['id'])->update([
+                $update = [
                     'status' => ChatSession::STATUS_CLOSED,
                     'end_type' => ChatSession::END_TIMEOUT,
                     //结束时间取最后一条消息时刻，而非收尾任务的执行时刻
                     'end_time' => (int)$row['last_time'],
-                ]);
+                ];
+                //收尾时若仍挂着未回复，这段等待也要计入最长等待，否则一直没回的会话反而没有超时记录
+                if ((int)$row['pending_since']) {
+                    $wait = max(0, (int)$row['last_time'] - (int)$row['pending_since']);
+                    $update['max_pending_cost'] = Db::raw('GREATEST(max_pending_cost, ' . $wait . ')');
+                }
+                Db::name('chat_session')->where('id', $row['id'])->update($update);
             }
             return count($rows);
         });

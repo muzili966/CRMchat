@@ -43,6 +43,8 @@ class SystemConfigService
         'login_logo',
         'tourist_avatar',
         'service_feedback',
+        //各租户对响应时效的容忍度不同，阈值必须能各自设定
+        'reply_timeout',
     ];
 
     /**

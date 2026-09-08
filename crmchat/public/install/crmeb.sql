@@ -1490,7 +1490,8 @@ INSERT INTO `eb_system_upgrade` (`version`,`name`,`create_time`) VALUES
 ('20260904_03','chat_history_rename_export_all',UNIX_TIMESTAMP()),
 ('20260908_01','export_task',UNIX_TIMESTAMP()),
 ('20260908_02','sensitive_word',UNIX_TIMESTAMP()),
-('20260908_03','chat_session',UNIX_TIMESTAMP());
+('20260908_03','chat_session',UNIX_TIMESTAMP()),
+('20260908_04','reply_timeout',UNIX_TIMESTAMP());
 
 CREATE TABLE IF NOT EXISTS `eb_platform_lead` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -1655,6 +1656,10 @@ INSERT INTO `eb_system_menus` (`id`,`pid`,`menu_name`,`menu_path`,`api_url`,`met
 (1347,1346,'命中记录列表','','api/admin/sensitive/hit','GET',0,1,1,2,0,0,0,'[]','','12/1346','','','admin','','',1),
 (1348,1346,'标记命中已处理','','api/admin/sensitive/hit/handle/<id>','PUT',0,1,1,2,0,0,0,'[]','','12/1346','','','admin','','',1);
 
+-- 无人应答提醒阈值：挂在客服配置分类下，租户可覆盖
+INSERT INTO `eb_system_config` (`id`,`tenant_id`,`menu_name`,`type`,`input_type`,`config_tab_id`,`parameter`,`upload_type`,`required`,`width`,`high`,`value`,`info`,`desc`,`sort`,`status`) VALUES
+(390,0,'reply_timeout','text','number',69,'',0,'',100,0,'180','无人应答提醒阈值(秒)','访客发问后超过该秒数仍无客服回复即触发提醒；填 0 关闭。AI 接待的会话不计入',0,1);
+
 -- 客服会话（一次接待）：绩效与满意度的共同粒度
 CREATE TABLE IF NOT EXISTS `eb_chat_session` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
@@ -1674,6 +1679,8 @@ CREATE TABLE IF NOT EXISTS `eb_chat_session` (
   `reply_cost_sum` int(11) NOT NULL DEFAULT '0' COMMENT '响应耗时累计，用于算平均',
   `reply_count` int(11) NOT NULL DEFAULT '0' COMMENT '有效响应次数',
   `pending_since` int(11) NOT NULL DEFAULT '0' COMMENT '访客最新一条待回复消息的时间，0=无待回复',
+  `max_pending_cost` int(11) NOT NULL DEFAULT '0' COMMENT '本次接待中访客最长等待秒数',
+  `alerted_at` int(11) NOT NULL DEFAULT '0' COMMENT '最近一次超时告警时间，用于告警去重',
   `rate` tinyint(1) NOT NULL DEFAULT '0' COMMENT '满意度1-5，0=未评价',
   `rate_remark` varchar(255) NOT NULL DEFAULT '' COMMENT '评价留言',
   `rate_time` int(11) NOT NULL DEFAULT '0' COMMENT '评价时间',
@@ -1690,4 +1697,5 @@ INSERT INTO `eb_system_menus` (`id`,`pid`,`menu_name`,`menu_path`,`api_url`,`met
 (1351,1350,'绩效概览','','api/admin/chat/performance/overview','GET',0,1,0,2,0,0,0,'[]','','165/1350','','','admin','','',1),
 (1352,1350,'客服绩效明细','','api/admin/chat/performance/agents','GET',0,1,0,2,0,0,0,'[]','','165/1350','','','admin','','',1),
 (1353,1350,'绩效趋势','','api/admin/chat/performance/trend','GET',0,1,0,2,0,0,0,'[]','','165/1350','','','admin','','',1),
-(1354,1350,'会话明细','','api/admin/chat/performance/sessions','GET',0,1,0,2,0,0,0,'[]','','165/1350','','','admin','','',1);
+(1354,1350,'会话明细','','api/admin/chat/performance/sessions','GET',0,1,0,2,0,0,0,'[]','','165/1350','','','admin','','',1),
+(1355,1350,'超时未应答会话','','api/admin/chat/performance/pending','GET',0,1,0,2,0,0,0,'[]','','165/1350','','','admin','','',1);

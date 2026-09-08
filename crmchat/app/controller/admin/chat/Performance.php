@@ -68,6 +68,18 @@ class Performance extends AuthController
     }
 
     /**
+     * 当前超时未应答的会话
+     * @return mixed
+     */
+    public function pending()
+    {
+        $limit = (int)$this->request->param('limit', 50);
+        /** @var \app\services\performance\ReplyAlertServices $alertServices */
+        $alertServices = app()->make(\app\services\performance\ReplyAlertServices::class);
+        return $this->success($alertServices->pendingList($limit));
+    }
+
+    /**
      * 共用的筛选条件
      * @return array
      */
