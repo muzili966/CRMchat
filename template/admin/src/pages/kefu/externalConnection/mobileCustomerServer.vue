@@ -102,13 +102,26 @@
           <!-- 聊天内容列表结束 -->
 
           <!-- 常见问题卡片：新会话时引导访客，点一条即发出并得到既定答案 -->
-          <div class="faq_card" v-if="faqVisible">
-            <div class="faq_card_head">
-              <span class="faq_card_title">你可能想问</span>
-              <span class="faq_card_close" @click="faqVisible = false">×</span>
+          <div class="faq_card_wrap" v-if="faqVisible">
+            <div class="faq_card">
+              <div class="faq_card_head">
+                <span class="faq_card_title">你可能想问</span>
+                <span class="faq_card_close" @click="faqVisible = false">
+                  <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor"
+                          stroke-width="2" stroke-linecap="round"/>
+                  </svg>
+                </span>
+              </div>
+              <div class="faq_card_item" v-for="item in faqList" :key="item.id"
+                   @click="sendFaq(item)">
+                <span class="faq_card_item_text">{{ item.title }}</span>
+                <svg class="faq_card_item_arrow" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                  <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
             </div>
-            <div class="faq_card_item" v-for="item in faqList" :key="item.id"
-                 :style="themeFaqStyle" @click="sendFaq(item)">{{ item.title }}</div>
           </div>
         </div>
       </happy-scroll>
@@ -287,41 +300,59 @@ export default {
 }
 </script>
 <style lang="less" scoped>
+/* 常见问题卡片：走聊天主题变量；移动端没有 hover，改用按压反馈 */
+.faq_card_wrap {
+  padding: 4px 12px 10px;
+}
 .faq_card {
-  margin: 12px 10px 4px;
-  padding: 12px 14px;
-  background: #fff;
-  border: 1px solid #eef1f6;
-  border-radius: 10px;
+  background: var(--chat-incoming, #fff);
+  border: 1px solid var(--chat-border, #e5ebf5);
+  border-radius: 14px;
+  box-shadow: 0 3px 12px rgba(31, 45, 61, .05);
+  overflow: hidden;
 }
 .faq_card_head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  padding: ~"calc(12px * var(--chat-density, 1))" var(--chat-bubble-pad-x, 14px);
 }
 .faq_card_title {
-  color: #1f2d3d;
-  font-size: 13px;
-  font-weight: 500;
+  color: var(--chat-muted, #7f8ba5);
+  font-size: 12px;
+  letter-spacing: .3px;
 }
 .faq_card_close {
-  color: #a3aab8;
-  font-size: 18px;
-  line-height: 1;
-  padding: 0 2px;
+  display: flex;
+  color: var(--chat-muted, #7f8ba5);
+  opacity: .6;
+  /* 图标本身才 15px，撑开点击区到指尖尺度 */
+  padding: 4px;
+  margin: -4px;
 }
 .faq_card_item {
-  border: 1px solid;
-  border-radius: 16px;
-  padding: 8px 12px;
-  margin-bottom: 8px;
-  font-size: 13px;
-  line-height: 1.4;
-  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: ~"calc(12px * var(--chat-density, 1))" var(--chat-bubble-pad-x, 14px);
+  /* 分隔线而非独立色块：一排描边胶囊会比真实对话还抢眼 */
+  border-top: 1px solid var(--chat-border, #e5ebf5);
+  color: var(--chat-text, #172033);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
 }
-.faq_card_item:last-child {
-  margin-bottom: 0;
+.faq_card_item:active {
+  background: var(--chat-page-bg, #f3f6fb);
+}
+.faq_card_item_text {
+  flex: 1;
+}
+.faq_card_item_arrow {
+  flex: none;
+  color: var(--chat-muted, #7f8ba5);
+  opacity: .5;
 }
 
 .pc_customerServer_container {
