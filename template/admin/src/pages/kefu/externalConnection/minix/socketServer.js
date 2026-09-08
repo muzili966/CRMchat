@@ -1,16 +1,22 @@
 import { mobileScoket } from '@/libs/socket';
-import { userRecord, serviceUpload, serviceUploadFile } from '@/api/kefu';
+import { userRecord, serviceUpload, serviceUploadFile, visitorFaq } from '@/api/kefu';
 import { encodeFileMsg } from '@/libs/chatFile';
 import { setLoc, getLoc } from '@/libs/util'
 import Cookies from "js-cookie";
 
 //提示音统一走 notifySound：内部处理Chrome的自动播放限制
 import { initNotifySound, playNotifySound } from '@/libs/notifySound';
+
+//与后端 ChatSessionServices::IDLE_TIMEOUT 保持一致：静默超过此秒数算新会话
+const SESSION_IDLE_TIMEOUT = 1800;
 export default {
   data() {
     return {
       //评价卡片的提交回调，按会话号暂存，等服务端回执
       rateCallbacks: {},
+      //常见问题卡片：仅新会话展示，访客点问题或手动关闭后收起
+      faqList: [],
+      faqVisible: false,
       inputConType: 1,
       userMessage: '',
       //访客账号面板：401时弹登录，用户主动点击时弹绑定
@@ -152,7 +158,7 @@ export default {
 
       userRecord(postData).then(res => {
           this.chatServerData = res.data;
-          console.log(this.chatServerData);
+          this.loadFaq();
           this.$nextTick(() => {
             this.happyScroll = !this.happyScroll;
           })
@@ -412,6 +418,55 @@ export default {
 
       this.bus.pageWs.then((ws) => {
         ws.send(sendData);
+      })
+    },
+
+    // 常见问题卡片：只在新会话时拉取并展示
+    loadFaq() {
+      if (!this.isNewSession()) {
+        this.faqVisible = false;
+        return;
+      }
+      visitorFaq().then(res => {
+        this.faqList = (res.data && res.data.list) || [];
+        this.faqVisible = this.faqList.length > 0;
+      }).catch(() => {
+        // 卡片只是引导，拉不到就不展示，不打扰访客
+        this.faqList = [];
+        this.faqVisible = false;
+      })
+    },
+
+    // 与后端 ChatSessionServices::IDLE_TIMEOUT 同口径：
+    // 无历史，或最后一条消息已超过静默时长，即视为新会话
+    isNewSession() {
+      const list = (this.chatServerData && this.chatServerData.serviceList) || [];
+      if (!list.length) {
+        return true;
+      }
+      const last = list[list.length - 1];
+      const lastTime = Number(last && last.add_time) || 0;
+      return (Date.now() / 1000) - lastTime > SESSION_IDLE_TIMEOUT;
+    },
+
+    // 点击问题：当作普通消息发出，同时带上 faq_id，
+    // 服务端据此直接回既定答案，不经关键词匹配也不问AI
+    sendFaq(faq) {
+      if (!this.chatStatus) {
+        return this.$Message.error('正在连接中');
+      }
+      this.faqVisible = false;
+      this.bus.pageWs.then((ws) => {
+        ws.send({
+          data: {
+            msn: faq.title,
+            type: 1,
+            to_user_id: this.chatServerData.to_user_id,
+            is_tourist: 0,
+            faq_id: faq.id
+          },
+          type: 'chat'
+        });
       })
     },
 

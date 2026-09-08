@@ -31,6 +31,15 @@ export default {
       component: () => import('@/pages/chat/ai/index')
     },
     {
+      path: 'faq',
+      name: `${pre}faq`,
+      meta: {
+        auth: ['chat-faq'],
+        title: '常见问题'
+      },
+      component: () => import('@/pages/chat/faq/index')
+    },
+    {
       path: 'history',
       name: `${pre}history`,
       meta: {

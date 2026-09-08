@@ -124,6 +124,8 @@ abstract class BaseHandler
         $userId = $user['user_id'];
         $other = $data['other'] ?? [];
         $guid = $data['guid'] ?? 0;
+        //访客点击常见问题卡片时带上，老客户端不传即为0，协议向后兼容
+        $faqId = (int)($data['faq_id'] ?? 0);
         if (!$to_user_id) {
             return $response->message('err_tip', ['msg' => '用户不存在']);
         }
@@ -263,8 +265,32 @@ abstract class BaseHandler
             $isBackstage = !!$kefuInfo['is_backstage'];
         }
 
+        //访客点击常见问题卡片：答案是运营预先写好的，直接回，既不必问AI也
+        //不受客服个人 auto_reply 开关约束。
+        //同步取答案再决定是否抑制AI：id 无效（客户端过期/被改）时应当退回
+        //普通消息处理，否则访客点一下就石沉大海。
+        $faqAnswer = $faqId
+            ? app()->make(\app\services\chat\ChatFaqServices::class)->getAnswer($faqId, $appId)
+            : [];
+        if ($faqAnswer) {
+            $app = app();
+            Timer::after(100, \crmeb\services\tenant\TenantContext::wrap(function () use ($app, $services, $appId, $to_user_id, $userId, $faqAnswer, $response) {
+                $replyData = $services->faqReply($app, [
+                    'appid' => $appId,
+                    'user_id' => $to_user_id,
+                    'to_user_id' => $userId,
+                    'content' => $faqAnswer['content'],
+                ]);
+                if ($replyData) {
+                    $this->manager->pushing($this->manager->getUserIdByFds($userId), $response->message('reply', $replyData)->getData());
+                    $this->manager->pushing($this->manager->getUserIdByFds($to_user_id), $response->message('chat', $replyData)->getData());
+                }
+            }));
+        }
+
         //接收方是AI坐席：LLM调用交由task进程执行，避免阻塞ws worker事件循环
-        if ($this->dispatchAiReply($appId, $userId, $to_user_id, [
+        //卡片已给出确定答案时跳过，避免一问两答，也省一次LLM调用
+        if (!$faqAnswer && $this->dispatchAiReply($appId, $userId, $to_user_id, [
             'msn' => $msn,
             'msn_type' => $msn_type,
             'other' => $other,
@@ -274,7 +300,7 @@ abstract class BaseHandler
         }
 
         //开启自动回复（受套餐功能约束；Timer回调运行在新协程，wrap携带当前租户上下文）
-        if ($auto_reply && $planServices->hasFeature(TenantContext::id(), 'auto_reply')) {
+        if (!$faqAnswer && $auto_reply && $planServices->hasFeature(TenantContext::id(), 'auto_reply')) {
             $app = app();
             Timer::after(100, \crmeb\services\tenant\TenantContext::wrap(function () use ($app, $services, $appId, $to_user_id, $other, $msn_type, $userId, $msn, $response) {
                 $data = $services->autoReply($app, $appId, $to_user_id, $userId, $msn, $msn_type, $other);

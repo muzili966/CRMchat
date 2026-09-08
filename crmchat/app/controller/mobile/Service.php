@@ -75,6 +75,20 @@ class Service extends AuthController
     }
 
     /**
+     * 常见问题卡片
+     *
+     * 只返回问题标题与ID，答案不随卡片下发：答案可能较长，且访客多数只点一两条，
+     * 点击时再按ID取即可。
+     * @return mixed
+     */
+    public function faq()
+    {
+        /** @var \app\services\chat\ChatFaqServices $faqServices */
+        $faqServices = app()->make(\app\services\chat\ChatFaqServices::class);
+        return $this->success(['list' => $faqServices->getCardList($this->appId)]);
+    }
+
+    /**
      * @param $key
      * @return mixed
      */

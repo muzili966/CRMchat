@@ -99,6 +99,16 @@
                   </div>
                 </div>
                 <!-- 聊天内容列表结束 -->
+
+                <!-- 常见问题卡片：新会话时引导访客，点一条即发出并得到既定答案 -->
+                <div class="faq_card" v-if="faqVisible">
+                  <div class="faq_card_head">
+                    <span class="faq_card_title">你可能想问</span>
+                    <span class="faq_card_close" @click="faqVisible = false">×</span>
+                  </div>
+                  <div class="faq_card_item" v-for="item in faqList" :key="item.id"
+                       :style="themeFaqStyle" @click="sendFaq(item)">{{ item.title }}</div>
+                </div>
               </div>
             </happy-scroll>
 
@@ -943,6 +953,50 @@ export default {
   }
 }
 </style>
+.faq_card {
+  margin: 12px 10px 4px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid #eef1f6;
+  border-radius: 10px;
+}
+.faq_card_head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.faq_card_title {
+  color: #1f2d3d;
+  font-size: 13px;
+  font-weight: 500;
+}
+.faq_card_close {
+  color: #a3aab8;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.faq_card_item {
+  border: 1px solid;
+  border-radius: 16px;
+  padding: 7px 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+  background: transparent;
+  transition: opacity .2s;
+}
+.faq_card_item:last-child {
+  margin-bottom: 0;
+}
+.faq_card_item:hover {
+  opacity: .7;
+}
+</style>
+
 <style lang="less">
 .advertisement {
   img,

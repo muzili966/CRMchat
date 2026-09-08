@@ -65,6 +65,11 @@ export default {
     themeBgStyle() {
       return { background: this.themeColor };
     },
+    // 常见问题条：只用主题色描文字与边框，不铺底，
+    // 免得一排色块把卡片压得比真实对话还抢眼
+    themeFaqStyle() {
+      return { color: this.themeColor, borderColor: this.themeColor };
+    },
     // 主题色饱和度不可控，同步改文字色以保证气泡可读
     themeBubbleStyle() {
       if(this.bubbleStyle === 'outline') {

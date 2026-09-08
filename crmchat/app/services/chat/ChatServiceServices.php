@@ -419,6 +419,69 @@ class ChatServiceServices extends BaseServices
         if (!$data['msn']) {
             return false;
         }
+        return $this->persistReply($app, $data, [
+            'appid' => $appId,
+            'user_id' => $userId,
+            'to_user_id' => $toUserId,
+            'msg' => $msg,
+            'msn_type' => $msntype,
+        ]);
+    }
+
+    /**
+     * 常见问题卡片应答
+     *
+     * 按 id 直取答案后走与自动回复相同的落库/推送形状。不复用关键词链路：
+     * 匹配依赖 PullWord 分词，且整条自动回复受客服个人 auto_reply 开关约束，
+     * 而卡片点击是访客的明确意图，不该被这两者掐断。
+     * 答案由调用方同步取好后传入：能否命中决定了要不要抑制AI，那个判断
+     * 必须在进异步回调前就有结果。
+     * @param App $app
+     * @param array $ctx appid/user_id(客服)/to_user_id(访客)/content
+     * @return array|bool 内容为空返回 false
+     */
+    public function faqReply(App $app, array $ctx)
+    {
+        $this->dao->setApp($app);
+        $content = trim((string)($ctx['content'] ?? ''));
+        if ($content === '') {
+            return false;
+        }
+        $data = [
+            'add_time' => time(),
+            'appid' => $ctx['appid'],
+            'user_id' => $ctx['user_id'],
+            'to_user_id' => $ctx['to_user_id'],
+            'msn_type' => 1,
+            'type' => 1,
+            'is_send' => 1,
+            'other' => '',
+            'msn' => $content,
+        ];
+        return $this->persistReply($app, $data, [
+            'appid' => (string)$ctx['appid'],
+            'user_id' => (int)$ctx['user_id'],
+            'to_user_id' => (int)$ctx['to_user_id'],
+            'msg' => $content,
+            'msn_type' => 1,
+        ]);
+    }
+
+    /**
+     * 回复消息落库并补齐推送所需字段
+     *
+     * 自动回复与常见问题共用：两者只是「答案从哪来」不同，落库、补昵称头像、
+     * 更新会话索引这一段完全一致。
+     * @param App $app
+     * @param array $data 待落库的消息
+     * @param array $ctx appid/user_id/to_user_id/msg/msn_type
+     * @return array
+     * @throws DataNotFoundException
+     * @throws DbException
+     * @throws ModelNotFoundException
+     */
+    protected function persistReply(App $app, array $data, array $ctx): array
+    {
         /** @var ChatServiceDialogueRecordServices $logServices */
         $logServices = $app->make(ChatServiceDialogueRecordServices::class);
         $data = $logServices->setApp($app)->save($data);
@@ -436,15 +499,15 @@ class ChatServiceServices extends BaseServices
         //用户向客服发送消息，判断当前客服是否在登录中
         /** @var ChatServiceRecordServices $serviceRecored */
         $serviceRecored = $app->make(ChatServiceRecordServices::class);
-        $unMessagesCount = $logServices->setApp($app)->getMessageNum(['user_id' => $userId, 'to_user_id' => $toUserId, 'type' => 0]);
+        $unMessagesCount = $logServices->setApp($app)->getMessageNum(['user_id' => $ctx['user_id'], 'to_user_id' => $ctx['to_user_id'], 'type' => 0]);
         //记录当前用户和他人聊天记录
         $data['recored'] = $serviceRecored->setApp($app)->saveRecord(
-            $appId,
-            $userId,
-            $toUserId,
-            $msg,
-            $formType ?? 0,
-            $msntype,
+            $ctx['appid'],
+            $ctx['user_id'],
+            $ctx['to_user_id'],
+            $ctx['msg'],
+            0,
+            $ctx['msn_type'],
             $unMessagesCount,
             (int)$isTourist,
             $data['nickname'],

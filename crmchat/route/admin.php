@@ -118,6 +118,13 @@ Route::group('api', function () {
             Route::post('reply/:id', 'AutoReply/save')->option(['real_name' => '保存自动回复']);
             //删除自动回复
             Route::delete('reply/:id', 'AutoReply/delete')->option(['real_name' => '删除自动回复']);
+            //常见问题（与自动回复同表，user_id=0 表示全站通用）
+            Route::get('faq', 'Faq/index')->option(['real_name' => '常见问题列表']);
+            Route::post('faq', 'Faq/save')->option(['real_name' => '保存常见问题']);
+            //排序声明在 :id 之前，否则 sort 会被当成路由参数吃掉
+            Route::post('faq/sort', 'Faq/sort')->option(['real_name' => '常见问题排序']);
+            Route::put('faq/:id', 'Faq/update')->option(['real_name' => '更新常见问题']);
+            Route::delete('faq/:id', 'Faq/delete')->option(['real_name' => '删除常见问题']);
             //客服登录
             Route::get('kefu/login/:id', 'Service/keufLogin')->option(['real_name' => '客服登录']);
             //添加客服表单

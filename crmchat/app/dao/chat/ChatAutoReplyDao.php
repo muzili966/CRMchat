@@ -51,6 +51,21 @@ class ChatAutoReplyDao extends BaseDao
      * @throws \think\db\exception\DbException
      * @throws \think\db\exception\ModelNotFoundException
      */
+    /**
+     * 常见问题的查询起点（全站通用条目）
+     *
+     * 不走 search()：那是模型搜索器机制，只对定义了 searchXxxAttr 的字段生效，
+     * is_faq / id 没有搜索器会被静默忽略，条件丢了却查得到数据。这里显式写条件。
+     * @param string $appid
+     * @return \think\db\Query
+     */
+    public function faqQuery(string $appid)
+    {
+        return $this->getModel()
+            ->where('appid', $appid)
+            ->where('user_id', \app\services\chat\ChatFaqServices::SCOPE_GLOBAL);
+    }
+
     public function getReplyList(array $where)
     {
         return $this->getModel()->when(isset($where['keyword']), function ($query) use ($where) {
@@ -67,7 +82,9 @@ class ChatAutoReplyDao extends BaseDao
         })->when(isset($where['appid']), function ($query) use ($where) {
             $query->where('appid', $where['appid']);
         })->when(isset($where['user_id']), function ($query) use ($where) {
-            $query->where('user_id', $where['user_id']);
+            //0 是全站通用（常见问题），与客服私有的关键词回复一并参与匹配，
+            //否则会出现「点卡片有答案、打同样的字没答案」的不一致
+            $query->whereIn('user_id', [\app\services\chat\ChatFaqServices::SCOPE_GLOBAL, (int)$where['user_id']]);
         })->limit(5)->order('sort desc,id desc')->select()->toArray();
     }
 }
