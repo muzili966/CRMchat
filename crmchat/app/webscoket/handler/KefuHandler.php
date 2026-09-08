@@ -31,6 +31,14 @@ use think\response\Json;
  */
 class KefuHandler extends BaseHandler
 {
+    /**
+     * 本端是客服，发出的消息按客服来源检查
+     * @return int
+     */
+    protected function senderScope(): int
+    {
+        return \crmeb\utils\SensitiveFilter::SCOPE_AGENT;
+    }
 
     /**
      * @param array $data

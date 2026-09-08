@@ -40,6 +40,10 @@ export const PLAN_FEATURE_TEXT = {
   file_send: {
     name: '文件收发',
     desc: '访客与客服可互发办公文档、压缩包与原图附件（单文件20MB），免费版仅图片与文字。'
+  },
+  sensitive_word: {
+    name: '自定义敏感词',
+    desc: '维护本租户的业务词库，例如拦截客服私发微信、手机号带走客户。平台合规词库对所有套餐始终生效。'
   }
 }
 
@@ -67,7 +71,8 @@ export const PLAN_FEATURE_FIELDS = [
   'app_push',
   'white_label',
   'custom_domain',
-  'file_send'
+  'file_send',
+  'sensitive_word'
 ]
 
 /**

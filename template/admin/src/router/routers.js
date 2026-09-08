@@ -17,6 +17,7 @@ import system from './modules/system'
 import tenant from './modules/tenant'
 import kefu from './modules/kefu'
 import exportCenter from './modules/export'
+import sensitive from './modules/sensitive'
 import BasicLayout from '@/components/main'
 import frameOut from './modules/frameOut'
 /**
@@ -111,7 +112,8 @@ const frameIn = [
     app,
     tenant,
     kefu,
-    exportCenter
+    exportCenter,
+    sensitive
 ]
 
 /**

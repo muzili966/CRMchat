@@ -66,6 +66,23 @@ Route::group('api', function () {
         ]);
 
         /**
+         * 敏感词 相关路由
+         */
+        Route::group('sensitive', function () {
+            Route::get('word', 'Word/index')->option(['real_name' => '敏感词列表']);
+            Route::post('word', 'Word/save')->option(['real_name' => '新增敏感词']);
+            Route::post('word/import', 'Word/import')->option(['real_name' => '批量导入敏感词']);
+            Route::put('word/:id', 'Word/update')->option(['real_name' => '修改敏感词']);
+            Route::delete('word/:id', 'Word/delete')->option(['real_name' => '删除敏感词']);
+            Route::get('hit', 'Hit/index')->option(['real_name' => '命中记录列表']);
+            Route::put('hit/handle/:id', 'Hit/handle')->option(['real_name' => '标记命中已处理']);
+        })->middleware([
+            AdminAuthTokenMiddleware::class,
+            AdminCkeckRoleMiddleware::class,
+            AdminLogMiddleware::class
+        ])->prefix('admin.sensitive.');
+
+        /**
          * 下载中心 相关路由
          */
         Route::group('export', function () {

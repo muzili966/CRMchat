@@ -39,6 +39,11 @@ class AiReplyServices extends BaseServices
     /**
      * LLM不可用或超限时的兜底话术
      */
+    /**
+     * 模型输出被拦截时的兜底话术
+     */
+    const FALLBACK_BLOCKED = '这个问题我不太方便回答，您可以换个问法或转人工客服。';
+
     const FALLBACK_BUSY = '抱歉，我这边暂时无法回复，您可以稍后再试或输入"人工"联系人工客服。';
     const FALLBACK_QUOTA = '今日智能客服服务量已达上限，您可以输入"人工"联系人工客服。';
     const FALLBACK_LIMIT = '您的提问有点频繁，请稍后再试，或输入"人工"联系人工客服。';
@@ -201,6 +206,11 @@ class AiReplyServices extends BaseServices
         if ($content === '') {
             return;
         }
+        //模型输出不可预期，落库外发前必须过一遍：这条链路的合规责任在服务提供方
+        $content = $this->filterOutput($ctx, $content);
+        if ($content === '') {
+            return;
+        }
         try {
             $data = $this->saveReply($ctx, $content, $source);
             $this->pushReply($ctx, $data);
@@ -208,6 +218,28 @@ class AiReplyServices extends BaseServices
         } catch (\Throwable $e) {
             Log::error('AI回复落库或推送失败：' . $e->getMessage());
         }
+    }
+
+    /**
+     * 过滤模型输出
+     *
+     * 命中拦截时不外发，改用兜底话术而非静默丢弃——用户等不到回复
+     * 比收到一句"换个问题"更糟。
+     * @param array $ctx
+     * @param string $content
+     * @return string
+     */
+    protected function filterOutput(array $ctx, string $content): string
+    {
+        /** @var \app\services\sensitive\SensitiveCheckServices $sensitive */
+        $sensitive = app()->make(\app\services\sensitive\SensitiveCheckServices::class);
+        $checked = $sensitive->check($content, \crmeb\utils\SensitiveFilter::SCOPE_AI, [
+            'appid' => $ctx['appid'] ?? '',
+            'user_id' => (int)($ctx['ai_user_id'] ?? 0),
+            'to_user_id' => (int)($ctx['user_id'] ?? 0),
+            'nickname' => 'AI',
+        ]);
+        return $checked['blocked'] ? self::FALLBACK_BLOCKED : $checked['text'];
     }
 
     /**

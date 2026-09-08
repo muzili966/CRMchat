@@ -1387,6 +1387,9 @@ ALTER TABLE `eb_tenant_plan` ADD `custom_domain` tinyint(1) NOT NULL DEFAULT '0'
 UPDATE `eb_tenant_plan` SET `custom_domain` = 1 WHERE `name` = '旗舰版';
 ALTER TABLE `eb_tenant_plan` ADD `file_send` tinyint(1) NOT NULL DEFAULT '0' COMMENT '文件收发0=否,1=是' AFTER `ai_reply`;
 UPDATE `eb_tenant_plan` SET `file_send` = 1 WHERE `price` > 0 AND `is_delete` = 0;
+-- 自定义敏感词：租户维护自己的业务词库；平台合规词库不受套餐约束
+ALTER TABLE `eb_tenant_plan` ADD `sensitive_word` tinyint(1) NOT NULL DEFAULT '0' COMMENT '自定义敏感词0=否,1=是' AFTER `file_send`;
+UPDATE `eb_tenant_plan` SET `sensitive_word` = 1 WHERE `price` > 0 AND `is_delete` = 0;
 -- 说明：系统设置的分类可见性不再依赖硬编码，改为按"分类下是否含租户可覆盖配置项"动态判定
 -- （见 SystemConfigServices::filterTenantTabs），新增配置项时可见性自动跟随，无需再改数据
 
@@ -1482,7 +1485,11 @@ INSERT INTO `eb_system_upgrade` (`version`,`name`,`create_time`) VALUES
 ('20260903_03','plan_file_send',UNIX_TIMESTAMP()),
 ('20260903_04','launcher_icon_len',UNIX_TIMESTAMP()),
 ('20260903_05','launcher_icon_len_2000',UNIX_TIMESTAMP()),
-('20260904_01','chat_history_menu',UNIX_TIMESTAMP());
+('20260904_01','chat_history_menu',UNIX_TIMESTAMP()),
+('20260904_02','chat_history_export',UNIX_TIMESTAMP()),
+('20260904_03','chat_history_rename_export_all',UNIX_TIMESTAMP()),
+('20260908_01','export_task',UNIX_TIMESTAMP()),
+('20260908_02','sensitive_word',UNIX_TIMESTAMP());
 
 CREATE TABLE IF NOT EXISTS `eb_platform_lead` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -1597,3 +1604,52 @@ INSERT INTO `eb_system_menus` (`id`,`pid`,`menu_name`,`menu_path`,`api_url`,`met
 (1330,12,'下载中心','/admin/export/list','','',1,1,1,1,0,0,5,'[]','setting','12','export-center','','admin','','',1),
 (1331,1330,'导出任务列表','','api/admin/export/task','GET',0,1,1,2,0,0,0,'[]','','12/1330','','','admin','','',1),
 (1332,1330,'删除导出任务','','api/admin/export/task/<id>','DELETE',0,1,1,2,0,0,0,'[]','','12/1330','','','admin','','',1);
+
+-- 敏感词：两级词库（tenant_id=0为平台合规词，对所有租户强制生效）与命中留痕
+CREATE TABLE IF NOT EXISTS `eb_sensitive_word` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `tenant_id` int(11) NOT NULL DEFAULT '0' COMMENT '租户ID，0为平台级合规词',
+  `word` varchar(64) NOT NULL DEFAULT '' COMMENT '词条',
+  `category` varchar(32) NOT NULL DEFAULT '' COMMENT '分类，便于批量管理',
+  `action` tinyint(1) NOT NULL DEFAULT '1' COMMENT '1拦截 2替换 3仅告警',
+  `scope` tinyint(1) NOT NULL DEFAULT '7' COMMENT '作用范围位掩码 1访客 2客服 4AI',
+  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '0停用 1启用',
+  `remark` varchar(255) NOT NULL DEFAULT '' COMMENT '备注',
+  `create_time` int(11) NOT NULL DEFAULT '0',
+  `update_time` int(11) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_tenant_word` (`tenant_id`,`word`),
+  KEY `idx_tenant_status` (`tenant_id`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='敏感词库';
+
+CREATE TABLE IF NOT EXISTS `eb_sensitive_hit` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `tenant_id` int(11) NOT NULL DEFAULT '0' COMMENT '租户ID',
+  `word_id` int(11) NOT NULL DEFAULT '0' COMMENT '命中词ID',
+  `word` varchar(64) NOT NULL DEFAULT '' COMMENT '命中词，冗余保留以防词条被删',
+  `is_platform` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否平台级词命中',
+  `action` tinyint(1) NOT NULL DEFAULT '1' COMMENT '实际处置',
+  `scope` tinyint(1) NOT NULL DEFAULT '1' COMMENT '来源 1访客 2客服 4AI',
+  `appid` varchar(32) NOT NULL DEFAULT '' COMMENT '应用',
+  `user_id` int(11) NOT NULL DEFAULT '0' COMMENT '发送方',
+  `to_user_id` int(11) NOT NULL DEFAULT '0' COMMENT '接收方',
+  `nickname` varchar(64) NOT NULL DEFAULT '' COMMENT '发送方昵称，冗余保留',
+  `content` varchar(500) NOT NULL DEFAULT '' COMMENT '原文片段，留作证据链',
+  `handled` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0待处理 1已处理',
+  `create_time` int(11) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `idx_tenant_time` (`tenant_id`,`create_time`),
+  KEY `idx_tenant_handled` (`tenant_id`,`handled`),
+  KEY `idx_word` (`word_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='敏感词命中记录';
+
+INSERT INTO `eb_system_menus` (`id`,`pid`,`menu_name`,`menu_path`,`api_url`,`methods`,`is_show`,`is_tenant`,`is_platform`,`auth_type`,`is_del`,`is_show_path`,`sort`,`params`,`header`,`path`,`unique_auth`,`icon`,`module`,`controller`,`action`,`access`) VALUES
+(1340,12,'敏感词管理','/admin/sensitive/word','','',1,1,1,1,0,0,4,'[]','setting','12','sensitive-word','','admin','','',1),
+(1341,1340,'敏感词列表','','api/admin/sensitive/word','GET',0,1,1,2,0,0,0,'[]','','12/1340','','','admin','','',1),
+(1342,1340,'新增敏感词','','api/admin/sensitive/word','POST',0,1,1,2,0,0,0,'[]','','12/1340','','','admin','','',1),
+(1343,1340,'修改敏感词','','api/admin/sensitive/word/<id>','PUT',0,1,1,2,0,0,0,'[]','','12/1340','','','admin','','',1),
+(1344,1340,'删除敏感词','','api/admin/sensitive/word/<id>','DELETE',0,1,1,2,0,0,0,'[]','','12/1340','','','admin','','',1),
+(1345,1340,'批量导入敏感词','','api/admin/sensitive/word/import','POST',0,1,1,2,0,0,0,'[]','','12/1340','','','admin','','',1),
+(1346,12,'敏感词命中','/admin/sensitive/hit','','',1,1,1,1,0,0,3,'[]','setting','12','sensitive-hit','','admin','','',1),
+(1347,1346,'命中记录列表','','api/admin/sensitive/hit','GET',0,1,1,2,0,0,0,'[]','','12/1346','','','admin','','',1),
+(1348,1346,'标记命中已处理','','api/admin/sensitive/hit/handle/<id>','PUT',0,1,1,2,0,0,0,'[]','','12/1346','','','admin','','',1);

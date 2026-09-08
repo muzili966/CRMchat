@@ -90,6 +90,18 @@ abstract class BaseHandler
     }
 
     /**
+     * 本端发出的消息属于哪种来源
+     *
+     * 身份取自 handler 子类而非客户端传来的 form_type：登录时已按 token
+     * 校验过端类型，访客的 token 进不了客服 handler。
+     * @return int
+     */
+    protected function senderScope(): int
+    {
+        return \crmeb\utils\SensitiveFilter::SCOPE_VISITOR;
+    }
+
+    /**
      * 聊天事件
      * @param array $data
      * @param Response $response
@@ -144,6 +156,21 @@ abstract class BaseHandler
             return $response->message('err_tip', ['msg' => '当前套餐不支持发送文件']);
         }
         $msn = trim(strip_tags(str_replace(["\n", "\t", "\r", "&nbsp;"], '', htmlspecialchars_decode($msn))));
+        //敏感词检查放在清洗之后、入库之前：清洗前查会被标签绕过，入库后查已经外发了
+        if ($msn_type == ChatServiceDialogueRecordServices::MSN_TYPE_TXT) {
+            /** @var \app\services\sensitive\SensitiveCheckServices $sensitive */
+            $sensitive = app()->make(\app\services\sensitive\SensitiveCheckServices::class);
+            $checked = $sensitive->check($msn, $this->senderScope(), [
+                'appid' => $appId,
+                'user_id' => $userId,
+                'to_user_id' => $to_user_id,
+                'nickname' => $user['nickname'] ?? '',
+            ]);
+            if ($checked['blocked']) {
+                return $response->message('err_tip', ['msg' => '消息包含敏感内容，发送失败']);
+            }
+            $msn = $checked['text'];
+        }
         $data = compact('to_user_id', 'msn_type', 'msn');
         $data['add_time'] = time();
         $data['appid'] = $appId;

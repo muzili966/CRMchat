@@ -43,25 +43,17 @@ class TenantPlan extends AuthController
      */
     protected function planFields(): array
     {
-        return $this->request->postMore([
+        //能力与配额字段以模型常量为唯一来源：此前是手写清单，
+        //新增 file_send 后忘了同步，平台管理员在表单里根本开关不了它。
+        $fields = [
             ['name', ''],
             ['price', 0],
-            [['app_limit', 'd'], 0],
-            [['seat_limit', 'd'], 0],
-            [['daily_msg_limit', 'd'], 0],
-            [['storage_limit_mb', 'd'], 0],
-            [['record_keep_days', 'd'], 0],
-            [['daily_ai_limit', 'd'], 0],
-            [['ai_reply', 'd'], 0],
-            [['auto_reply', 'd'], 0],
-            [['brand_custom', 'd'], 0],
-            [['white_label', 'd'], 0],
-            [['custom_ad', 'd'], 0],
-            [['custom_domain', 'd'], 0],
-            [['data_export', 'd'], 0],
-            [['app_push', 'd'], 0],
             [['sort', 'd'], 0],
-        ]);
+        ];
+        foreach (array_merge(TenantPlan::QUOTA_FIELDS, TenantPlan::FEATURE_FIELDS) as $field) {
+            $fields[] = [[$field, 'd'], 0];
+        }
+        return $this->request->postMore($fields);
     }
 
     /**

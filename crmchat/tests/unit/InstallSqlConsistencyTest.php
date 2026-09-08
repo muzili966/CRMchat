@@ -151,6 +151,83 @@ class InstallSqlConsistencyTest extends TestCase
     }
 
     /**
+     * 每个增量脚本都要在全量脚本的升级账本里预登记
+     *
+     * 漏登记的后果是新装环境启动时把已经内置的脚本再跑一遍。脚本本身幂等
+     * 所以不致命，但账本与实际不符会让后续排查失去依据。已经漏过一次。
+     */
+    public function testEveryUpgradeVersionIsSeededInLedger()
+    {
+        $seeded = $this->seededVersions();
+        $missing = [];
+        foreach (array_keys($this->upgradeFiles()) as $name) {
+            if (preg_match('/^V(\d{8}_\d{2})__/', $name, $m) && !in_array($m[1], $seeded, true)) {
+                $missing[] = $m[1];
+            }
+        }
+        $this->assertSame([], $missing, '全量脚本的升级账本缺少版本：' . implode('、', $missing));
+    }
+
+    /**
+     * 账本里不该出现已不存在的版本
+     */
+    public function testLedgerHasNoUnknownVersions()
+    {
+        $files = [];
+        foreach (array_keys($this->upgradeFiles()) as $name) {
+            if (preg_match('/^V(\d{8}_\d{2})__/', $name, $m)) {
+                $files[] = $m[1];
+            }
+        }
+        $unknown = array_values(array_diff($this->seededVersions(), $files));
+        $this->assertSame([], $unknown, '账本登记了不存在的版本：' . implode('、', $unknown));
+    }
+
+    /**
+     * 增量脚本给 eb_tenant_plan 加的列，全量脚本也要加
+     *
+     * 漏掉的话新装环境的套餐表缺列，能力开关直接报错。
+     */
+    public function testEveryPlanColumnExistsInFullScript()
+    {
+        $full = $this->planColumns($this->fullSql());
+        $missing = [];
+        foreach ($this->upgradeFiles() as $name => $sql) {
+            foreach ($this->planColumns($sql) as $column) {
+                if (!in_array($column, $full, true)) {
+                    $missing[] = $name . ' 的列 ' . $column;
+                }
+            }
+        }
+        $this->assertSame([], $missing, '全量脚本缺少套餐列：' . implode('、', $missing));
+    }
+
+    /**
+     * 账本里已登记的版本号
+     * @return array
+     */
+    protected function seededVersions(): array
+    {
+        $sql = $this->fullSql();
+        if (!preg_match('/INSERT\s+INTO\s+`?eb_system_upgrade`?[^;]+;/is', $sql, $m)) {
+            return [];
+        }
+        preg_match_all("/\('(\d{8}_\d{2})'/", $m[0], $versions);
+        return $versions[1] ?? [];
+    }
+
+    /**
+     * 脚本里给套餐表新增的列名
+     * @param string $sql
+     * @return array
+     */
+    protected function planColumns(string $sql): array
+    {
+        preg_match_all('/ALTER\s+TABLE\s+`?eb_tenant_plan`?\s+ADD\s+(?:COLUMN\s+)?`?([a-z0-9_]+)`?/i', $sql, $m);
+        return array_values(array_unique($m[1] ?? []));
+    }
+
+    /**
      * @return string
      */
     protected function fullSql(): string
