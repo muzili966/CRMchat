@@ -142,6 +142,11 @@ Route::group('api', function () {
             Route::get('history/visitor/:id', 'History/visitorSessions')->option(['real_name' => '访客会话列表']);
             Route::get('history/records', 'History/records')->option(['real_name' => '历史对话内容']);
             Route::get('history/export', 'History/export')->option(['real_name' => '导出对话']);
+            //客服绩效
+            Route::get('performance/overview', 'Performance/overview')->option(['real_name' => '绩效概览']);
+            Route::get('performance/agents', 'Performance/agents')->option(['real_name' => '客服绩效明细']);
+            Route::get('performance/trend', 'Performance/trend')->option(['real_name' => '绩效趋势']);
+            Route::get('performance/sessions', 'Performance/sessions')->option(['real_name' => '会话明细']);
             Route::post('history/export_all', 'History/exportAll')->option(['real_name' => '全局导出对话']);
             //客服话术资源路由
             Route::resource('speechcraft', 'ServiceSpeechcraft')->option(['real_name' => [

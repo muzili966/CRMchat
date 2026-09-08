@@ -97,6 +97,9 @@ class SwooleWorkerStart implements ListenerInterface
         Timer::tick(10000, function () use ($app) {
             try {
                 $app->make(\app\services\export\ExportRunnerServices::class)->run();
+                //会话超时收尾与导出同频即可：不收尾的话进行中的会话越积越多，
+                //且这些接待永远进不了已结束的绩效口径
+                $app->make(\app\services\performance\ChatSessionServices::class)->closeIdle();
             } catch (\Throwable $e) {
                 $app->log->error('导出任务执行失败：' . $e->getMessage());
             }

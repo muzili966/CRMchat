@@ -84,7 +84,13 @@ class AiTransferServices extends BaseServices
         }
         /** @var KefuServices $kefuServices */
         $kefuServices = app()->make(KefuServices::class);
-        return (bool)$kefuServices->setTransfer($appid, $aiUserId, $userId, $kefuUserId);
+        $result = (bool)$kefuServices->setTransfer($appid, $aiUserId, $userId, $kefuUserId);
+        if ($result) {
+            //转人工率是衡量AI是否顶用的核心指标，接管成功即打标
+            app()->make(\app\services\performance\ChatSessionServices::class)
+                ->markTransferred($kefuUserId, $userId);
+        }
+        return $result;
     }
 
     /**

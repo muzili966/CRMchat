@@ -40,6 +40,15 @@ export default {
       component: () => import('@/pages/chat/history/index')
     },
     {
+      path: 'performance',
+      name: `${pre}performance`,
+      meta: {
+        auth: ['chat-performance'],
+        title: '客服绩效'
+      },
+      component: () => import('@/pages/chat/performance/index')
+    },
+    {
       path: 'theme',
       name: `${pre}theme`,
       meta: {

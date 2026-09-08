@@ -267,6 +267,17 @@ class AiReplyServices extends BaseServices
         $data['_add_time'] = $data['add_time'];
         $data['add_time'] = is_numeric($data['add_time']) ? (int)$data['add_time'] : strtotime($data['add_time']);
 
+        //AI 回复走的不是 websocket 的 chat()，指标要在这里单独计入，
+        //否则 AI 接待的会话在绩效里只有访客消息、看着像从没被回复过
+        app()->make(\app\services\performance\ChatSessionServices::class)->track([
+            'appid' => $ctx['appid'] ?? '',
+            'kefu_user_id' => (int)($ctx['ai_user_id'] ?? 0),
+            'visitor_user_id' => (int)($ctx['user_id'] ?? 0),
+            'from_kefu' => true,
+            'is_ai' => true,
+            'add_time' => $data['add_time'],
+        ]);
+
         /** @var ChatUserServices $userService */
         $userService = app()->make(ChatUserServices::class);
         //推送给访客的消息署AI坐席的名，而会话摘要要显示对端(访客)的名

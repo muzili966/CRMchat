@@ -1489,7 +1489,8 @@ INSERT INTO `eb_system_upgrade` (`version`,`name`,`create_time`) VALUES
 ('20260904_02','chat_history_export',UNIX_TIMESTAMP()),
 ('20260904_03','chat_history_rename_export_all',UNIX_TIMESTAMP()),
 ('20260908_01','export_task',UNIX_TIMESTAMP()),
-('20260908_02','sensitive_word',UNIX_TIMESTAMP());
+('20260908_02','sensitive_word',UNIX_TIMESTAMP()),
+('20260908_03','chat_session',UNIX_TIMESTAMP());
 
 CREATE TABLE IF NOT EXISTS `eb_platform_lead` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -1653,3 +1654,40 @@ INSERT INTO `eb_system_menus` (`id`,`pid`,`menu_name`,`menu_path`,`api_url`,`met
 (1346,12,'敏感词命中','/admin/sensitive/hit','','',1,1,1,1,0,0,3,'[]','setting','12','sensitive-hit','','admin','','',1),
 (1347,1346,'命中记录列表','','api/admin/sensitive/hit','GET',0,1,1,2,0,0,0,'[]','','12/1346','','','admin','','',1),
 (1348,1346,'标记命中已处理','','api/admin/sensitive/hit/handle/<id>','PUT',0,1,1,2,0,0,0,'[]','','12/1346','','','admin','','',1);
+
+-- 客服会话（一次接待）：绩效与满意度的共同粒度
+CREATE TABLE IF NOT EXISTS `eb_chat_session` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `tenant_id` int(11) NOT NULL DEFAULT '0' COMMENT '租户ID',
+  `appid` varchar(32) NOT NULL DEFAULT '' COMMENT '应用',
+  `kefu_user_id` int(11) NOT NULL DEFAULT '0' COMMENT '接待客服',
+  `visitor_user_id` int(11) NOT NULL DEFAULT '0' COMMENT '访客',
+  `is_ai` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否AI坐席接待',
+  `transferred` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否发生过转人工',
+  `start_time` int(11) NOT NULL DEFAULT '0' COMMENT '首条消息时间',
+  `last_time` int(11) NOT NULL DEFAULT '0' COMMENT '最后一条消息时间',
+  `end_time` int(11) NOT NULL DEFAULT '0' COMMENT '结束时间',
+  `end_type` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0进行中 1超时自动 2客服结束',
+  `visitor_msg_num` int(11) NOT NULL DEFAULT '0' COMMENT '访客消息数',
+  `kefu_msg_num` int(11) NOT NULL DEFAULT '0' COMMENT '客服消息数',
+  `first_reply_cost` int(11) NOT NULL DEFAULT '0' COMMENT '首次响应秒数，0=未回复',
+  `reply_cost_sum` int(11) NOT NULL DEFAULT '0' COMMENT '响应耗时累计，用于算平均',
+  `reply_count` int(11) NOT NULL DEFAULT '0' COMMENT '有效响应次数',
+  `pending_since` int(11) NOT NULL DEFAULT '0' COMMENT '访客最新一条待回复消息的时间，0=无待回复',
+  `rate` tinyint(1) NOT NULL DEFAULT '0' COMMENT '满意度1-5，0=未评价',
+  `rate_remark` varchar(255) NOT NULL DEFAULT '' COMMENT '评价留言',
+  `rate_time` int(11) NOT NULL DEFAULT '0' COMMENT '评价时间',
+  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '1进行中 2已结束',
+  PRIMARY KEY (`id`),
+  KEY `idx_tenant_status` (`tenant_id`,`status`),
+  KEY `idx_tenant_start` (`tenant_id`,`start_time`),
+  KEY `idx_kefu_start` (`kefu_user_id`,`start_time`),
+  KEY `idx_pair_status` (`tenant_id`,`kefu_user_id`,`visitor_user_id`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='客服会话（一次接待）';
+
+INSERT INTO `eb_system_menus` (`id`,`pid`,`menu_name`,`menu_path`,`api_url`,`methods`,`is_show`,`is_tenant`,`is_platform`,`auth_type`,`is_del`,`is_show_path`,`sort`,`params`,`header`,`path`,`unique_auth`,`icon`,`module`,`controller`,`action`,`access`) VALUES
+(1350,165,'客服绩效','/admin/chat/performance','','',1,1,0,1,0,0,26,'[]','kefu','165','chat-performance','','admin','','',1),
+(1351,1350,'绩效概览','','api/admin/chat/performance/overview','GET',0,1,0,2,0,0,0,'[]','','165/1350','','','admin','','',1),
+(1352,1350,'客服绩效明细','','api/admin/chat/performance/agents','GET',0,1,0,2,0,0,0,'[]','','165/1350','','','admin','','',1),
+(1353,1350,'绩效趋势','','api/admin/chat/performance/trend','GET',0,1,0,2,0,0,0,'[]','','165/1350','','','admin','','',1),
+(1354,1350,'会话明细','','api/admin/chat/performance/sessions','GET',0,1,0,2,0,0,0,'[]','','165/1350','','','admin','','',1);

@@ -212,6 +212,17 @@ abstract class BaseHandler
         $data['_add_time'] = $data['add_time'];
         $data['add_time'] = strtotime($data['add_time']);
 
+        //按「一次接待」累计绩效指标。谁是客服由 handler 子类决定，
+        //消息双方据此对号入座；采集失败不影响本条消息的收发。
+        $fromKefu = $this->senderScope() === \crmeb\utils\SensitiveFilter::SCOPE_AGENT;
+        app()->make(\app\services\performance\ChatSessionServices::class)->track([
+            'appid' => $appId,
+            'kefu_user_id' => $fromKefu ? $userId : $to_user_id,
+            'visitor_user_id' => $fromKefu ? $to_user_id : $userId,
+            'from_kefu' => $fromKefu,
+            'add_time' => $data['add_time'],
+        ]);
+
         $_userInfo = $userService->getUserInfo($data['user_id'], ['nickname', 'avatar', 'version', 'is_tourist', 'online']);
         $isTourist = $_userInfo['is_tourist'];
         $data['nickname'] = $_userInfo['nickname'] ?? '';
