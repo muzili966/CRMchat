@@ -71,6 +71,11 @@
                         <chatFileCard :msn="item.msn" />
                       </div>
 
+                      <!-- 常见问题卡片 -->
+                      <div class="chart_list_item_faq" v-if="item.msn_type == 9">
+                        <chatFaqCard :msn="item.msn" @pick="sendFaq"/>
+                      </div>
+
                       <!-- 满意度评价邀请 -->
                       <div class="chart_list_item_rate" v-if="item.msn_type == 8">
                         <chatRateCard :msn="item.msn" :theme-color="themeColor"
@@ -100,31 +105,6 @@
                 </div>
                 <!-- 聊天内容列表结束 -->
 
-                <!-- 常见问题卡片：新会话时引导访客，点一条即发出并得到既定答案。
-                     跟随客服气泡左对齐并限宽，读起来像客服递过来的一张建议卡 -->
-                <div class="faq_card_wrap" v-if="faqVisible">
-                  <div class="faq_card">
-                    <div class="faq_card_head">
-                      <span class="faq_card_title">你可能想问</span>
-                      <span class="faq_card_close" title="关闭" @click="faqVisible = false">
-                        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-                          <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                      </span>
-                    </div>
-                    <div class="faq_card_list">
-                      <div class="faq_card_item" v-for="item in faqList" :key="item.id"
-                           @click="sendFaq(item)">
-                        <span class="faq_card_item_text">{{ item.title }}</span>
-                        <svg class="faq_card_item_arrow" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-                          <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             </happy-scroll>
 
@@ -151,6 +131,9 @@
                 <div v-if="chatServerData.file_send" class="file_entry" title="发送文件">
                   <chatIcon name="file" :size="22" />
                   <input type="file" :accept="fileAccept" class="type_file" @change="uploadChatFile">
+                </div>
+                <div class="faq_entry" title="常见问题" @click="requestFaq">
+                  <chatIcon name="faq" :size="22" />
                 </div>
                 <div class="transfer_service" title="转人工客服" @click="transferService" v-if="isShowTransfer">
                   <chatIcon name="agent" :size="22" />
@@ -213,7 +196,8 @@ import { HappyScroll } from 'vue-happy-scroll'
 import emojiList from "@/utils/emoji";
 import socketServer from './minix/socketServer';
 import visitorAccount from './components/visitorAccount';
-import chatFileCard from '@/components/chatFileCard';
+import chatFileCard from '@/components/chatFileCard'
+import chatFaqCard from '@/components/chatFaqCard';
 import chatRateCard from '@/components/chatRateCard';
 import chatIcon from '@/components/chatIcon';
 import { FILE_ACCEPT } from '@/libs/chatFile';
@@ -231,6 +215,7 @@ export default {
     visitorAccount,
     chatFileCard,
     chatRateCard,
+    chatFaqCard,
     chatIcon
   },
   mixins: [socketServer, appTheme],
@@ -969,74 +954,6 @@ export default {
   }
 }
 </style>
-/* 常见问题卡片：走聊天主题变量，随主题色/密度/边框一起变，
-   不硬编码颜色，否则换主题后卡片会显得像贴上去的 */
-.faq_card_wrap {
-  display: flex;
-  padding: 4px 0 10px 52px;
-}
-.faq_card {
-  width: 100%;
-  max-width: ~"calc(74% * var(--chat-bubble-width-scale, 1))";
-  background: var(--chat-incoming, #fff);
-  border: 1px solid var(--chat-border, #e5ebf5);
-  border-radius: 14px 14px 14px 4px;
-  box-shadow: 0 3px 12px rgba(31, 45, 61, .05);
-  overflow: hidden;
-}
-.faq_card_head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: ~"calc(11px * var(--chat-density, 1))" var(--chat-bubble-pad-x, 14px);
-}
-.faq_card_title {
-  color: var(--chat-muted, #7f8ba5);
-  font-size: 12px;
-  letter-spacing: .3px;
-}
-.faq_card_close {
-  display: flex;
-  color: var(--chat-muted, #7f8ba5);
-  cursor: pointer;
-  opacity: .6;
-  transition: opacity .15s;
-}
-.faq_card_close:hover {
-  opacity: 1;
-}
-.faq_card_item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: ~"calc(11px * var(--chat-density, 1))" var(--chat-bubble-pad-x, 14px);
-  /* 分隔线而非独立色块：一排描边胶囊会比真实对话还抢眼 */
-  border-top: 1px solid var(--chat-border, #e5ebf5);
-  color: var(--chat-text, #172033);
-  font-size: 13px;
-  line-height: 1.5;
-  cursor: pointer;
-  transition: background .15s, color .15s;
-}
-.faq_card_item:hover {
-  background: var(--chat-page-bg, #f3f6fb);
-  color: var(--chat-primary, #2d8cf0);
-}
-.faq_card_item_text {
-  flex: 1;
-}
-.faq_card_item_arrow {
-  flex: none;
-  color: var(--chat-muted, #7f8ba5);
-  opacity: .5;
-  transition: transform .15s, opacity .15s;
-}
-.faq_card_item:hover .faq_card_item_arrow {
-  color: var(--chat-primary, #2d8cf0);
-  opacity: 1;
-  transform: translateX(2px);
-}
 </style>
 
 <style lang="less">

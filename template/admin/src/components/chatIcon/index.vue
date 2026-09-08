@@ -34,6 +34,12 @@
     <template v-else-if="name === 'close'">
       <path d="M6 6l12 12M18 6L6 18" />
     </template>
+    <!-- 常见问题（问号气泡） -->
+    <template v-else-if="name === 'faq'">
+      <path d="M20.5 11.5a8 8 0 0 1-8 8H8l-3.5 2.5V17.6A8 8 0 1 1 20.5 11.5z" />
+      <path d="M10 9.2a2.2 2.2 0 1 1 2.7 2.1c-.5.1-.7.5-.7 1v.4" />
+      <path d="M12 15.4h.01" />
+    </template>
     <!-- 用户/账号 -->
     <template v-else-if="name === 'user'">
       <circle cx="12" cy="8" r="4" />
@@ -46,7 +52,7 @@
 export default {
   name: 'chatIcon',
   props: {
-    // emoji | image | file | agent | send | close
+    // emoji | image | file | agent | faq | send | close | user
     name: {
       type: String,
       required: true

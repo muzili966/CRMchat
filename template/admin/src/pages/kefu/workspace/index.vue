@@ -51,6 +51,10 @@
                         <chatFileCard :msn="item.msn" />
                       </template>
                       <!-- 满意度评价邀请 -->
+                      <!-- 常见问题卡片：客服侧只读，点了不触发发送 -->
+                      <template v-if="item.msn_type==9">
+                        <chatFaqCard :msn="item.msn" readonly/>
+                      </template>
                       <template v-if="item.msn_type==8">
                         <chatRateCard :msn="item.msn" :rated="rateStatus.rate"/>
                       </template>
@@ -215,6 +219,7 @@ import Setting from '@/setting';
 import { onAvatarError } from '@/libs/avatar';
 import chatFileCard from '@/components/chatFileCard';
 import chatRateCard from '@/components/chatRateCard';
+import chatFaqCard from '@/components/chatFaqCard';
 import { encodeFileMsg } from '@/libs/chatFile';
 import { HappyScroll } from 'vue-happy-scroll'
 import baseHeader from './components/baseHeader';
@@ -261,7 +266,8 @@ export default {
     HappyScroll,
     authReply,
     chatFileCard,
-    chatRateCard
+    chatRateCard,
+    chatFaqCard
     // goodsDetail,
     // orderDetail
   },

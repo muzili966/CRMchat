@@ -3,6 +3,7 @@
 namespace tests\unit;
 
 use app\services\chat\ChatFaqServices;
+use app\services\chat\ChatServiceDialogueRecordServices as RecordServices;
 use crmeb\exceptions\AdminException;
 use PHPUnit\Framework\TestCase;
 
@@ -104,6 +105,21 @@ class ChatFaqTest extends TestCase
         $row = $this->build(['title' => '  如何退款  ', 'content' => "  走订单页\n"]);
         $this->assertSame('如何退款', $row['title']);
         $this->assertSame('走订单页', $row['content']);
+    }
+
+    /**
+     * 卡片消息类型不能落进客户端可发送白名单，
+     * 否则访客能自己伪造一张卡片诱导别人点
+     */
+    public function testFaqTypeNotClientSendable()
+    {
+        $this->assertSame(9, RecordServices::MSN_TYPE_FAQ);
+        $sendable = RecordServices::MSN_TYPE;
+        $this->assertSame(false, in_array(
+            RecordServices::MSN_TYPE_FAQ,
+            $sendable,
+            true
+        ));
     }
 
     /**

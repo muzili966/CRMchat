@@ -57,6 +57,14 @@ class ChatServiceDialogueRecordServices extends BaseServices
     const MSN_TYPE_RATE = 8;
 
     /**
+     * 常见问题卡片
+     *
+     * 与评价卡同理，不列入 MSN_TYPE：只由服务端插入，
+     * 否则访客能自己伪造一张卡片诱导别人点。
+     */
+    const MSN_TYPE_FAQ = 9;
+
+    /**
      * 文件消息允许的扩展名白名单
      *
      * 这是核心安全控制：静态目录按扩展名决定如何被浏览器处理，

@@ -110,6 +110,40 @@ abstract class BaseHandler
      * @throws \think\db\exception\DbException
      * @throws \think\db\exception\ModelNotFoundException
      */
+    /**
+     * 访客主动索取常见问题卡片（工具栏那个入口）
+     *
+     * 走 ws 而非 HTTP：访客身份在 HTTP 层是客户端自报的，
+     * 那样任何人都能往别人的会话里插一条消息；ws 连接已确立身份。
+     * @param array $data
+     * @param Response $response
+     * @return mixed
+     */
+    public function faq(array $data = [], Response $response)
+    {
+        $user = $this->room->get($this->fd);
+        if (!$user) {
+            return $response->fail('聊天用户不存在');
+        }
+        $toUserId = (int)($data['to_user_id'] ?? 0);
+        if (!$toUserId) {
+            return $response->message('err_tip', ['msg' => '缺少客服id']);
+        }
+        /** @var \app\services\chat\ChatFaqServices $faqServices */
+        $faqServices = app()->make(\app\services\chat\ChatFaqServices::class);
+        $record = $faqServices->sendCard([
+            'appid' => $user['appid'],
+            'kefu_user_id' => $toUserId,
+            'visitor_user_id' => (int)$user['user_id'],
+        ]);
+        if (!$record) {
+            return $response->message('err_tip', ['msg' => '暂未配置常见问题']);
+        }
+        //推给访客自己；客服侧同样收到，卡片在双方视图里都存在
+        $this->manager->pushing($this->manager->getUserIdByFds($toUserId), $response->message('chat', $record)->getData());
+        return $response->message('chat', $record);
+    }
+
     public function chat(array $data = [], Response $response)
     {
         $user = $this->room->get($this->fd);

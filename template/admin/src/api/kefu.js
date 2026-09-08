@@ -634,18 +634,6 @@ export function userRecord(params) {
 }
 
 /*
-  客户端，常见问题卡片（新会话时展示）
-*/
-
-export function visitorFaq() {
-  return request({
-    url: 'service/faq',
-    method: 'get',
-    mobile: true
-  })
-}
-
-/*
   客户端，提交反馈，get 查询并展示广告
 */
 

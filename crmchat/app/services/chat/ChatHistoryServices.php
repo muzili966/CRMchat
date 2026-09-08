@@ -102,6 +102,7 @@ class ChatHistoryServices
         ChatServiceDialogueRecordServices::MSN_TYPE_ORDER => '订单',
         ChatServiceDialogueRecordServices::MSN_TYPE_FILE => '文件',
         ChatServiceDialogueRecordServices::MSN_TYPE_RATE => '评价邀请',
+        ChatServiceDialogueRecordServices::MSN_TYPE_FAQ => '常见问题',
     ];
 
     /**
@@ -507,6 +508,13 @@ class ChatHistoryServices
         if ($type === ChatServiceDialogueRecordServices::MSN_TYPE_RATE) {
             //邀请卡片的正文是内部结构，导出成 base64 串对人没有意义
             return '[邀请评价]';
+        }
+        if ($type === ChatServiceDialogueRecordServices::MSN_TYPE_FAQ) {
+            //导出成可读的问题清单，比一串 base64 有用
+            $json = base64_decode(trim($msn), true);
+            $card = $json === false ? null : json_decode($json, true);
+            $titles = array_column(is_array($card['list'] ?? null) ? $card['list'] : [], 'title');
+            return $titles ? '[常见问题] ' . implode('、', $titles) : '[常见问题]';
         }
         if ($type === ChatServiceDialogueRecordServices::MSN_TYPE_FILE) {
             $json = base64_decode(trim($msn), true);

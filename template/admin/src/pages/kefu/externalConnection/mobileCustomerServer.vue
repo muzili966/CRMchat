@@ -70,6 +70,10 @@
                 <div class="chart_list_item_img" v-if="item.msn_type == 3">
                   <img v-lazy="item.msn" @load="imageLoad" />
                 </div>
+                <!-- 常见问题卡片 -->
+                <div class="chart_list_item_faq" v-if="item.msn_type == 9">
+                  <chatFaqCard :msn="item.msn" @pick="sendFaq"/>
+                </div>
                 <!-- 文件信息 -->
                 <div class="chart_list_item_rate" v-if="item.msn_type == 8">
                   <chatRateCard :msn="item.msn" :theme-color="themeColor"
@@ -101,28 +105,6 @@
           </div>
           <!-- 聊天内容列表结束 -->
 
-          <!-- 常见问题卡片：新会话时引导访客，点一条即发出并得到既定答案 -->
-          <div class="faq_card_wrap" v-if="faqVisible">
-            <div class="faq_card">
-              <div class="faq_card_head">
-                <span class="faq_card_title">你可能想问</span>
-                <span class="faq_card_close" @click="faqVisible = false">
-                  <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
-                    <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor"
-                          stroke-width="2" stroke-linecap="round"/>
-                  </svg>
-                </span>
-              </div>
-              <div class="faq_card_item" v-for="item in faqList" :key="item.id"
-                   @click="sendFaq(item)">
-                <span class="faq_card_item_text">{{ item.title }}</span>
-                <svg class="faq_card_item_arrow" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
-                  <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor"
-                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </div>
-            </div>
-          </div>
         </div>
       </happy-scroll>
     </div>
@@ -132,8 +114,11 @@
 
     <div class="footer_customerServer_container">
       <!-- 快捷操作条：低频动作从发送按钮旁移出，避免手机上误触发送 -->
-      <div class="footer_quick_actions" v-if="showTransferHuman">
-        <span class="quick_tag" @click="sendTransferHuman">
+      <div class="footer_quick_actions">
+        <span class="quick_tag" @click="requestFaq">
+          <chatIcon name="faq" :size="15" class="quick_tag_ic" />常见问题
+        </span>
+        <span class="quick_tag" v-if="showTransferHuman" @click="sendTransferHuman">
           <chatIcon name="agent" :size="15" class="quick_tag_ic" />转人工
         </span>
       </div>
@@ -185,6 +170,7 @@ import { HappyScroll } from 'vue-happy-scroll'
 import emojiList from "@/utils/emoji";
 import socketServer from './minix/socketServer';
 import chatFileCard from '@/components/chatFileCard';
+import chatFaqCard from '@/components/chatFaqCard';
 import chatRateCard from '@/components/chatRateCard';
 import chatIcon from '@/components/chatIcon';
 import { FILE_ACCEPT } from '@/libs/chatFile';
@@ -200,6 +186,7 @@ export default {
     HappyScroll,
     visitorAccount,
     chatFileCard,
+    chatFaqCard,
     chatRateCard,
     chatIcon
   },
@@ -300,60 +287,6 @@ export default {
 }
 </script>
 <style lang="less" scoped>
-/* 常见问题卡片：走聊天主题变量；移动端没有 hover，改用按压反馈 */
-.faq_card_wrap {
-  padding: 4px 12px 10px;
-}
-.faq_card {
-  background: var(--chat-incoming, #fff);
-  border: 1px solid var(--chat-border, #e5ebf5);
-  border-radius: 14px;
-  box-shadow: 0 3px 12px rgba(31, 45, 61, .05);
-  overflow: hidden;
-}
-.faq_card_head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: ~"calc(12px * var(--chat-density, 1))" var(--chat-bubble-pad-x, 14px);
-}
-.faq_card_title {
-  color: var(--chat-muted, #7f8ba5);
-  font-size: 12px;
-  letter-spacing: .3px;
-}
-.faq_card_close {
-  display: flex;
-  color: var(--chat-muted, #7f8ba5);
-  opacity: .6;
-  /* 图标本身才 15px，撑开点击区到指尖尺度 */
-  padding: 4px;
-  margin: -4px;
-}
-.faq_card_item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: ~"calc(12px * var(--chat-density, 1))" var(--chat-bubble-pad-x, 14px);
-  /* 分隔线而非独立色块：一排描边胶囊会比真实对话还抢眼 */
-  border-top: 1px solid var(--chat-border, #e5ebf5);
-  color: var(--chat-text, #172033);
-  font-size: 14px;
-  line-height: 1.5;
-  -webkit-tap-highlight-color: transparent;
-}
-.faq_card_item:active {
-  background: var(--chat-page-bg, #f3f6fb);
-}
-.faq_card_item_text {
-  flex: 1;
-}
-.faq_card_item_arrow {
-  flex: none;
-  color: var(--chat-muted, #7f8ba5);
-  opacity: .5;
-}
 
 .pc_customerServer_container {
   width: 100%;

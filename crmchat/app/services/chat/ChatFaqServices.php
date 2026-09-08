@@ -8,6 +8,8 @@ namespace app\services\chat;
 use app\dao\chat\ChatAutoReplyDao;
 use crmeb\basic\BaseServices;
 use crmeb\exceptions\AdminException;
+use crmeb\services\tenant\TenantContext;
+use think\facade\Db;
 
 /**
  * 常见问题
@@ -102,6 +104,60 @@ class ChatFaqServices extends BaseServices
             return [];
         }
         return ['title' => (string)$row['title'], 'content' => $content];
+    }
+
+    /**
+     * 发出一张常见问题卡片
+     *
+     * 作为客服发出的真实消息落库（msn_type=9），而不是前端临时浮层：
+     * 这样重开窗口、翻历史都还在，也与欢迎语、评价邀请的处理方式一致。
+     * @param array $ctx appid/kefu_user_id/visitor_user_id
+     * @return array 无可展示问题时返回 []
+     */
+    public function sendCard(array $ctx): array
+    {
+        $appid = (string)($ctx['appid'] ?? '');
+        $list = $this->getCardList($appid);
+        if (!$list) {
+            return [];
+        }
+        //与文件、评价卡同一套路：正文放 base64(JSON)，避免入库前的 strip_tags 破坏结构
+        $payload = base64_encode((string)json_encode(['list' => $list], JSON_UNESCAPED_UNICODE));
+        /** @var ChatServiceDialogueRecordServices $recordServices */
+        $recordServices = app()->make(ChatServiceDialogueRecordServices::class);
+        $record = $recordServices->save([
+            'appid' => $appid,
+            'user_id' => (int)$ctx['kefu_user_id'],
+            'to_user_id' => (int)$ctx['visitor_user_id'],
+            'msn' => $payload,
+            'msn_type' => ChatServiceDialogueRecordServices::MSN_TYPE_FAQ,
+            'other' => '',
+            'type' => 0,
+            'is_send' => 1,
+            'add_time' => time(),
+        ]);
+        $data = $record->toArray();
+        $data['_add_time'] = $data['add_time'];
+        $data['add_time'] = is_numeric($data['add_time']) ? (int)$data['add_time'] : strtotime((string)$data['add_time']);
+        return $data;
+    }
+
+    /**
+     * 本次会话是否已发过卡片
+     *
+     * 避免访客每次重连都收到一张：卡片是会话开场的引导，一次就够。
+     * @param array $ctx kefu_user_id/visitor_user_id/since 会话开始时间
+     * @return bool
+     */
+    public function cardSent(array $ctx): bool
+    {
+        return (bool)Db::name('chat_service_dialogue_record')
+            ->where('tenant_id', (int)TenantContext::id())
+            ->where('user_id', (int)$ctx['kefu_user_id'])
+            ->where('to_user_id', (int)$ctx['visitor_user_id'])
+            ->where('msn_type', ChatServiceDialogueRecordServices::MSN_TYPE_FAQ)
+            ->where('add_time', '>=', (int)$ctx['since'])
+            ->count();
     }
 
     /**

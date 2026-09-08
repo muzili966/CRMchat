@@ -258,9 +258,16 @@ class ChatServiceServices extends BaseServices
         try {
             //欢迎语（Timer回调运行在新协程，wrap携带当前租户上下文）
             $app = app();
+            $isNew = $this->isNewSession($result['serviceList']);
             Timer::after(1000, \crmeb\services\tenant\TenantContext::wrap(function () use ($app, $appId, $toUserId, $userId, $userInfo) {
                 $this->welcomeWords($app, $appId, $toUserId, $userId, $userInfo);
             }));
+            //常见问题卡片跟在欢迎语之后。排在后面发，卡片才落在欢迎语下方
+            if ($isNew) {
+                Timer::after(1200, \crmeb\services\tenant\TenantContext::wrap(function () use ($appId, $toUserId, $userId) {
+                    $this->pushFaqCard($appId, $toUserId, $userId);
+                }));
+            }
         } catch (\Exception $e) {
             Log::error($e->getMessage());
         }
@@ -416,6 +423,56 @@ class ChatServiceServices extends BaseServices
             'msg' => $msg,
             'msn_type' => $msntype,
         ]);
+    }
+
+    /**
+     * 是否算新会话
+     *
+     * 与 ChatSessionServices::IDLE_TIMEOUT 同口径：没有历史，或最后一条
+     * 消息已跨过静默窗口，即属新一次接待。直接用已查出的聊天记录判断，
+     * 不额外查库；卡片本身是消息，发出后会刷新这个时间，重连便不会重发。
+     * @param array $serviceList 按时间正序的聊天记录
+     * @return bool
+     */
+    protected function isNewSession(array $serviceList): bool
+    {
+        if (!$serviceList) {
+            return true;
+        }
+        $last = end($serviceList);
+        $addTime = $last['add_time'] ?? 0;
+        $addTime = is_numeric($addTime) ? (int)$addTime : (int)strtotime((string)$addTime);
+        if (!$addTime) {
+            return false;
+        }
+        return (time() - $addTime) > \app\services\performance\ChatSessionServices::IDLE_TIMEOUT;
+    }
+
+    /**
+     * 下发常见问题卡片并推送给访客
+     * @param string $appId
+     * @param int $kefuUserId
+     * @param int $visitorUserId
+     * @return void
+     */
+    protected function pushFaqCard(string $appId, int $kefuUserId, int $visitorUserId)
+    {
+        try {
+            /** @var ChatFaqServices $faqServices */
+            $faqServices = app()->make(ChatFaqServices::class);
+            $record = $faqServices->sendCard([
+                'appid' => $appId,
+                'kefu_user_id' => $kefuUserId,
+                'visitor_user_id' => $visitorUserId,
+            ]);
+            if (!$record) {
+                return;
+            }
+            SwooleTaskService::user()->type('chat')->to($visitorUserId)->data($record)->push();
+        } catch (\Throwable $e) {
+            //卡片只是开场引导，发不出去不该影响会话本身
+            Log::error('常见问题卡片下发失败：' . $e->getMessage());
+        }
     }
 
     /**
