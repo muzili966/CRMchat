@@ -26,15 +26,17 @@ class InstallSqlConsistencyTest extends TestCase
     /**
      * 增量脚本里出现的菜单ID，全量脚本必须都有
      */
+    /**
+     * 比的是增量推演出的终态而非逐个文件：菜单可能先建后删（如迁移 ID 后清理旧号），
+     * 逐个文件比会要求全量脚本保留已被删掉的菜单
+     */
     public function testEveryUpgradeMenuExistsInFullScript()
     {
         $full = $this->menus($this->fullSql());
         $missing = [];
-        foreach ($this->upgradeFiles() as $name => $sql) {
-            foreach (array_keys($this->menus($sql)) as $id) {
-                if (!isset($full[$id])) {
-                    $missing[] = $name . ' 的菜单 ' . $id;
-                }
+        foreach (array_keys($this->upgradeFinalMenus()) as $id) {
+            if (!isset($full[$id])) {
+                $missing[] = '菜单 ' . $id;
             }
         }
         $this->assertSame([], $missing, '全量脚本缺少菜单：' . implode('、', $missing));
@@ -85,8 +87,41 @@ class InstallSqlConsistencyTest extends TestCase
                     $menus[$id] = array_merge($menus[$id], $changes);
                 }
             }
+            foreach ($this->menuDeletes($sql) as $id) {
+                unset($menus[$id]);
+            }
         }
         return $menus;
+    }
+
+    /**
+     * 解析按主键删除菜单的 DELETE 语句，返回被删的 id
+     *
+     * 菜单迁移 ID 后要清掉旧号，不认 DELETE 会把已删的菜单算进终态，
+     * 反过来要求全量脚本保留它们。
+     * @param string $sql
+     * @return array
+     */
+    protected function menuDeletes(string $sql): array
+    {
+        $ids = [];
+        $pattern = '/DELETE\s+FROM\s+`?eb_system_menus`?\s+WHERE\s+`?id`?\s*(?:=\s*(\d+)|IN\s*\(([^)]+)\))/is';
+        if (!preg_match_all($pattern, $sql, $matches, PREG_SET_ORDER)) {
+            return $ids;
+        }
+        foreach ($matches as $match) {
+            if (($match[1] ?? '') !== '') {
+                $ids[] = (int)$match[1];
+                continue;
+            }
+            foreach (explode(',', $match[2] ?? '') as $id) {
+                $id = trim($id);
+                if ($id !== '') {
+                    $ids[] = (int)$id;
+                }
+            }
+        }
+        return $ids;
     }
 
     /**

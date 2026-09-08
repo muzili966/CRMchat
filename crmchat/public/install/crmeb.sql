@@ -1494,7 +1494,9 @@ INSERT INTO `eb_system_upgrade` (`version`,`name`,`create_time`) VALUES
 ('20260908_02','sensitive_word',UNIX_TIMESTAMP()),
 ('20260908_03','chat_session',UNIX_TIMESTAMP()),
 ('20260908_04','reply_timeout',UNIX_TIMESTAMP()),
-('20260908_06','default_tenant_faq_speech',UNIX_TIMESTAMP());
+('20260908_05','faq_card',UNIX_TIMESTAMP()),
+('20260908_06','default_tenant_faq_speech',UNIX_TIMESTAMP()),
+('20260908_07','fix_faq_menu_conflict',UNIX_TIMESTAMP());
 
 CREATE TABLE IF NOT EXISTS `eb_platform_lead` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -1869,3 +1871,19 @@ appid 用于标识应用，可以出现在前端；app_secret 是服务端签名
 (26,1,'安全,隐私,数据保护,合规,泄露','数据安全和隐私怎么保障？',0,'租户之间数据强隔离，接口层按租户上下文校验，越权访问会被直接拒绝；签名接入模式下访客身份需服务端签名，无法被冒充。
 敏感词可拦截对话中的违规内容，附件与聊天记录按套餐策略定期清理。如需签署保密协议或了解更多合规细节，可以联系我们。',0,'202116257358989495',26,1625743098),
 (27,1,'私有化,本地部署,独立部署,源码,自建','可以私有化部署吗？',0,'标准服务为 SaaS 模式，开箱即用、免运维。确有私有化需求的（如数据不出内网），可以告诉我你的部署环境与规模，我们评估后给出方案与报价。',0,'202116257358989495',24,1625743098);
+
+-- --------------------------------------------------------
+
+--
+-- 常见问题菜单，对应增量 V20260908_05 + V20260908_07
+--
+-- 增量里常见问题最初分配的 1330-1335 与下载中心冲突（下载中心先占了
+-- 1330-1332），V20260908_07 已把它整体迁到 1360-1365，此处直接写终态。
+
+INSERT INTO `eb_system_menus` (`id`,`pid`,`icon`,`menu_name`,`module`,`controller`,`action`,`api_url`,`methods`,`params`,`sort`,`is_show`,`is_show_path`,`is_tenant`,`is_platform`,`access`,`menu_path`,`path`,`auth_type`,`header`,`is_header`,`unique_auth`,`is_del`) VALUES
+(1360,165,'','常见问题','admin','','','','','[]',24,1,0,1,0,1,'/admin/chat/faq','165',1,'kefu',0,'chat-faq',0),
+(1361,1360,'','常见问题列表','admin','','','api/admin/chat/faq','GET','[]',0,0,0,1,0,1,'','165/1360',2,'',0,'',0),
+(1362,1360,'','保存常见问题','admin','','','api/admin/chat/faq','POST','[]',0,0,0,1,0,1,'','165/1360',2,'',0,'',0),
+(1363,1360,'','更新常见问题','admin','','','api/admin/chat/faq/<id>','PUT','[]',0,0,0,1,0,1,'','165/1360',2,'',0,'',0),
+(1364,1360,'','删除常见问题','admin','','','api/admin/chat/faq/<id>','DELETE','[]',0,0,0,1,0,1,'','165/1360',2,'',0,'',0),
+(1365,1360,'','常见问题排序','admin','','','api/admin/chat/faq/sort','POST','[]',0,0,0,1,0,1,'','165/1360',2,'',0,'',0);
