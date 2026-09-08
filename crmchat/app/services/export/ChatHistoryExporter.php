@@ -12,7 +12,7 @@ use app\services\chat\ChatHistoryServices;
  * Class ChatHistoryExporter
  * @package app\services\export
  */
-class ChatHistoryExporter implements ExporterInterface
+class ChatHistoryExporter implements BundleExporterInterface
 {
     /**
      * @var ChatHistoryServices
@@ -49,5 +49,22 @@ class ChatHistoryExporter implements ExporterInterface
     public function rows(array $params): array
     {
         return $this->services->sessionExportRows($params);
+    }
+
+    /**
+     * @param array $params
+     * @return \Generator
+     */
+    public function bundle(array $params): \Generator
+    {
+        return $this->services->visitorExportBundle($params);
+    }
+
+    /**
+     * @return array
+     */
+    public function indexHeader(): array
+    {
+        return ChatHistoryServices::BUNDLE_INDEX_HEADER;
     }
 }

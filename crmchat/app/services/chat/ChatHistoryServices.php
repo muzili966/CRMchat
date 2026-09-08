@@ -66,6 +66,31 @@ class ChatHistoryServices
     const SESSION_HEADER = ['接待客服', '访客'];
 
     /**
+     * 分包导出时单个访客文件的额外列
+     *
+     * 整份文件就是一个访客，故只需标明每条消息属于哪位客服的接待。
+     */
+    const BUNDLE_HEADER = ['接待客服'];
+
+    /**
+     * 分包索引的表头，末列由打包器补上文件名
+     */
+    const BUNDLE_INDEX_HEADER = ['序号', '访客', '手机号', '接待客服数', '消息数', '首条时间', '末条时间', '文件名'];
+
+    /**
+     * 分包导出的访客个数上限
+     */
+    const EXPORT_BUNDLE_MAX = 2000;
+
+    /**
+     * 分包导出的消息总条数上限
+     *
+     * 分包是写一个文件释放一个，内存只与单个访客的往来量有关，
+     * 故上限可以远高于合成一张大表的做法。
+     */
+    const EXPORT_BUNDLE_TOTAL_MAX = 200000;
+
+    /**
      * 消息类型的中文名，导出表格用
      */
     const TYPE_TEXT = [
@@ -243,6 +268,121 @@ class ChatHistoryServices
         if ($msgCut) {
             $rows[] = $this->noteRow('已达 ' . self::EXPORT_TOTAL_MAX . ' 条消息上限，其余已截断');
         }
+        return $rows;
+    }
+
+    /**
+     * 分包导出：按访客拆成一份份表格，逐个产出交给打包器
+     *
+     * 用生成器而非一次性返回：写一份释放一份，内存只与单个访客的往来量有关。
+     * 举证与交接要的是「这个客户的全部往来」，故按访客而非按会话拆——
+     * 同一客户被多个客服接待过时，按会话拆会把它割裂成几份。
+     * @param array $where 与列表相同的筛选条件
+     * @return \Generator
+     */
+    public function visitorExportBundle(array $where): \Generator
+    {
+        $agents = $this->agentMap();
+        if (!$agents) {
+            return;
+        }
+        $sessions = $this->bundleSessions($where, array_keys($agents));
+        $seq = 0;
+        $total = 0;
+        foreach ($sessions as $visitorId => $group) {
+            if (++$seq > self::EXPORT_BUNDLE_MAX || $total >= self::EXPORT_BUNDLE_TOTAL_MAX) {
+                break;
+            }
+            $file = $this->visitorFile($seq, (int)$visitorId, $group, $agents);
+            if (!$file) {
+                $seq--;
+                continue;
+            }
+            $total += count($file['rows']) - 1;
+            yield $file;
+        }
+    }
+
+    /**
+     * 按访客归组的会话，键为访客ID
+     * @param array $where
+     * @param array $agentIds
+     * @return array
+     */
+    protected function bundleSessions(array $where, array $agentIds): array
+    {
+        $rows = $this->sessionQuery($where, $agentIds)
+            ->order('update_time DESC, id DESC')
+            //一个访客可能有多个会话，按会话数放宽取数上限
+            ->limit(self::EXPORT_BUNDLE_MAX * 5)
+            ->field('user_id,to_user_id,nickname')
+            ->select();
+        $rows = is_object($rows) ? $rows->toArray() : (array)$rows;
+        $grouped = [];
+        foreach ($rows as $row) {
+            $grouped[(int)$row['to_user_id']][] = $row;
+        }
+        return $grouped;
+    }
+
+    /**
+     * 组装单个访客的表格与索引行
+     * @param int $seq
+     * @param int $visitorId
+     * @param array $group 该访客的全部会话
+     * @param array $agents
+     * @return array|null 无对话内容时返回null
+     */
+    protected function visitorFile(int $seq, int $visitorId, array $group, array $agents)
+    {
+        $rows = [array_merge(self::BUNDLE_HEADER, self::MESSAGE_HEADER)];
+        $times = [];
+        foreach ($group as $session) {
+            $agentName = $agents[(int)$session['user_id']]['nickname'] ?? '已删除客服';
+            foreach ($this->collectRecords((int)$session['user_id'], $visitorId) as $item) {
+                if ((int)$item['add_time']) {
+                    $times[] = (int)$item['add_time'];
+                }
+                $rows[] = array_merge([$agentName], $this->messageRow($item));
+            }
+        }
+        if (count($rows) <= 1) {
+            return null;
+        }
+        //多个会话各自按时间正序，合到一份文件里要重新按时间排，否则读起来是乱的
+        $rows = $this->sortBundleRows($rows);
+        $visitor = $this->visitorMap([$visitorId])[$visitorId] ?? [];
+        $name = ($visitor['remark_nickname'] ?? '') ?: ($visitor['nickname'] ?? '');
+        $name = $name ?: ($group[0]['nickname'] ?? '');
+        return [
+            'name' => $seq . '_' . ($name ?: '未命名访客'),
+            'rows' => $rows,
+            'index' => [
+                $seq,
+                $name ?: '未命名访客',
+                $visitor['phone'] ?? '',
+                count($group),
+                count($rows) - 1,
+                $times ? date('Y-m-d H:i:s', min($times)) : '',
+                $times ? date('Y-m-d H:i:s', max($times)) : '',
+            ],
+        ];
+    }
+
+    /**
+     * 表头保持首行，其余按时间列升序
+     * @param array $rows
+     * @return array
+     */
+    protected function sortBundleRows(array $rows): array
+    {
+        $header = array_shift($rows);
+        //时间列紧跟归属列之后
+        $timeIndex = count(self::BUNDLE_HEADER);
+        usort($rows, function ($a, $b) use ($timeIndex) {
+            return strcmp((string)$a[$timeIndex], (string)$b[$timeIndex]);
+        });
+        array_unshift($rows, $header);
         return $rows;
     }
 

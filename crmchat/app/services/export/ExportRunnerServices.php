@@ -109,9 +109,7 @@ class ExportRunnerServices
             $result = TenantContext::runAs((int)$task['tenant_id'], function () use ($task) {
                 $exporter = $this->taskServices->exporter((string)$task['type']);
                 $params = json_decode((string)$task['params'], true);
-                $rows = $exporter->rows(is_array($params) ? $params : []);
-                $url = ExportFile::write($exporter->prefix(), $rows, (string)$task['format'], $exporter->sheetName());
-                return ['url' => $url, 'count' => max(0, count($rows) - 1)];
+                return $this->produce($exporter, is_array($params) ? $params : [], (string)$task['format']);
             });
             $this->finish($task, $result);
             return true;
@@ -123,6 +121,46 @@ class ExportRunnerServices
                 'finish_time' => time(),
             ]);
             return false;
+        }
+    }
+
+    /**
+     * 按格式产出文件
+     *
+     * zip 走分包：写一个子文件释放一个，故无需把全部数据合成一张大表。
+     * 导出器没实现分包接口时回落单表，不让格式选择把功能变成不可用。
+     * @param ExporterInterface $exporter
+     * @param array $params
+     * @param string $format
+     * @return array [url, count]
+     */
+    protected function produce(ExporterInterface $exporter, array $params, string $format): array
+    {
+        if ($format === ExportFile::FORMAT_ZIP && $exporter instanceof BundleExporterInterface) {
+            $counter = 0;
+            $files = $this->countingFiles($exporter->bundle($params), $counter);
+            $url = ExportFile::writeBundle($exporter->prefix(), $files, $exporter->indexHeader(), $exporter->sheetName());
+            return ['url' => $url, 'count' => $counter];
+        }
+        $rows = $exporter->rows($params);
+        $format = $format === ExportFile::FORMAT_ZIP ? ExportFile::FORMAT_XLSX : $format;
+        $url = ExportFile::write($exporter->prefix(), $rows, $format, $exporter->sheetName());
+        return ['url' => $url, 'count' => max(0, count($rows) - 1)];
+    }
+
+    /**
+     * 透传生成器并累计数据行数
+     *
+     * 打包器只管写文件，行数得在流过时顺手数出来，事后再遍历一次就白读一遍数据。
+     * @param \Generator $files
+     * @param int $counter 出参
+     * @return \Generator
+     */
+    protected function countingFiles(\Generator $files, int &$counter): \Generator
+    {
+        foreach ($files as $file) {
+            $counter += max(0, count($file['rows'] ?? []) - 1);
+            yield $file;
         }
     }
 

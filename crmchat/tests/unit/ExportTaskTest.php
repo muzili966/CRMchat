@@ -119,6 +119,75 @@ class ExportTaskTest extends TestCase
     }
 
     /**
+     * 包内文件名来自访客昵称，必须清洗掉路径与保留字符
+     *
+     * 不处理的话轻则压缩包打不开，重则把文件写到包外。
+     */
+    public function testBundleNameIsSanitized()
+    {
+        $used = [];
+        $cases = [
+            'a/b' => 'a_b.xlsx',
+            'a\b' => 'a_b.xlsx',
+            'C:*?"<>|' => 'C_______.xlsx',
+            "换\n行" => '换 行.xlsx',
+            '' => '未命名.xlsx',
+            '   ' => '未命名.xlsx',
+        ];
+        foreach ($cases as $input => $expect) {
+            $used = [];
+            $this->assertSame($expect, $this->bundleName((string)$input, $used));
+        }
+    }
+
+    /**
+     * 同名访客不能覆盖彼此的文件
+     */
+    public function testBundleNameDeduplicates()
+    {
+        $used = [];
+        $this->assertSame('张三.xlsx', $this->bundleName('张三', $used));
+        $this->assertSame('张三(2).xlsx', $this->bundleName('张三', $used));
+        $this->assertSame('张三(3).xlsx', $this->bundleName('张三', $used));
+    }
+
+    /**
+     * 超长昵称按字符截断，不能把多字节字符切成乱码
+     */
+    public function testBundleNameTruncatesByCharacter()
+    {
+        $used = [];
+        $name = $this->bundleName(str_repeat('访', 200), $used);
+        $this->assertSame(60, mb_strlen(str_replace('.xlsx', '', $name)));
+        $this->assertNotFalse(mb_check_encoding($name, 'UTF-8'));
+    }
+
+    /**
+     * zip 也在白名单内，非法值仍回落CSV
+     */
+    public function testZipIsAcceptedFormat()
+    {
+        $this->assertContains(ExportFile::FORMAT_ZIP, ExportFile::FORMATS);
+        //环境有zip扩展时才该放行，否则回落CSV而不是让功能不可用
+        $expected = class_exists('\ZipArchive') ? 'zip' : 'csv';
+        $this->assertSame($expected, ExportFile::normalizeFormat('zip'));
+        $this->assertSame('csv', ExportFile::normalizeFormat('rar'));
+    }
+
+    /**
+     * 调用 ExportFile 的受保护命名方法
+     * @param string $name
+     * @param array $used
+     * @return string
+     */
+    protected function bundleName(string $name, array &$used): string
+    {
+        $m = new \ReflectionMethod(ExportFile::class, 'uniqueName');
+        $m->setAccessible(true);
+        return $m->invokeArgs(null, [$name, &$used]);
+    }
+
+    /**
      * 保留期与排队上限须是合理正数
      */
     public function testLimitsAreSane()

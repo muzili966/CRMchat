@@ -29,8 +29,10 @@
                                 全局导出<Icon type="ios-arrow-down"/>
                             </Button>
                             <DropdownMenu slot="list">
-                                <DropdownItem name="xlsx">导出Excel</DropdownItem>
-                                <DropdownItem name="csv">导出CSV</DropdownItem>
+                                <!-- 单表适合筛选透视，分包适合归档与单独交付 -->
+                                <DropdownItem name="xlsx">单表Excel（便于分析）</DropdownItem>
+                                <DropdownItem name="csv">单表CSV（便于导入）</DropdownItem>
+                                <DropdownItem name="zip" divided>按访客打包ZIP（便于归档）</DropdownItem>
                             </DropdownMenu>
                         </Dropdown>
                     </Tooltip>
