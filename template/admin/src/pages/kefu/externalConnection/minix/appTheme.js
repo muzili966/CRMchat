@@ -10,7 +10,7 @@ import {
   getChatThemeVariables
 } from '@/config/chatThemes';
 import defaultBrandIcon from '@/assets/images/qialink-logo-icon.png';
-import { onAvatarError } from '@/libs/avatar';
+import { onAvatarError, DEFAULT_AVATAR } from '@/libs/avatar';
 
 const DEFAULT_THEME_COLOR = '#2d8cf0';
 const PLATFORM_BRAND_TEXT = '技术支持 by QiaLink 洽联';
@@ -34,6 +34,7 @@ function parseBanners(raw) {
 export default {
   data() {
     return {
+      defaultAvatar: DEFAULT_AVATAR,
       defaultBrandIcon,
       platformBrandText: PLATFORM_BRAND_TEXT,
       bannerAutoplaySpeed: BANNER_AUTOPLAY_SPEED,

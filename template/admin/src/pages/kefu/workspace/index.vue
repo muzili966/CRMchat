@@ -33,7 +33,7 @@
                   <div class="time" v-show="item.show">{{item.time }}</div>
                   <div class="flex-box">
                     <div class="avatar">
-                      <img :src="item.avatar" alt="" @error="handleAvatarError">
+                      <img :src="item.avatar || defaultAvatar" alt="" @error="handleAvatarError">
                     </div>
                     <div class="msg-wrapper">
                       <!-- 文档 -->
@@ -178,7 +178,7 @@
           <Input v-model="aiNickname" prefix="ios-search" placeholder="搜索用户名称" @on-enter="getAiSessionList" />
           <div class="ai-list" v-if="aiSessionList.length > 0">
             <div class="ai-item" v-for="(item,index) in aiSessionList" :key="index">
-              <div class="avatar"><img :src="item.avatar" alt="" @error="handleAvatarError"></div>
+              <div class="avatar"><img :src="item.avatar || defaultAvatar" alt="" @error="handleAvatarError"></div>
               <div class="info">
                 <div class="name line1">{{item.nickname}}</div>
                 <div class="msg line1">
@@ -216,7 +216,7 @@
 
 //提示音统一走 notifySound：内部处理Chrome的自动播放限制
 import Setting from '@/setting';
-import { onAvatarError } from '@/libs/avatar';
+import { onAvatarError, DEFAULT_AVATAR } from '@/libs/avatar';
 import chatFileCard from '@/components/chatFileCard';
 import chatRateCard from '@/components/chatRateCard';
 import chatFaqCard from '@/components/chatFaqCard';
@@ -273,6 +273,7 @@ export default {
   },
   data() {
     return {
+      defaultAvatar: DEFAULT_AVATAR,
       wsOpen:false,
       authMsg:false,
       isEmoji: false, // 是否显示表情弹框

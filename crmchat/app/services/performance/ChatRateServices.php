@@ -158,6 +158,13 @@ class ChatRateServices
         $data = $record->toArray();
         $data['_add_time'] = $data['add_time'];
         $data['add_time'] = is_numeric($data['add_time']) ? (int)$data['add_time'] : strtotime((string)$data['add_time']);
+        //同常见问题卡片：客户端直接绑 item.avatar，缺了会渲染成没有 src 的
+        //img，而没有 src 就不触发 error 事件，头像兜底也就没机会生效
+        /** @var \app\services\chat\ChatUserServices $userService */
+        $userService = app()->make(\app\services\chat\ChatUserServices::class);
+        $sender = $userService->getUserInfo($kefuUserId, ['nickname', 'avatar']);
+        $data['nickname'] = $sender['nickname'] ?? '';
+        $data['avatar'] = $sender['avatar'] ?? '';
         return $data;
     }
 

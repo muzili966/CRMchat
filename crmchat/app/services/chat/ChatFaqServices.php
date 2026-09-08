@@ -139,6 +139,13 @@ class ChatFaqServices extends BaseServices
         $data = $record->toArray();
         $data['_add_time'] = $data['add_time'];
         $data['add_time'] = is_numeric($data['add_time']) ? (int)$data['add_time'] : strtotime((string)$data['add_time']);
+        //必须补昵称头像：客户端直接绑 item.avatar，缺了会渲染成没有 src 的
+        //img，而没有 src 就不触发 error 事件，头像兜底也就没机会生效
+        /** @var ChatUserServices $userService */
+        $userService = app()->make(ChatUserServices::class);
+        $sender = $userService->getUserInfo((int)$data['user_id'], ['nickname', 'avatar']);
+        $data['nickname'] = $sender['nickname'] ?? '';
+        $data['avatar'] = $sender['avatar'] ?? '';
         return $data;
     }
 
