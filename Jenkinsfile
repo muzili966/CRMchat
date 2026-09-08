@@ -48,13 +48,13 @@ pipeline {
         stage('语法检查 & 单元测试') {
             when { expression { !params.SKIP_TESTS } }
             steps {
-                // phpunit.phar 用 php copy() 下载，不依赖容器内 curl；
-                // vendor 已随仓库提交，无需 composer install
+                // phpunit.phar 与 vendor 一样随仓库提交：构建期不联网、不跑 composer。
+                // 原先每次构建从 phar.phpunit.de 下载，公司网络走代理时会
+                // 「failed to open stream」直接把构建打挂，且版本不受仓库控制。
                 sh '''
                     docker run --rm -v "$WORKSPACE/crmchat":/app -w /app php:7.4-cli sh -c "
                         find app crmeb config route -name '*.php' -print0 | xargs -0 -n1 -P4 php -l > /dev/null &&
-                        php -r \\"copy('https://phar.phpunit.de/phpunit-9.6.phar','/tmp/phpunit.phar');\\" &&
-                        php /tmp/phpunit.phar -c phpunit.xml
+                        php phpunit.phar -c phpunit.xml
                     "
                 '''
             }

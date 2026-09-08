@@ -6,6 +6,7 @@ public/uploads/*
 public/install/install.lock
 tests
 phpunit.xml
+phpunit.phar
 .phpunit.result.cache
 deploy/compose
 *.log
