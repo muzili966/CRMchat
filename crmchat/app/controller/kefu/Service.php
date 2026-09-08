@@ -366,14 +366,43 @@ class Service extends AuthController
      */
     public function closeSession()
     {
-        [$userId] = $this->request->postMore([['user_id', 0]], true);
+        [$userId, $inviteRate] = $this->request->postMore([
+            ['user_id', 0],
+            ['invite_rate', 1],
+        ], true);
         if (!$userId) {
             return $this->fail('缺少访客id');
         }
+        $kefuUserId = (int)$this->kefuInfo['user_id'];
+        //先邀请再关闭：邀请要定位进行中的会话，顺序反了就找不到了。
+        //访客提交评价不要求会话仍开着，故卡片发出后关闭不影响其作答。
+        $invited = $inviteRate ? $this->tryInviteRate($kefuUserId, (int)$userId) : false;
         /** @var \app\services\performance\ChatSessionServices $sessionServices */
         $sessionServices = app()->make(\app\services\performance\ChatSessionServices::class);
-        $closed = $sessionServices->closeByKefu((int)$this->kefuInfo['user_id'], (int)$userId);
-        return $closed ? $this->success('已结束本次接待') : $this->fail('当前没有进行中的会话');
+        if (!$sessionServices->closeByKefu($kefuUserId, (int)$userId)) {
+            return $this->fail('当前没有进行中的会话');
+        }
+        return $this->success($invited ? '已结束接待并发出评价邀请' : '已结束本次接待');
+    }
+
+    /**
+     * 结束接待时顺带邀请评价
+     *
+     * 已评价过、邀请次数用尽都属正常情况，不该因此拦住"结束接待"这个主操作。
+     * @param int $kefuUserId
+     * @param int $userId
+     * @return bool
+     */
+    protected function tryInviteRate(int $kefuUserId, int $userId): bool
+    {
+        try {
+            /** @var \app\services\performance\ChatRateServices $rateServices */
+            $rateServices = app()->make(\app\services\performance\ChatRateServices::class);
+            $rateServices->invite($this->kefuInfo['appid'], $kefuUserId, $userId);
+            return true;
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     /**

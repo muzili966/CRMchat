@@ -448,15 +448,27 @@ export default {
         this.getRateStatus(userId)
       }).catch(res => this.$Message.error(res.msg))
     },
-    // 结束本次接待
+    // 结束本次接待，默认顺带邀请评价
     closeSession() {
       const userId = this.userActive && this.userActive.to_user_id
       if (!userId) return this.$Message.error('请先选择会话')
+      //结束时访客大概率还在，是回收评价最好的时机；但广告骚扰之类的接待不值得邀评，故留开关
+      let inviteRate = !this.rateStatus.rate
       this.$Modal.confirm({
         title: '结束本次接待',
-        content: '结束后本次接待计入绩效统计，访客再发消息将开启新的一次接待。',
+        okText: '结束接待',
+        render: h => h('div', [
+          h('p', { style: { marginBottom: '10px', color: '#515a6e' } },
+            '结束后本次接待计入绩效统计，访客再发消息将开启新的一次接待。'),
+          this.rateStatus.rate
+            ? h('p', { style: { color: '#a3aab8' } }, `访客已评 ${this.rateStatus.rate} 分`)
+            : h('Checkbox', {
+                props: { value: inviteRate },
+                on: { input: val => { inviteRate = val } }
+              }, '同时邀请访客评价本次服务')
+        ]),
         onOk: () => {
-          closeSessionApi({ user_id: userId }).then(res => {
+          closeSessionApi({ user_id: userId, invite_rate: inviteRate ? 1 : 0 }).then(res => {
             this.$Message.success(res.msg)
             this.getRateStatus(userId)
           }).catch(res => this.$Message.error(res.msg))
