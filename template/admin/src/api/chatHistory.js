@@ -72,3 +72,27 @@ export function historyExportAllApi (params) {
     params
   })
 }
+
+/**
+ * 某访客与全部客服的往来，合并成一条时间线
+ * @param {Object} params visitor_user_id/page/limit
+ */
+export function historyVisitorRecordsApi (params) {
+  return request({
+    url: 'chat/history/visitor_records',
+    method: 'get',
+    params
+  })
+}
+
+/**
+ * 导出访客的全量对话，返回可下载的相对URL
+ * @param {Object} params visitor_user_id/format
+ */
+export function historyVisitorExportApi (params) {
+  return request({
+    url: 'chat/history/visitor_export',
+    method: 'get',
+    params
+  })
+}

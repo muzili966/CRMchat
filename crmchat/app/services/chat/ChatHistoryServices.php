@@ -61,6 +61,11 @@ class ChatHistoryServices
     const MESSAGE_HEADER = ['时间', '发送者', '身份', '类型', '内容'];
 
     /**
+     * 访客全量对话的导出表头：多一列接待方，用于看出中途换人或AI转人工
+     */
+    const VISITOR_HEADER = ['时间', '接待方', '发送方', '内容'];
+
+    /**
      * 全局导出额外的会话归属列，拼在消息列之前
      */
     const SESSION_HEADER = ['接待客服', '访客'];
@@ -188,6 +193,145 @@ class ChatHistoryServices
             $row = $this->formatSession($row, $agents);
         }
         return $list;
+    }
+
+    /**
+     * 某访客的全量对话：把他与所有客服的往来按时间合并成一条时间线
+     *
+     * 按客服拆开看有个实际问题：一个访客先后找过不同客服，还可能先由AI接待
+     * 再转人工，要还原他到底经历了什么就得逐个会话点开对照时间。这里合并成
+     * 一条流，每条消息标明由谁应答，接待方换人时前端可据此分段。
+     * @param array $params visitor_user_id/page/limit
+     * @return array
+     */
+    public function getVisitorTranscript(array $params): array
+    {
+        $visitorId = (int)($params['visitor_user_id'] ?? 0);
+        $agents = $this->agentMap();
+        if (!$visitorId || !$agents) {
+            return ['list' => [], 'count' => 0];
+        }
+        //越权防线：该访客必须与本租户的客服有过往来
+        $exists = $this->recordTable()->where('to_user_id', $visitorId)
+            ->whereIn('user_id', array_keys($agents))->count();
+        if (!$exists) {
+            return ['list' => [], 'count' => 0];
+        }
+        /** @var ChatServiceDialogueRecordServices $recordServices */
+        $recordServices = app()->make(ChatServiceDialogueRecordServices::class);
+        $where = ['visitor' => [$visitorId, array_keys($agents)]];
+        [$page, $limit] = $this->pageValue($params);
+        return [
+            'list' => $this->formatVisitorRecords($recordServices->getVisitorMessageList($where, $page, $limit), $visitorId),
+            'count' => $recordServices->getVisitorMessageCount($where),
+        ];
+    }
+
+    /**
+     * 导出访客的全量对话
+     * @param array $params visitor_user_id/format
+     * @return string 可下载的相对URL
+     */
+    public function exportVisitorTranscript(array $params): string
+    {
+        $visitorId = (int)($params['visitor_user_id'] ?? 0);
+        $agents = $this->agentMap();
+        if (!$visitorId || !$agents) {
+            throw new AdminException('访客不存在或无权访问');
+        }
+        $records = $this->collectVisitorRecords($visitorId, array_keys($agents));
+        if (!$records) {
+            throw new AdminException('该访客没有可导出的内容');
+        }
+        return ExportFile::write('visitor_' . $visitorId . '_', $this->visitorExportRows($records),
+            ExportFile::normalizeFormat($params['format'] ?? ''), '访客全量对话');
+    }
+
+    /**
+     * 分批取完某访客的全部消息，并标注好接待方
+     * @param int $visitorId
+     * @param array $agentIds
+     * @return array
+     */
+    protected function collectVisitorRecords(int $visitorId, array $agentIds): array
+    {
+        /** @var ChatServiceDialogueRecordServices $recordServices */
+        $recordServices = app()->make(ChatServiceDialogueRecordServices::class);
+        $where = ['visitor' => [$visitorId, $agentIds]];
+        $records = [];
+        //多读一个批次越过上限才能确知是否真的被截断，否则「恰好等于上限」会误报
+        for ($page = 1; ; $page++) {
+            $rows = $recordServices->getVisitorMessageList($where, $page, self::EXPORT_CHUNK);
+            $records = array_merge($records, $rows);
+            if (count($rows) < self::EXPORT_CHUNK || count($records) > self::EXPORT_MAX) {
+                break;
+            }
+        }
+        $truncated = count($records) > self::EXPORT_MAX;
+        $records = $this->formatVisitorRecords(array_slice($records, 0, self::EXPORT_MAX), $visitorId);
+        if ($truncated) {
+            //宁可少给也不能悄悄少给：导出被截断必须在文件里看得见
+            $records[] = [
+                'add_time' => 0,
+                'agent_name' => '',
+                'is_ai' => 0,
+                'is_agent' => 0,
+                'msn_type' => 0,
+                'msn' => '（仅导出最早的 ' . self::EXPORT_MAX . ' 条消息，其余已截断）',
+            ];
+        }
+        return $records;
+    }
+
+    /**
+     * 合并流的展示字段：标出每条由谁应答
+     * @param array $list
+     * @param int $visitorId
+     * @return array
+     */
+    protected function formatVisitorRecords(array $list, int $visitorId): array
+    {
+        $agents = $this->agentMap();
+        $visitor = $this->visitorMap([$visitorId])[$visitorId] ?? [];
+        $visitorName = ($visitor['remark_nickname'] ?? '') ?: ($visitor['nickname'] ?? '访客');
+        foreach ($list as &$item) {
+            $isAgent = (int)$item['user_id'] !== $visitorId;
+            //客服发的取发送方，访客发的取接收方，这样每条都能标明本轮的接待方
+            $agentId = $isAgent ? (int)$item['user_id'] : (int)$item['to_user_id'];
+            $agent = $agents[$agentId] ?? [];
+            $item['is_agent'] = $isAgent ? 1 : 0;
+            $item['agent_user_id'] = $agentId;
+            $item['agent_name'] = $agent['nickname'] ?? '已删除客服';
+            $item['is_ai'] = (int)($agent['is_ai'] ?? 0);
+            $item['nickname'] = $isAgent ? $item['agent_name'] : $visitorName;
+            $item['avatar'] = $isAgent ? ($agent['avatar'] ?? '') : ($visitor['avatar'] ?? '');
+            $item['msn_type'] = (int)$item['msn_type'];
+            $this->normalizeTime($item);
+        }
+        return $list;
+    }
+
+    /**
+     * 导出行：比单客服导出多一列接待方，便于看出中途换人或AI转人工
+     *
+     * 入参须是 collectVisitorRecords 标注过的记录，这里只负责排版。
+     * @param array $records
+     * @return array
+     */
+    protected function visitorExportRows(array $records): array
+    {
+        $rows = [self::VISITOR_HEADER];
+        foreach ($records as $item) {
+            //截断说明行没有时间，不能被当成真实消息渲染出接待方和身份
+            $time = (int)$item['add_time'];
+            $rows[] = [
+                $time ? date('Y-m-d H:i:s', $time) : '',
+                $time ? $item['agent_name'] . ($item['is_ai'] ? '(AI)' : '') : '',
+                $time ? ($item['is_agent'] ? '客服' : '访客') : '',
+                $this->plainContent((int)$item['msn_type'], (string)$item['msn']),
+            ];
+        }
+        return $rows;
     }
 
     /**
@@ -554,6 +698,20 @@ class ChatHistoryServices
      * @param int $visitorUserId
      * @return array
      */
+    /**
+     * 归一化一条消息的时间字段
+     *
+     * 模型有 getAddTimeAttr 访问器，toArray 后 add_time 是 'Y-m-d H:i:s' 字符串，
+     * 直接 (int) 会得到年份。这里统一成：_add_time 留展示串，add_time 回到时间戳，
+     * 供前端排序与导出格式化使用。
+     * @param array $item
+     * @return void
+     */
+    protected function normalizeTime(array &$item): void
+    {
+        $item['_add_time'] = $item['add_time'];
+        $item['add_time'] = is_numeric($item['add_time']) ? (int)$item['add_time'] : (int)strtotime((string)$item['add_time']);
+    }
     protected function formatRecords(array $list, int $agentUserId, int $visitorUserId): array
     {
         $agent = $this->agentMap()[$agentUserId] ?? [];
@@ -563,8 +721,7 @@ class ChatHistoryServices
         foreach ($list as &$item) {
             $isAgent = (int)$item['user_id'] === $agentUserId;
             $item['msn_type'] = (int)$item['msn_type'];
-            $item['_add_time'] = $item['add_time'];
-            $item['add_time'] = is_numeric($item['add_time']) ? (int)$item['add_time'] : strtotime((string)$item['add_time']);
+            $this->normalizeTime($item);
             $item['is_agent'] = (int)$isAgent;
             $item['nickname'] = $isAgent ? $agentName : $visitorName;
             $item['avatar'] = $isAgent ? ($agent['avatar'] ?? '') : ($visitor['avatar'] ?? '');
@@ -624,20 +781,25 @@ class ChatHistoryServices
      */
     protected function agentMap(): array
     {
-        static $cache = null;
-        if ($cache !== null) {
-            return $cache;
+        //按租户分键缓存：Swoole 是常驻进程，方法级 static 会跨请求存活，
+        //平台管理员切换租户视角时会读到上一个租户的客服映射，
+        //表现为历史对话列表为空或客服名张冠李戴
+        $tenantId = (int)TenantContext::id();
+        static $cache = [];
+        if (isset($cache[$tenantId])) {
+            return $cache[$tenantId];
         }
         $rows = Db::name('chat_service')
-            ->where('tenant_id', (int)TenantContext::id())
+            ->where('tenant_id', $tenantId)
             ->field('user_id,nickname,avatar,is_ai')
             ->select();
         $rows = is_object($rows) ? $rows->toArray() : (array)$rows;
-        $cache = [];
+        $map = [];
         foreach ($rows as $row) {
-            $cache[(int)$row['user_id']] = $row;
+            $map[(int)$row['user_id']] = $row;
         }
-        return $cache;
+        $cache[$tenantId] = $map;
+        return $map;
     }
 
     /**

@@ -1496,7 +1496,8 @@ INSERT INTO `eb_system_upgrade` (`version`,`name`,`create_time`) VALUES
 ('20260908_04','reply_timeout',UNIX_TIMESTAMP()),
 ('20260908_05','faq_card',UNIX_TIMESTAMP()),
 ('20260908_06','default_tenant_faq_speech',UNIX_TIMESTAMP()),
-('20260908_07','fix_faq_menu_conflict',UNIX_TIMESTAMP());
+('20260908_07','fix_faq_menu_conflict',UNIX_TIMESTAMP()),
+('20260909_01','visitor_transcript',UNIX_TIMESTAMP());
 
 CREATE TABLE IF NOT EXISTS `eb_platform_lead` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -1887,3 +1888,8 @@ INSERT INTO `eb_system_menus` (`id`,`pid`,`icon`,`menu_name`,`module`,`controlle
 (1363,1360,'','更新常见问题','admin','','','api/admin/chat/faq/<id>','PUT','[]',0,0,0,1,0,1,'','165/1360',2,'',0,'',0),
 (1364,1360,'','删除常见问题','admin','','','api/admin/chat/faq/<id>','DELETE','[]',0,0,0,1,0,1,'','165/1360',2,'',0,'',0),
 (1365,1360,'','常见问题排序','admin','','','api/admin/chat/faq/sort','POST','[]',0,0,0,1,0,1,'','165/1360',2,'',0,'',0);
+
+-- 访客全量对话（跨客服合并），对应增量 V20260909_01
+INSERT INTO `eb_system_menus` (`id`,`pid`,`icon`,`menu_name`,`module`,`controller`,`action`,`api_url`,`methods`,`params`,`sort`,`is_show`,`is_show_path`,`is_tenant`,`is_platform`,`access`,`menu_path`,`path`,`auth_type`,`header`,`is_header`,`unique_auth`,`is_del`) VALUES
+(1370,1320,'','访客全量对话','admin','','','api/admin/chat/history/visitor_records','GET','[]',0,0,0,1,0,1,'','165/1320',2,'',0,'',0),
+(1371,1320,'','导出访客对话','admin','','','api/admin/chat/history/visitor_export','GET','[]',0,0,0,1,0,1,'','165/1320',2,'',0,'',0);

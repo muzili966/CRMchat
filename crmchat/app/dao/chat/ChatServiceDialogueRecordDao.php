@@ -169,11 +169,41 @@ class ChatServiceDialogueRecordDao extends BaseDao
      */
     public function getMessageList(array $where, int $page = 0, int $limit = 0)
     {
+        //必须显式按时间排序：chat 条件是 user_id/to_user_id 双向 IN，
+        //优化器会走 to_uid 索引、按收发方分组返回，不排序的话一页里
+        //全是同一方发的，对话看起来没有一问一答，分页导出也是乱的。
+        //add_time 只到秒，同秒消息用 id 兜底保持写入先后
         return $this->search(['chat' => $where['chat']])->when(isset($where['add_time']) && $where['add_time'], function ($query) use ($where) {
             $query->where('add_time', '>', $where['add_time']);
-        })->when($page && $limit, function ($query) use ($page, $limit) {
+        })->order('add_time', 'asc')->order('id', 'asc')->when($page && $limit, function ($query) use ($page, $limit) {
             $query->page($page, $limit);
         })->select()->toArray();
+    }
+
+    /**
+     * 某访客与全部客服的往来，按时间合并
+     * @param array $where visitor => [访客id, 客服id数组]
+     * @param int $page
+     * @param int $limit
+     * @return array
+     */
+    public function getVisitorMessageList(array $where, int $page = 0, int $limit = 0)
+    {
+        return $this->search(['visitor' => $where['visitor']])
+            ->order('add_time', 'asc')->order('id', 'asc')
+            ->when($page && $limit, function ($query) use ($page, $limit) {
+                $query->page($page, $limit);
+            })->select()->toArray();
+    }
+
+    /**
+     * 访客全量对话的条数
+     * @param array $where
+     * @return int
+     */
+    public function getVisitorMessageCount(array $where)
+    {
+        return $this->search(['visitor' => $where['visitor']])->count();
     }
 
     /**

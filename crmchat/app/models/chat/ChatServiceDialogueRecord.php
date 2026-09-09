@@ -136,6 +136,32 @@ class ChatServiceDialogueRecord extends BaseModel
     }
 
     /**
+     * 某访客与本租户任一客服的往来
+     *
+     * 与 chat 的区别：chat 锁定一对一，这里的客服端是集合，
+     * 用于把访客先后找过的多个客服（含AI）合并成一条时间线。
+     * @param Model $query
+     * @param array $value [访客id, 客服id数组]
+     */
+    public function searchVisitorAttr($query, $value)
+    {
+        [$visitorId, $agentIds] = $value;
+        $visitorId = (int)$visitorId;
+        $agentIds = array_map('intval', (array)$agentIds);
+        if (!$agentIds) {
+            $query->whereRaw('1=0');
+            return;
+        }
+        $query->where(function ($q) use ($visitorId, $agentIds) {
+            $q->where(function ($sub) use ($visitorId, $agentIds) {
+                $sub->where('user_id', $visitorId)->whereIn('to_user_id', $agentIds);
+            })->whereOr(function ($sub) use ($visitorId, $agentIds) {
+                $sub->where('to_user_id', $visitorId)->whereIn('user_id', $agentIds);
+            });
+        });
+    }
+
+    /**
      * @param Model $query
      * @param $value
      */

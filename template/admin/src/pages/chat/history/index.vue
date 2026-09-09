@@ -88,10 +88,21 @@
 
         <!-- 对话抽屉 -->
         <Drawer v-model="drawer" width="560" :title="drawerTitle">
-            <!-- 访客视角先列出其全部会话，选一条再看内容 -->
+            <div v-if="current && current.merged" class="sess-hint">
+                已合并该访客与全部客服（含AI）的往来，按时间先后排列
+            </div>
+            <!-- 访客视角先列出其全部会话，选一条再看内容；置顶一条合并全部客服的时间线 -->
             <div v-if="visitorSessions.length" class="sess-picker">
+                <div class="sess-item sess-item-all" :class="{ 'sess-item-on': current && current.merged }"
+                     @click="loadMerged()">
+                    <div class="sess-item-main">
+                        <Icon type="ios-git-merge"/>
+                        <span>全部合并</span>
+                    </div>
+                    <span class="sess-item-time">{{ visitorSessions.length }}个客服</span>
+                </div>
                 <div v-for="s in visitorSessions" :key="s.id" class="sess-item"
-                     :class="{ 'sess-item-on': current && current.agent_user_id === s.agent_user_id }"
+                     :class="{ 'sess-item-on': current && !current.merged && current.agent_user_id === s.agent_user_id }"
                      @click="loadTranscript(s)">
                     <div class="sess-item-main">
                         <span>{{ s.agent_name }}</span>
@@ -111,7 +122,14 @@
             <div v-if="recordsLoading" class="chat-empty">加载中…</div>
             <div v-else-if="!records.length" class="chat-empty">暂无对话内容</div>
             <div v-else class="chat-box">
-                <div v-for="m in records" :key="m.id" class="chat-row" :class="{ 'chat-row-agent': m.is_agent }">
+                <template v-for="(m, i) in records">
+                <!-- 合并视图里接待方会中途变化（AI转人工、换客服），插条分隔线才看得出接力 -->
+                <div v-if="isHandover(i)" :key="'hand-' + m.id" class="chat-handover">
+                    <span>{{ m.agent_name }}</span>
+                    <Tag v-if="m.is_ai" color="blue" size="small">AI</Tag>
+                    <span class="chat-handover-tip">接待</span>
+                </div>
+                <div :key="m.id" class="chat-row" :class="{ 'chat-row-agent': m.is_agent }">
                     <div class="chat-meta">{{ m.nickname }} · {{ m._add_time }}</div>
                     <div class="chat-bubble">
                         <template v-if="m.msn_type === 3">
@@ -128,6 +146,7 @@
                         </template>
                     </div>
                 </div>
+                </template>
                 <div v-if="records.length < recordTotal" class="chat-more">
                     <Button size="small" :loading="recordsLoading" @click="loadMore">加载更多消息</Button>
                 </div>
@@ -139,7 +158,7 @@
 <script>
     import {
         historySessionsApi, historyVisitorsApi, historyVisitorSessionsApi, historyRecordsApi,
-        historyExportApi, historyExportAllApi
+        historyExportApi, historyExportAllApi, historyVisitorRecordsApi, historyVisitorExportApi
     } from '@/api/chatHistory'
     import { kefuListApi } from '@/api/setting'
     import { onAvatarError } from '@/libs/avatar'
@@ -163,6 +182,7 @@
                 drawer: false,
                 drawerTitle: '对话内容',
                 current: null,
+                visitorId: 0,
                 visitorSessions: [],
                 records: [],
                 recordTotal: 0,
@@ -232,6 +252,7 @@
             },
             openSession (row) {
                 this.visitorSessions = []
+                this.visitorId = 0
                 this.drawerTitle = `${row.visitor_name || '访客'} × ${row.agent_name}`
                 this.drawer = true
                 this.loadTranscript(row)
@@ -242,12 +263,18 @@
                 this.drawer = true
                 this.records = []
                 this.current = null
+                this.visitorId = row.visitor_id
                 historyVisitorSessionsApi(row.visitor_id).then(res => {
                     this.visitorSessions = res.data || []
                     if (this.visitorSessions.length) {
-                        this.loadTranscript(this.visitorSessions[0])
+                        //默认给合并视图：访客视角关心的是整件事怎么走的，而不是某个客服单独说了什么
+                        this.loadMerged()
                     }
                 }).catch(res => this.$Message.error(res.msg))
+            },
+            // 合并全部客服的时间线；用一条伪会话占住 current，复用抽屉的加载与导出
+            loadMerged () {
+                this.loadTranscript({ merged: true, visitor_id: this.visitorId })
             },
             loadTranscript (row) {
                 this.current = row
@@ -273,11 +300,20 @@
             //导出的是整段会话，与当前翻到第几页无关
             exportChat (format) {
                 if (!this.current) return
-                this.handleExport(historyExportApi({
-                    agent_user_id: this.current.agent_user_id,
-                    visitor_user_id: this.current.visitor_id,
-                    format
-                }), 'exporting', format)
+                const request = this.current.merged
+                    ? historyVisitorExportApi({ visitor_user_id: this.current.visitor_id, format })
+                    : historyExportApi({
+                        agent_user_id: this.current.agent_user_id,
+                        visitor_user_id: this.current.visitor_id,
+                        format
+                    })
+                this.handleExport(request, 'exporting', format)
+            },
+            // 上一条由不同客服应答即为一次接力；首条也要标出接待方
+            isHandover (index) {
+                if (!this.current || !this.current.merged) return false
+                if (index === 0) return true
+                return this.records[index].agent_user_id !== this.records[index - 1].agent_user_id
             },
             //导出当前筛选条件下的全部会话明细，走下载中心异步产出
             exportAll (format) {
@@ -297,12 +333,11 @@
             fetchRecords (append = false) {
                 if (!this.current) return
                 this.recordsLoading = true
-                historyRecordsApi({
-                    agent_user_id: this.current.agent_user_id,
-                    visitor_user_id: this.current.visitor_id,
-                    page: this.recordPage,
-                    limit: RECORD_LIMIT
-                }).then(res => {
+                const params = { visitor_user_id: this.current.visitor_id, page: this.recordPage, limit: RECORD_LIMIT }
+                const request = this.current.merged
+                    ? historyVisitorRecordsApi(params)
+                    : historyRecordsApi({ ...params, agent_user_id: this.current.agent_user_id })
+                request.then(res => {
                     const list = (res.data && res.data.list) || []
                     //接口按时间正序返回，翻页取到的是更晚的消息，故追加在后
                     this.records = append ? [...this.records, ...list] : list
@@ -325,6 +360,36 @@
         flex-wrap: wrap;
         gap: 12px;
         margin-bottom: 16px;
+    }
+    .sess-item-all {
+        font-weight: 500;
+    }
+    .sess-hint {
+        margin-bottom: 10px;
+        padding: 6px 10px;
+        background: #f0f7ff;
+        color: #2d8cf0;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+    .chat-handover {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin: 14px 0 8px;
+        color: #808695;
+        font-size: 12px;
+    }
+    .chat-handover::before,
+    .chat-handover::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: #e8eaec;
+    }
+    .chat-handover-tip {
+        color: #c5c8ce;
     }
     .hist-filters {
         display: flex;

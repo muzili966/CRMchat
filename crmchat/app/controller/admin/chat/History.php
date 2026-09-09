@@ -60,6 +60,34 @@ class History extends AuthController
     }
 
     /**
+     * 某访客的全量对话：与所有客服的往来合并成一条时间线
+     * @return mixed
+     */
+    public function visitorRecords()
+    {
+        $data = $this->request->getMore([
+            [['visitor_user_id', 'd'], 0],
+            [['page', 'd'], 1],
+            [['limit', 'd'], 30],
+        ]);
+        return $this->success($this->services->getVisitorTranscript($data));
+    }
+
+    /**
+     * 导出访客的全量对话
+     * @return mixed
+     */
+    public function exportVisitor()
+    {
+        $this->assertCanExport();
+        $data = $this->request->getMore([
+            [['visitor_user_id', 'd'], 0],
+            ['format', ExportFile::FORMAT_CSV],
+        ]);
+        return $this->success('导出成功', ['url' => $this->services->exportVisitorTranscript($data)]);
+    }
+
+    /**
      * 对话内容
      * @return mixed
      */

@@ -157,6 +157,62 @@ class ChatHistoryTest extends TestCase
     }
 
     /**
+     * 消息模型有 add_time 访问器，toArray 后拿到的是 'Y-m-d H:i:s'
+     *
+     * 直接 (int) 会得到年份（2026），导出与前端排序都会错到离谱。
+     * 归一化必须把字符串还原成时间戳，同时保留展示串。
+     */
+    public function testNormalizeTimeAcceptsAccessorString()
+    {
+        $item = ['add_time' => '2026-01-01 09:51:19'];
+        $m = new \ReflectionMethod($this->svc, 'normalizeTime');
+        $m->setAccessible(true);
+        $m->invokeArgs($this->svc, [&$item]);
+        $this->assertSame(strtotime('2026-01-01 09:51:19'), $item['add_time']);
+        $this->assertSame('2026-01-01 09:51:19', $item['_add_time']);
+    }
+
+    /**
+     * 已是时间戳时原样通过；空值不能变成 1970 那种假时间
+     */
+    public function testNormalizeTimeKeepsTimestampAndEmpty()
+    {
+        $m = new \ReflectionMethod($this->svc, 'normalizeTime');
+        $m->setAccessible(true);
+
+        $item = ['add_time' => 1700000000];
+        $m->invokeArgs($this->svc, [&$item]);
+        $this->assertSame(1700000000, $item['add_time']);
+
+        $empty = ['add_time' => ''];
+        $m->invokeArgs($this->svc, [&$empty]);
+        $this->assertSame(0, $empty['add_time']);
+    }
+
+    /**
+     * 访客全量对话导出：多一列接待方，且每行与表头等宽
+     */
+    public function testVisitorExportRowsCarryAgentColumn()
+    {
+        $rows = $this->invoke('visitorExportRows', [[
+            ['add_time' => 1700000000, 'agent_name' => 'AI智能客服', 'is_ai' => 1, 'is_agent' => 1, 'msn_type' => 1, 'msn' => '您好'],
+            ['add_time' => 1700000060, 'agent_name' => '青柠', 'is_ai' => 0, 'is_agent' => 0, 'msn_type' => 1, 'msn' => '在吗'],
+            ['add_time' => 0, 'agent_name' => '', 'is_ai' => 0, 'is_agent' => 0, 'msn_type' => 0, 'msn' => '（已截断）'],
+        ]]);
+        $this->assertSame(ChatHistoryServices::VISITOR_HEADER, $rows[0]);
+        foreach ($rows as $row) {
+            $this->assertCount(count(ChatHistoryServices::VISITOR_HEADER), $row);
+        }
+        //AI 接待要能一眼认出来，否则合并流里分不清哪段是机器答的
+        $this->assertSame('AI智能客服(AI)', $rows[1][1]);
+        $this->assertSame('客服', $rows[1][2]);
+        //访客发言也要标出当时的接待方，才看得出他在跟谁说话
+        $this->assertSame('青柠', $rows[2][1]);
+        $this->assertSame('访客', $rows[2][2]);
+        //截断说明行没有时间，不能被当成一条真实消息渲染出接待方和身份
+        $this->assertSame(['', '', '', '（已截断）'], $rows[3]);
+    }
+    /**
      * 格式来自前端，非白名单一律回落CSV，避免拼进文件名
      *
      * xlsx 还额外依赖 ext-zip：缺扩展时 normalizeFormat 按设计降级为 csv。
