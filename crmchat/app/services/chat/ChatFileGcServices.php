@@ -6,6 +6,7 @@
 namespace app\services\chat;
 
 use app\dao\chat\ChatServiceDialogueRecordDao;
+use app\dao\TenantPlanOrderDao;
 use app\models\TenantPlan;
 use app\services\TenantPlanServices;
 use crmeb\services\tenant\TenantContext;
@@ -38,6 +39,15 @@ class ChatFileGcServices
     const CHAT_FILE_DIR = '/store/chat_file/';
 
     /**
+     * 降级宽限期（天）：付费到期后这么久内，历史记录一条不动
+     *
+     * 没有它就是数据悬崖——租户到期回落免费版的次日，付费期间攒下的记录
+     * 会按免费版的保留天数被清空，客户往往正是发现数据没了才想起续费。
+     * 90 天覆盖一个季度的决策周期，也留足了导出时间。
+     */
+    const DOWNGRADE_GRACE_DAYS = 90;
+
+    /**
      * 已被消息引用的附件标记：chat_file 目录内 pid 无其他用途，借作引用标志
      */
     const REF_FLAG = 1;
@@ -52,11 +62,13 @@ class ChatFileGcServices
         foreach ($this->tenantPlans() as $tenantId => $planId) {
             $plan = app()->make(TenantPlanServices::class)->getTenantPlan((int)$tenantId);
             $keepDays = (int)($plan['record_keep_days'] ?? 0);
-            $result[$tenantId] = TenantContext::runAs((int)$tenantId, function () use ($tenantId, $keepDays) {
+            //曾付费租户在宽限期内豁免保留期清理；孤儿文件与它无关，照常回收
+            $inGrace = $this->inDowngradeGrace((int)$tenantId);
+            $result[$tenantId] = TenantContext::runAs((int)$tenantId, function () use ($tenantId, $keepDays, $inGrace) {
                 //0=不限，保持现状语义：既不删记录也不删文件
-                $expired = $keepDays > 0 ? $this->purgeExpired((int)$tenantId, $keepDays) : 0;
+                $expired = ($keepDays > 0 && !$inGrace) ? $this->purgeExpired((int)$tenantId, $keepDays) : 0;
                 $orphan = $this->purgeOrphans((int)$tenantId);
-                return ['expired' => $expired, 'orphan' => $orphan];
+                return ['expired' => $expired, 'orphan' => $orphan, 'grace' => (int)$inGrace];
             });
         }
         return $result;
@@ -83,6 +95,39 @@ class ChatFileGcServices
             //标记失败不影响发送；最坏是该文件在宽限期后被误判孤儿，属可接受降级
             Log::warning('聊天文件引用标记失败：' . $e->getMessage());
         }
+    }
+
+    /**
+     * 该租户是否处于降级宽限期
+     * @param int $tenantId
+     * @return bool
+     */
+    protected function inDowngradeGrace(int $tenantId): bool
+    {
+        /** @var TenantPlanOrderDao $orderDao */
+        $orderDao = app()->make(TenantPlanOrderDao::class);
+        //订单表按租户隔离，查历史订单要逃逸出当前上下文
+        $paidUntil = TenantContext::withoutTenant(function () use ($orderDao, $tenantId) {
+            return $orderDao->lastPaidExpireAt($tenantId);
+        });
+        return self::isInGrace($paidUntil, time());
+    }
+
+    /**
+     * 宽限期判定
+     *
+     * 从未付费（0）不豁免，否则数据永远删不掉；付费买的永久套餐同样按 0 处理，
+     * 那种租户的保留天数本来就由套餐决定，走不到这里。
+     * @param int $paidUntil 最后一次付费订阅的到期时间
+     * @param int $now
+     * @return bool
+     */
+    public static function isInGrace(int $paidUntil, int $now): bool
+    {
+        if ($paidUntil <= 0) {
+            return false;
+        }
+        return $now < $paidUntil + self::DOWNGRADE_GRACE_DAYS * 86400;
     }
 
     /**

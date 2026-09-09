@@ -17,7 +17,9 @@ use app\dao\chat\ChatServiceDao;
 use app\dao\system\attachment\SystemAttachmentDao;
 use app\dao\TenantDao;
 use app\dao\TenantPlanDao;
+use app\dao\TenantPlanOrderDao;
 use app\models\TenantPlan;
+use app\services\chat\ChatFileGcServices;
 use crmeb\basic\BaseServices;
 use crmeb\exceptions\AdminException;
 use crmeb\services\CacheService;
@@ -609,6 +611,10 @@ class TenantPlanServices extends BaseServices
             throw new AdminException('租户不存在');
         }
         $plan = $this->getTenantPlan($tenantId);
+        $tenant['last_paid_expire_at'] = TenantContext::withoutTenant(function () use ($tenantId) {
+            /** @var TenantPlanOrderDao $orderDao */
+            return app()->make(TenantPlanOrderDao::class)->lastPaidExpireAt($tenantId);
+        });
         [$appCount, $seatCount] = TenantContext::withoutTenant(function () use ($tenantId) {
             /** @var ApplicationDao $applicationDao */
             $applicationDao = app()->make(ApplicationDao::class);
@@ -650,6 +656,33 @@ class TenantPlanServices extends BaseServices
                 'app_count' => $appCount,
                 'seat_count' => $seatCount,
             ],
+            'retention' => self::buildRetention($tenant, $plan),
+        ];
+    }
+
+    /**
+     * 历史记录保留说明
+     *
+     * 光有「保留N天」说不清降级后的处境：到期回落免费版的租户，付费期间的
+     * 记录还在宽限期里受保护，得把这个截止日给出来，否则客户只能等数据没了
+     * 才知道。tenant.last_paid_expire_at 由调用方注入，纯函数便于测试。
+     * @param array $tenant
+     * @param array $plan
+     * @return array
+     */
+    public static function buildRetention(array $tenant, array $plan): array
+    {
+        $keepDays = (int)($plan['record_keep_days'] ?? 0);
+        $paidUntil = (int)($tenant['last_paid_expire_at'] ?? 0);
+        $graceUntil = $paidUntil > 0 ? $paidUntil + ChatFileGcServices::DOWNGRADE_GRACE_DAYS * 86400 : 0;
+        $inGrace = ChatFileGcServices::isInGrace($paidUntil, time());
+        return [
+            'keep_days' => $keepDays,
+            //宽限期内不清理，此时说「保留N天」是错的
+            'unlimited' => $keepDays <= 0,
+            'in_grace' => $inGrace,
+            'grace_until' => $inGrace ? $graceUntil : 0,
+            '_grace_until' => $inGrace ? date('Y-m-d', $graceUntil) : '',
         ];
     }
 }
