@@ -3,7 +3,12 @@
 FROM php:7.4-cli
 
 # gd 供 think-image 使用；pcntl/sockets 供 Swoole 进程模型使用；zip 供订单导出xlsx
-RUN apt-get update && apt-get install -y --no-install-recommends \
+#
+# Check-Valid-Until=false：PHP 7.4 官方镜像停在 Debian 11(bullseye)，而 bullseye
+# 已过维保，debian-security 的 Release 文件不再刷新，apt 判定过期后直接报错退出
+# （exit 100）。这不会自愈，也没有 bookworm 版的 php:7.4 可换。只关掉有效期检查，
+# GPG 签名校验仍然生效
+RUN apt-get -o Acquire::Check-Valid-Until=false update && apt-get install -y --no-install-recommends \
         libfreetype6-dev libjpeg62-turbo-dev libpng-dev libssl-dev libcurl4-openssl-dev libzip-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" gd bcmath pdo_mysql mysqli pcntl sockets zip \
