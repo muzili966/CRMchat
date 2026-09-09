@@ -672,17 +672,23 @@ class TenantPlanServices extends BaseServices
      */
     public static function buildRetention(array $tenant, array $plan): array
     {
+        $now = time();
         $keepDays = (int)($plan['record_keep_days'] ?? 0);
         $paidUntil = (int)($tenant['last_paid_expire_at'] ?? 0);
         $graceUntil = $paidUntil > 0 ? $paidUntil + ChatFileGcServices::DOWNGRADE_GRACE_DAYS * 86400 : 0;
-        $inGrace = ChatFileGcServices::isInGrace($paidUntil, time());
+        $inGrace = ChatFileGcServices::isInGrace($paidUntil, $now);
+        $exemptUntil = (int)($tenant['record_exempt_until'] ?? 0);
+        $exempt = $exemptUntil > $now;
         return [
             'keep_days' => $keepDays,
-            //宽限期内不清理，此时说「保留N天」是错的
+            //宽限期或运营豁免生效时都不清理，此时说「保留N天」是错的
             'unlimited' => $keepDays <= 0,
             'in_grace' => $inGrace,
             'grace_until' => $inGrace ? $graceUntil : 0,
             '_grace_until' => $inGrace ? date('Y-m-d', $graceUntil) : '',
+            'exempt' => $exempt,
+            'exempt_until' => $exempt ? $exemptUntil : 0,
+            '_exempt_until' => $exempt ? date('Y-m-d', $exemptUntil) : '',
         ];
     }
 }

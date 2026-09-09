@@ -38,6 +38,12 @@
                 <template slot-scope="{ row }" slot="expire">
                     <span :class="{ 'expire-danger': isExpired(row) }">{{ row._expire_time }}</span>
                 </template>
+                <template slot-scope="{ row }" slot="exempt">
+                    <Tooltip v-if="isExempt(row)" :content="row.record_exempt_remark || '未填写原因'" placement="top">
+                        <Tag color="orange">至 {{ exemptDate(row) }}</Tag>
+                    </Tooltip>
+                    <span v-else>-</span>
+                </template>
                 <template slot-scope="{ row }" slot="status">
                     <i-switch v-model="row.status" :value="row.status" :true-value="1" :false-value="0" @on-change="onchangeIsShow(row)" size="large">
                         <span slot="open">正常</span>
@@ -71,6 +77,21 @@
                 <FormItem label="备注：">
                     <Input v-model="tenantForm.remark" type="textarea" :rows="3" placeholder="选填"/>
                 </FormItem>
+                <template v-if="tenantForm.id">
+                    <Divider orientation="left" size="small">聊天记录清理豁免</Divider>
+                    <FormItem label="豁免至：">
+                        <DatePicker v-model="tenantForm.record_exempt_until" type="date" style="width: 100%"
+                                    placeholder="留空表示按套餐正常清理"/>
+                        <div class="form-tip">
+                            豁免期内该租户的聊天记录不做保留期清理。到期自动恢复，无需手动关闭；
+                            需要长期保留就填一个远期日期。
+                        </div>
+                    </FormItem>
+                    <FormItem label="豁免原因：">
+                        <Input v-model="tenantForm.record_exempt_remark" placeholder="如：诉讼举证期，法务要求保留"/>
+                        <div class="form-tip">开启豁免必须填写，便于日后核对是谁、为什么放的行。</div>
+                    </FormItem>
+                </template>
                 <template v-if="!tenantForm.id">
                     <Divider orientation="left" size="small">初始管理员</Divider>
                     <FormItem label="管理员账号：" prop="admin_account">
@@ -146,7 +167,11 @@
     import { setViewTenant } from '@/libs/tenantView'
     import { tenantListApi, tenantSaveApi, tenantUpdateApi, tenantSetStatusApi, tenantCreateAdminApi, tenantSubscribeApi, planAllApi } from '@/api/tenant'
 
-    const emptyTenantForm = () => ({ id: 0, name: '', domain: '', remark: '', admin_account: '', admin_pwd: '', admin_conf_pwd: '' })
+    const emptyTenantForm = () => ({
+        id: 0, name: '', domain: '', remark: '',
+        record_exempt_until: '', record_exempt_remark: '',
+        admin_account: '', admin_pwd: '', admin_conf_pwd: ''
+    })
     const emptySubscribeForm = () => ({ tenant_id: 0, plan_id: '', months: 1, pay_type: 1, remark: '' })
     const emptyAdminForm = () => ({ tenant_id: 0, account: '', real_name: '', pwd: '', conf_pwd: '' })
 
@@ -189,6 +214,7 @@
                     { title: '租户名称', key: 'name', minWidth: 140 },
                     { title: '当前套餐', slot: 'plan', minWidth: 100 },
                     { title: '到期时间', slot: 'expire', minWidth: 150 },
+                    { title: '清理豁免', slot: 'exempt', minWidth: 120 },
                     { title: '独立域名', key: 'domain', minWidth: 140 },
                     { title: '状态', slot: 'status', minWidth: 90 },
                     { title: '创建时间', key: '_create_time', minWidth: 150 },
@@ -227,6 +253,17 @@
                         window.location.href = '/admin'
                     }
                 })
+            },
+            //后端收秒级时间戳；清空即为关闭豁免
+            exemptPayload () {
+                const v = this.tenantForm.record_exempt_until
+                if (!v) {
+                    return { record_exempt_until: 0, record_exempt_remark: '' }
+                }
+                return {
+                    record_exempt_until: Math.floor(new Date(v).getTime() / 1000),
+                    record_exempt_remark: this.tenantForm.record_exempt_remark
+                }
             },
             isExpired (row) {
                 return row.expire_time > 0 && row.expire_time * 1000 < Date.now()
@@ -272,8 +309,23 @@
                 this.tenantModal = true
             },
             edit (row) {
-                this.tenantForm = { id: row.id, name: row.name, domain: row.domain, remark: row.remark }
+                this.tenantForm = {
+                    ...emptyTenantForm(),
+                    id: row.id,
+                    name: row.name,
+                    domain: row.domain,
+                    remark: row.remark,
+                    //DatePicker 收 Date 对象；已过期的豁免不回填，免得看起来还开着
+                    record_exempt_until: this.isExempt(row) ? new Date(row.record_exempt_until * 1000) : '',
+                    record_exempt_remark: row.record_exempt_remark || ''
+                }
                 this.tenantModal = true
+            },
+            isExempt (row) {
+                return row.record_exempt_until > 0 && row.record_exempt_until * 1000 > Date.now()
+            },
+            exemptDate (row) {
+                return new Date(row.record_exempt_until * 1000).toLocaleDateString("zh-CN")
             },
             saveTenant () {
                 this.$refs.tenantForm.validate(valid => {
@@ -282,7 +334,7 @@
                         return this.$Message.error('两次输入的管理员密码不一致')
                     }
                     this.submitting = true
-                    const { id, ...data } = this.tenantForm
+                    const { id, ...data } = { ...this.tenantForm, ...this.exemptPayload() }
                     const req = id ? tenantUpdateApi(id, data) : tenantSaveApi(data)
                     req.then(res => {
                         this.submitting = false
@@ -344,5 +396,11 @@
 <style scoped>
     .expire-danger {
         color: #ed4014;
+    }
+    .form-tip {
+        margin-top: 4px;
+        line-height: 1.5;
+        color: #808695;
+        font-size: 12px;
     }
 </style>

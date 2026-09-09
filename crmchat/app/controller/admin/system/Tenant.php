@@ -104,6 +104,8 @@ class Tenant extends AuthController
             [['expire_time', 'd'], 0],
             ['domain', ''],
             ['remark', ''],
+            [['record_exempt_until', 'd'], 0],
+            ['record_exempt_remark', ''],
         ]);
         $this->services->edit((int)$id, $data);
         return $this->success('修改成功');

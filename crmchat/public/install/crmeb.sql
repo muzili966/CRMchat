@@ -37,6 +37,8 @@ CREATE TABLE IF NOT EXISTS `eb_tenant` (
   `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态0=禁用,1=正常',
   `plan` varchar(32) NOT NULL DEFAULT '' COMMENT '套餐标识(预留)',
   `expire_time` int(10) NOT NULL DEFAULT '0' COMMENT '到期时间0=永久(预留)',
+  `record_exempt_until` int(11) NOT NULL DEFAULT '0' COMMENT '聊天记录清理豁免截止时间，0=不豁免',
+  `record_exempt_remark` varchar(255) NOT NULL DEFAULT '' COMMENT '豁免原因，便于审计',
   `domain` varchar(100) NOT NULL DEFAULT '' COMMENT '独立域名(预留)',
   `remark` varchar(255) NOT NULL DEFAULT '' COMMENT '备注',
   `is_delete` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否删除',
@@ -1497,7 +1499,8 @@ INSERT INTO `eb_system_upgrade` (`version`,`name`,`create_time`) VALUES
 ('20260908_05','faq_card',UNIX_TIMESTAMP()),
 ('20260908_06','default_tenant_faq_speech',UNIX_TIMESTAMP()),
 ('20260908_07','fix_faq_menu_conflict',UNIX_TIMESTAMP()),
-('20260909_01','visitor_transcript',UNIX_TIMESTAMP());
+('20260909_01','visitor_transcript',UNIX_TIMESTAMP()),
+('20260910_01','record_exempt',UNIX_TIMESTAMP());
 
 CREATE TABLE IF NOT EXISTS `eb_platform_lead` (
   `id` int NOT NULL AUTO_INCREMENT,

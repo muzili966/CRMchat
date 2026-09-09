@@ -4,6 +4,8 @@ namespace tests\unit;
 
 use app\services\chat\ChatFileGcServices;
 use app\services\TenantPlanServices;
+use app\services\TenantServices;
+use crmeb\exceptions\AdminException;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -101,6 +103,57 @@ class DowngradeGraceTest extends TestCase
         $this->assertSame(0, $r['grace_until']);
         $this->assertSame('', $r['_grace_until']);
         $this->assertSame(7, $r['keep_days']);
+    }
+
+    /**
+     * 运营豁免要能在概览里看见，且过期的豁免不能还显示为生效
+     */
+    public function testRetentionExposesOperatorExemption()
+    {
+        $until = time() + 86400 * 30;
+        $r = TenantPlanServices::buildRetention(
+            ['record_exempt_until' => $until],
+            ['record_keep_days' => 7]
+        );
+        $this->assertTrue($r['exempt']);
+        $this->assertSame($until, $r['exempt_until']);
+        $this->assertSame(date('Y-m-d', $until), $r['_exempt_until']);
+
+        $expired = TenantPlanServices::buildRetention(
+            ['record_exempt_until' => time() - 1],
+            ['record_keep_days' => 7]
+        );
+        $this->assertFalse($expired['exempt']);
+        $this->assertSame(0, $expired['exempt_until']);
+        $this->assertSame('', $expired['_exempt_until']);
+    }
+
+    /**
+     * 豁免必须写明原因：半年后没人说得清它为什么开着，就等于关不掉
+     */
+    public function testExemptionRequiresReason()
+    {
+        $this->expectException(AdminException::class);
+        TenantServices::normalizeExempt(time() + 86400, '  ');
+    }
+
+    /**
+     * 填了过去的时间等同于没开，直接归零，免得列表上挂着失效的「豁免中」
+     */
+    public function testPastDeadlineClearsExemption()
+    {
+        $this->assertSame(0, TenantServices::normalizeExempt(time() - 1, '举证期'));
+        //关闭豁免时原因为空是正常操作，不该被拦下
+        $this->assertSame(0, TenantServices::normalizeExempt(0, ''));
+    }
+
+    /**
+     * 正常开启：原因写了，截止日在未来，原样入库
+     */
+    public function testValidExemptionPassesThrough()
+    {
+        $until = time() + 86400 * 7;
+        $this->assertSame($until, TenantServices::normalizeExempt($until, '诉讼举证期，法务要求保留'));
     }
 
     /**

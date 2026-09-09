@@ -214,8 +214,35 @@ class TenantServices extends BaseServices
         if ($data['name'] && $data['name'] != $tenantInfo->name && $this->dao->getCount(['name' => $data['name'], 'is_delete' => 0])) {
             throw new AdminException('租户名称已存在');
         }
+        if (isset($data['record_exempt_until'])) {
+            $data['record_exempt_until'] = self::normalizeExempt(
+                (int)$data['record_exempt_until'],
+                (string)($data['record_exempt_remark'] ?? '')
+            );
+        }
         $data['update_time'] = time();
         return false !== $this->dao->update($id, $data);
+    }
+
+    /**
+     * 清理豁免的入库校验
+     *
+     * 豁免会让这个租户的聊天记录无限堆下去，必须留下是谁、为什么放的行，
+     * 否则半年后没人说得清能不能关。填了过去的时间等同于没开，直接归零，
+     * 免得列表上挂着一个早已失效的「豁免中」。
+     * @param int $until
+     * @param string $remark
+     * @return int
+     */
+    public static function normalizeExempt(int $until, string $remark): int
+    {
+        if ($until <= time()) {
+            return 0;
+        }
+        if (trim($remark) === '') {
+            throw new AdminException('开启清理豁免必须填写原因');
+        }
+        return $until;
     }
 
     /**

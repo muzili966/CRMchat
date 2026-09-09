@@ -43,9 +43,9 @@ class ChatFileGcServices
      *
      * 没有它就是数据悬崖——租户到期回落免费版的次日，付费期间攒下的记录
      * 会按免费版的保留天数被清空，客户往往正是发现数据没了才想起续费。
-     * 90 天覆盖一个季度的决策周期，也留足了导出时间。
+     * 180 天覆盖半年的决策周期，也留足了导出时间。
      */
-    const DOWNGRADE_GRACE_DAYS = 90;
+    const DOWNGRADE_GRACE_DAYS = 180;
 
     /**
      * 已被消息引用的附件标记：chat_file 目录内 pid 无其他用途，借作引用标志
@@ -62,8 +62,8 @@ class ChatFileGcServices
         foreach ($this->tenantPlans() as $tenantId => $planId) {
             $plan = app()->make(TenantPlanServices::class)->getTenantPlan((int)$tenantId);
             $keepDays = (int)($plan['record_keep_days'] ?? 0);
-            //曾付费租户在宽限期内豁免保留期清理；孤儿文件与它无关，照常回收
-            $inGrace = $this->inDowngradeGrace((int)$tenantId);
+            //运营豁免与降级宽限期都会挡下保留期清理；孤儿文件与它们无关，照常回收
+            $inGrace = $this->isExempt((int)$tenantId) || $this->inDowngradeGrace((int)$tenantId);
             $result[$tenantId] = TenantContext::runAs((int)$tenantId, function () use ($tenantId, $keepDays, $inGrace) {
                 //0=不限，保持现状语义：既不删记录也不删文件
                 $expired = ($keepDays > 0 && !$inGrace) ? $this->purgeExpired((int)$tenantId, $keepDays) : 0;
@@ -95,6 +95,22 @@ class ChatFileGcServices
             //标记失败不影响发送；最坏是该文件在宽限期后被误判孤儿，属可接受降级
             Log::warning('聊天文件引用标记失败：' . $e->getMessage());
         }
+    }
+
+    /**
+     * 该租户是否被运营单独豁免清理
+     *
+     * 诉讼举证期、重点客户的历史资料、长周期 POC 都可能需要单独放行，
+     * 套餐里表达不了，交由平台运营在租户设置里按需开。
+     * @param int $tenantId
+     * @return bool
+     */
+    protected function isExempt(int $tenantId): bool
+    {
+        $until = (int)TenantContext::withoutTenant(function () use ($tenantId) {
+            return Db::name('tenant')->where('id', $tenantId)->value('record_exempt_until');
+        });
+        return $until > time();
     }
 
     /**
