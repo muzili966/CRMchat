@@ -16,10 +16,10 @@
               <span v-else class="conversation-user__placeholder"><Icon type="ios-person-outline" /></span>
               <div>
                 <strong>{{ userActive && userActive.nickname ? userActive.nickname : '请选择会话' }}</strong>
-                <small>{{ userActive ? '正在为客户提供服务' : '从左侧会话列表选择一位客户' }}</small>
+                <small>{{ hasActiveSession ? '正在为客户提供服务' : '从左侧会话列表选择一位客户' }}</small>
               </div>
             </div>
-            <span v-if="userActive" class="conversation-badge"><i></i> 当前会话</span>
+            <span v-if="hasActiveSession" class="conversation-badge"><i></i> 当前会话</span>
           </div>
           <div class="chat-body">
 
@@ -101,10 +101,10 @@
           <div class="chat-textarea">
             <div class="chat-btn-wrapper">
               <div class="left-wrapper">
-                <div class="icon-item" @click.stop="isEmoji = !isEmoji"><span class="iconfont iconbiaoqing1"></span></div>
+                <div class="icon-item" @click.stop="isEmoji = !isEmoji" title="表情"><span class="iconfont iconbiaoqing1"></span></div>
                 <div class="icon-item">
                   <Upload :show-upload-list="false" :headers="header" :data="uploadData" :on-success="handleSuccess" :format="['jpg','jpeg','png','gif']" :on-format-error="handleFormatError" :action="upload">
-                    <span class="iconfont icontupian1"></span>
+                    <span class="iconfont icontupian1" title="发送图片"></span>
                   </Upload>
                 </div>
                 <div class="icon-item" v-if="kefuInfo.file_send">
@@ -112,33 +112,35 @@
                     <span class="iconfont iconfujian" title="发送文件"></span>
                   </Upload>
                 </div>
-                <div class="icon-item" @click.stop.stop="isMsg = true" title="快捷回复"><span class="iconfont iconliaotian"></span></div>
-                <div class="icon-item" @click.stop.stop="authMsg = true" title="留言"><Icon size="22" type="ios-chatboxes-outline" /></div>
+                <div class="icon-item" @click.stop.stop="isMsg = true" title="客服话术"><span class="iconfont iconliaotian"></span></div>
+                <div class="icon-item" @click.stop.stop="authMsg = true" title="自动回复设置"><Icon size="22" type="ios-chatboxes-outline" /></div>
               </div>
               <!-- 会话级操作：与左侧「往输入框里加内容」的工具分开 -->
               <div class="right-wrapper">
+                <!-- AI会话是查看全部AI接待，与当前选中哪个会话无关，始终可用 -->
                 <div class="icon-item" @click.stop="openAiSession">
                   <Icon size="18" type="ios-people-outline" />
                   <span>AI会话</span>
                 </div>
+                <!-- 以下都作用于当前会话，没选人时不该出现 -->
                 <!-- 邀请评价：由客服主动发起，等会话超时结束时访客多半已经离开 -->
-                <div class="icon-item" v-if="rateStatus.can_invite" @click.stop="inviteRate">
+                <div class="icon-item" v-if="hasActiveSession && rateStatus.can_invite" @click.stop="inviteRate">
                   <Icon size="18" type="ios-star-outline" />
                   <span>邀请评价</span>
                 </div>
-                <div class="icon-item icon-item-done" v-else-if="rateStatus.rate">
+                <div class="icon-item icon-item-done" v-else-if="hasActiveSession && rateStatus.rate">
                   <Icon size="18" type="ios-star" />
                   <span>已评 {{ rateStatus.rate }} 分</span>
                 </div>
-                <div class="icon-item" @click.stop="closeSession">
+                <div class="icon-item" v-if="hasActiveSession" @click.stop="closeSession">
                   <Icon size="18" type="ios-log-out" />
                   <span>结束接待</span>
                 </div>
-                <div class="icon-item" @click.stop="isTransfer = !isTransfer">
+                <div class="icon-item" v-if="hasActiveSession" @click.stop="isTransfer = !isTransfer">
                   <Icon size="18" type="ios-swap" />
                   <span>转接</span>
                 </div>
-                <div class="transfer-box" v-if="isTransfer">
+                <div class="transfer-box" v-if="isTransfer && hasActiveSession">
                   <transfer ref="transfer" @transferSuccess="transferSuccess" @close="msgClose" @transferPeople="transferPeople" :userUid="userActive.to_user_id"></transfer>
                 </div>
                 <div class="transfer-bg" v-if="isTransfer" @click.stop="isTransfer = false"></div>
@@ -151,9 +153,11 @@
               </div>
             </div>
             <div class="textarea-box" style="position:relative;">
-              <Input v-model="chatCon" type="textarea" :rows="4" @keydown.enter="sendText" placeholder="请输入文字内容" @on-enter="sendText" style="font-size:14px" />
+              <Input v-model="chatCon" type="textarea" :rows="4" :disabled="!hasActiveSession"
+                     :placeholder="hasActiveSession ? '请输入文字内容' : '请先从左侧会话列表选择一位客户'"
+                     @keydown.enter="sendText" @on-enter="sendText" style="font-size:14px" />
               <div class="send-btn">
-                <Button class="btns" type="primary" :disabled="disabled" @click.stop="sendText">发送</Button>
+                <Button class="btns" type="primary" :disabled="disabled || !hasActiveSession" @click.stop="sendText">发送</Button>
               </div>
             </div>
           </div>
@@ -336,6 +340,11 @@ export default {
     //三栏布局需要约1200px；不足则退为单栏，平板竖屏与手机都走这一路
     isNarrow() {
       return this.viewportWidth < NARROW_WIDTH
+    },
+    //userActive 初始是空对象，而空对象是 truthy，直接拿它判断会让
+    //未选会话时也显示「当前会话」「结束接待」这些只对某个访客成立的东西
+    hasActiveSession() {
+      return !!(this.userActive && this.userActive.to_user_id)
     },
     disabled() {
       if(this.chatCon.length == 0) {
