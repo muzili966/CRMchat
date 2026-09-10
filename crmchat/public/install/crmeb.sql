@@ -1500,7 +1500,8 @@ INSERT INTO `eb_system_upgrade` (`version`,`name`,`create_time`) VALUES
 ('20260908_06','default_tenant_faq_speech',UNIX_TIMESTAMP()),
 ('20260908_07','fix_faq_menu_conflict',UNIX_TIMESTAMP()),
 ('20260909_01','visitor_transcript',UNIX_TIMESTAMP()),
-('20260910_01','record_exempt',UNIX_TIMESTAMP());
+('20260910_01','record_exempt',UNIX_TIMESTAMP()),
+('20260910_02','platform_support',UNIX_TIMESTAMP());
 
 CREATE TABLE IF NOT EXISTS `eb_platform_lead` (
   `id` int NOT NULL AUTO_INCREMENT,
@@ -1896,3 +1897,7 @@ INSERT INTO `eb_system_menus` (`id`,`pid`,`icon`,`menu_name`,`module`,`controlle
 INSERT INTO `eb_system_menus` (`id`,`pid`,`icon`,`menu_name`,`module`,`controller`,`action`,`api_url`,`methods`,`params`,`sort`,`is_show`,`is_show_path`,`is_tenant`,`is_platform`,`access`,`menu_path`,`path`,`auth_type`,`header`,`is_header`,`unique_auth`,`is_del`) VALUES
 (1370,1320,'','访客全量对话','admin','','','api/admin/chat/history/visitor_records','GET','[]',0,0,0,1,0,1,'','165/1320',2,'',0,'',0),
 (1371,1320,'','导出访客对话','admin','','','api/admin/chat/history/visitor_export','GET','[]',0,0,0,1,0,1,'','165/1320',2,'',0,'',0);
+
+-- 平台客服入口，对应增量 V20260910_02
+INSERT INTO `eb_system_menus` (`id`,`pid`,`icon`,`menu_name`,`module`,`controller`,`action`,`api_url`,`methods`,`params`,`sort`,`is_show`,`is_show_path`,`is_tenant`,`is_platform`,`access`,`menu_path`,`path`,`auth_type`,`header`,`is_header`,`unique_auth`,`is_del`) VALUES
+(1380,1300,'','平台客服入口','admin','','','api/admin/platform/support','GET','[]',0,0,0,1,0,1,'','1300',2,'',0,'',0);

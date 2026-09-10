@@ -160,7 +160,8 @@ class ChatHistoryServices
         foreach ($list as &$row) {
             $v = $visitors[(int)$row['to_user_id']] ?? [];
             $row['visitor_id'] = (int)$row['to_user_id'];
-            $row['visitor_name'] = $v['remark_nickname'] ?: ($v['nickname'] ?? '');
+            //档案可能已被清理而消息还在，此处 ?: 不容忍缺键，少一层保护整张列表就500
+            $row['visitor_name'] = ($v['remark_nickname'] ?? '') ?: ($v['nickname'] ?? '已删除访客');
             $row['avatar'] = $v['avatar'] ?? '';
             $row['phone'] = $v['phone'] ?? '';
             $row['is_tourist'] = (int)($v['is_tourist'] ?? 0);

@@ -54,6 +54,9 @@ Route::group('api', function () {
                 'delete' => '删除应用接口'
             ]])->except(['read']);
 
+            //平台客服入口：租户后台的悬浮按钮据此取会话窗口地址
+            Route::get('platform/support', 'platform.Support/entry')->option(['real_name' => '平台客服入口']);
+
             //客户统计
             Route::get('chart/sum', 'Index/sum')->option(['real_name' => '客户统计']);
             //客户首页统计

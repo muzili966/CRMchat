@@ -41,6 +41,8 @@
         </Layout>
       </Content>
     </Layout>
+    <!-- 平台客服：全局悬浮入口，平台自营租户不渲染 -->
+    <platform-support/>
     <!--    <div class="open-image" @click="clear" v-if="openImage"><img src="@/assets/images/wechat_demo.png" alt=""></div>-->
   </Layout>
 </template>
@@ -57,6 +59,7 @@ import Language from './components/language'
 // import ErrorStore from './components/error-store'
 import HeaderSearch from './components/header-search'
 import HeaderNotice from './components/header-notice'
+import PlatformSupport from '_c/platform-support'
 
 import Setting from '@/setting'
 import iView from 'iview'
@@ -81,7 +84,8 @@ export default {
     User,
     ABackTop,
     HeaderSearch,
-    HeaderNotice
+    HeaderNotice,
+    PlatformSupport
   },
   data() {
     return {
