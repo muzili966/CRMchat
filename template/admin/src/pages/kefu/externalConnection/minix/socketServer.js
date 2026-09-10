@@ -12,6 +12,10 @@ export default {
     return {
       //评价卡片的提交回调，按会话号暂存，等服务端回执
       rateCallbacks: {},
+      //正在往上翻历史：期间抑制自动滚底，否则历史里的图片加载完会把用户拽回底部
+      holdScroll: false,
+      //已翻到最早一条，再滑到顶也不必请求
+      noMoreRecord: false,
       inputConType: 1,
       userMessage: '',
       //访客账号面板：401时弹登录，用户主动点击时弹绑定
@@ -183,6 +187,8 @@ export default {
       })
     },
     imageLoad(){
+      //往上翻历史时不能跟着跳：历史里的图片陆续加载完，每张都会把用户拽回底部
+      if (this.holdScroll) return;
       this.goPageBottom(); // 滑动到页面底部
     },
     // 建立连接
@@ -296,6 +302,8 @@ export default {
 
     // 前往页面底部，用于接收到聊天记录后查看到最新消息
     goPageBottom() {
+      //显式要求滚到底（新消息、自己发言）时解除翻历史的抑制
+      this.holdScroll = false;
       this.$nextTick(() => {
         this.scrollTop = document.querySelector(
           "#chat_scroll"
@@ -473,21 +481,39 @@ export default {
       }, 8000)
     },
 
-    // 滑动到顶部
+    // 滑动到顶部：加载更早的消息
     scrollHandler(e) {
+      //到底了就别再请求，否则每次滑到顶都白跑一趟
+      if (this.isLoad || this.noMoreRecord) return;
+      const box = document.querySelector('#chat_scroll');
+      const heightBefore = box ? box.offsetHeight : 0;
       this.isLoad = true;
+      //加载期间抑制自动滚底：新插进来的历史消息里往往有图片，
+      //图片陆续加载完会各自触发一次滚到底，把用户从正在看的位置拽走
+      this.holdScroll = true;
       userRecord({
         limit: 20,
         uid: this.chatServerData.uid,
         idTo: this.chatServerData.serviceList ? this.chatServerData.serviceList[0].id : '',
         toUserId: this.chatServerData.to_user_id
       }).then(res => {
-        if(res.status == 200) {
-          res.data.serviceList.reverse().forEach(item => {
+        const list = (res.status == 200 && res.data.serviceList) ? res.data.serviceList : [];
+        if (!list.length) {
+          this.noMoreRecord = true;
+        } else {
+          list.reverse().forEach(item => {
             this.chatServerData.serviceList.unshift(item);
           })
+          //补回新增内容的高度，让用户原本在看的那条消息停在原处
+          this.$nextTick(() => {
+            const after = document.querySelector('#chat_scroll');
+            this.scrollTop = after ? after.offsetHeight - heightBefore : this.scrollTop;
+          });
         }
         this.isLoad = false;
+      }).catch(() => {
+        this.isLoad = false;
+        this.holdScroll = false;
       })
     },
     closeIframe() {
