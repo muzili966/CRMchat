@@ -112,29 +112,30 @@
                     <span class="iconfont iconfujian" title="发送文件"></span>
                   </Upload>
                 </div>
-                <div class="icon-item" @click.stop.stop="isMsg = true"><span class="iconfont iconliaotian"></span></div>
-                <div class="icon-item" @click.stop.stop="authMsg = true"><Icon style="font-weight: bold" size="22" color="#515a6e" type="ios-chatboxes-outline" /></div>
-                <div class="icon-item" @click.stop="openAiSession">
-                  <Icon style="font-weight: bold" size="22" color="#515a6e" type="ios-people-outline" />
-                  <span class="ai-label">AI会话</span>
-                </div>
+                <div class="icon-item" @click.stop.stop="isMsg = true" title="快捷回复"><span class="iconfont iconliaotian"></span></div>
+                <div class="icon-item" @click.stop.stop="authMsg = true" title="留言"><Icon size="22" type="ios-chatboxes-outline" /></div>
               </div>
+              <!-- 会话级操作：与左侧「往输入框里加内容」的工具分开 -->
               <div class="right-wrapper">
+                <div class="icon-item" @click.stop="openAiSession">
+                  <Icon size="18" type="ios-people-outline" />
+                  <span>AI会话</span>
+                </div>
                 <!-- 邀请评价：由客服主动发起，等会话超时结束时访客多半已经离开 -->
                 <div class="icon-item" v-if="rateStatus.can_invite" @click.stop="inviteRate">
-                  <Icon style="font-weight: bold" size="20" color="#515a6e" type="ios-star-outline" />
+                  <Icon size="18" type="ios-star-outline" />
                   <span>邀请评价</span>
                 </div>
                 <div class="icon-item icon-item-done" v-else-if="rateStatus.rate">
-                  <Icon style="font-weight: bold" size="20" color="#ff9900" type="ios-star" />
+                  <Icon size="18" type="ios-star" />
                   <span>已评 {{ rateStatus.rate }} 分</span>
                 </div>
                 <div class="icon-item" @click.stop="closeSession">
-                  <Icon style="font-weight: bold" size="20" color="#515a6e" type="ios-log-out" />
+                  <Icon size="18" type="ios-log-out" />
                   <span>结束接待</span>
                 </div>
                 <div class="icon-item" @click.stop="isTransfer = !isTransfer">
-                  <span class="iconfont iconzhuanjie"></span>
+                  <Icon size="18" type="ios-swap" />
                   <span>转接</span>
                 </div>
                 <div class="transfer-box" v-if="isTransfer">
@@ -1068,34 +1069,52 @@ textarea.ivu-input {
               display: flex;
               align-items: center;
               margin-left: 20px;
+              color: #515a6e;
               cursor: pointer;
 
-              .iconfont {
-                font-size: 22px;
-                color: #333333;
+              &:hover {
+                color: #2d8cf0;
               }
 
-              .ai-label {
-                margin-left: 4px;
-                font-size: 14px;
-                color: #515a6e;
+              /* iconfont 与 iview 图标混用，字号对齐后视觉高度才一致 */
+              .iconfont {
+                font-size: 22px;
+                color: inherit;
               }
             }
           }
 
           .right-wrapper {
             position: relative;
+            /* 缺了 flex，几个操作会各占一行竖着堆起来 */
+            display: flex;
+            align-items: center;
             padding-right: 20px;
 
             .icon-item {
               display: flex;
               align-items: center;
-              font-size: 15px;
-              color: #333;
+              margin-left: 20px;
+              font-size: 14px;
+              color: #515a6e;
+              white-space: nowrap;
               cursor: pointer;
 
+              &:hover {
+                color: #2d8cf0;
+              }
+
               span {
-                margin-left: 10px;
+                margin-left: 6px;
+              }
+            }
+
+            .icon-item-done {
+              color: #ff9900;
+              cursor: default;
+
+              &:hover {
+                color: #ff9900;
               }
             }
 
