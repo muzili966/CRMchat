@@ -193,6 +193,7 @@
 </template>
 <script>
 import { HappyScroll } from 'vue-happy-scroll'
+import { formatChatTime } from '@/libs/chatTime';
 import emojiList from "@/utils/emoji";
 import socketServer from './minix/socketServer';
 import visitorAccount from './components/visitorAccount';
@@ -249,7 +250,7 @@ export default {
     },
     records() {
       return this.chatServerData.serviceList.map((item, index) => {
-        item.time = this.$moment(item.add_time * 1000).format('MMMDo H:mm')
+        item.time = formatChatTime(item.add_time)
         if(index) {
           if(
             item.add_time -

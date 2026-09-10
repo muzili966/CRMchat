@@ -216,6 +216,7 @@
 
 //提示音统一走 notifySound：内部处理Chrome的自动播放限制
 import Setting from '@/setting';
+import { formatChatTime } from '@/libs/chatTime';
 import { onAvatarError, DEFAULT_AVATAR } from '@/libs/avatar';
 import chatFileCard from '@/components/chatFileCard';
 import chatRateCard from '@/components/chatRateCard';
@@ -344,7 +345,7 @@ export default {
     },
     records() {
       return this.chatList.map((item, index) => {
-        item.time = this.$moment(item.add_time * 1000).format('MMMDo H:mm')
+        item.time = formatChatTime(item.add_time)
         if(index) {
           if(
             item.add_time -

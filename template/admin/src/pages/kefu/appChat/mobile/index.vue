@@ -113,6 +113,7 @@
 
 <script>
 import Setting from '@/setting';
+import { formatChatTime } from '@/libs/chatTime';
 import { Socket } from '@/libs/socket';
 import util from '@/libs/util';
 import emojiList from '@/utils/emoji'
@@ -209,7 +210,7 @@ export default {
     },
     records() {
       return this.chatList.map((item, index) => {
-        item.time = this.$moment(item.add_time * 1000).format('MMMDo h:mm')
+        item.time = formatChatTime(item.add_time)
         if(index) {
           if(
             item.add_time -
