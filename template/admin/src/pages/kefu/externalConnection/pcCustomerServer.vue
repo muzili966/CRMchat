@@ -269,19 +269,10 @@ export default {
   },
   methods: {
 
-    getScrollTop() {
-      console.log(123);
-    },
-    getScrollEnd() {
-      console.log(321);
-    },
-    scrollHandler(e) {
-      console.log('滑动到顶部了');
-      this.isLoad = true;
-      setTimeout(() => {
-        this.isLoad = false;
-      }, 2000)
-    },
+    // 滑到顶部加载更早的消息，实现在 socketServer 混入里。
+    // 这里原先留了个只打日志、转两秒圈的占位版，组件 methods 优先级高于
+    // mixin，把真实现整个盖掉了：PC 端因此永远只看得到首屏那几条，
+    // 而移动端没写这个占位，一直是好的。
     // 转人工：以访客身份发送关键词文本，转接动作由后端识别关键词后完成
     transferService() {
       this.$Modal.confirm({

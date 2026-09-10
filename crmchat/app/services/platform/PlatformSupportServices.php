@@ -6,6 +6,7 @@
 namespace app\services\platform;
 
 use app\models\Tenant;
+use app\services\ApplicationThemeServices;
 use crmeb\basic\BaseServices;
 use crmeb\services\tenant\TenantContext;
 use crmeb\utils\SiteUrl;
@@ -66,12 +67,33 @@ class PlatformSupportServices extends BaseServices
             //平台没建应用或未配置对外地址时，宁可不给入口，也不给一个点不开的按钮
             return $this->disabled();
         }
+        //外观随平台自营租户的客户端装修走，与官网上那个入口是同一套配置
+        $widget = app()->make(ApplicationThemeServices::class)->getWidgetConfig((string)$app['appid']);
         return [
             'enabled' => true,
             'url' => $origin . self::CHAT_PATH . '?' . http_build_query(
                 $this->identity($app, $tenantId, (string)($tenant['name'] ?? ''))
             ),
+            'icon' => $this->absoluteUrl((string)($widget['pcIcon'] ?? ''), $origin),
+            'theme_color' => (string)($widget['themeColor'] ?? ''),
+            'show_tip' => (int)($widget['showTip'] ?? 1),
         ];
+    }
+
+    /**
+     * 图标补全为绝对地址
+     *
+     * 装修里存的是相对路径，而后台可能跑在另一个域名下，直接用会 404。
+     * @param string $url
+     * @param string $origin
+     * @return string
+     */
+    protected function absoluteUrl(string $url, string $origin): string
+    {
+        if ($url === '' || strpos($url, 'http') === 0 || strpos($url, 'data:') === 0) {
+            return $url;
+        }
+        return $origin . '/' . ltrim($url, '/');
     }
 
     /**
