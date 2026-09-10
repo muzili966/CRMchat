@@ -1,16 +1,15 @@
 <template>
-  <div v-if="entry.enabled" class="ps-root">
-    <!-- 收起态：贴着右边缘的半圆，悬停才整个滚出来并展开文字，不挡内容 -->
+  <div v-if="enabled" class="ps-root">
+    <!-- 收起态：贴右缘只露一道圆弧，悬停整个圆滚出来，始终保持正圆 -->
     <div class="ps-bubble" :class="{ 'ps-bubble-hover': hover }"
          @mouseenter="hover = true" @mouseleave="hover = false" @click="open">
-      <Icon type="ios-chatbubbles" size="22"/>
-      <span class="ps-bubble-text">平台客服</span>
+      <Icon type="ios-chatbubbles" size="24"/>
+      <span class="ps-tip">联系平台客服</span>
     </div>
 
     <!-- 会话窗口：平台自营租户的接待页，标题栏用页面自带的，不再套一层 -->
-    <!-- 只在首次打开时挂载 iframe，之后靠 v-show 保留会话，避免每次重连丢上下文 -->
     <div v-show="opened" class="ps-panel">
-      <iframe v-if="loaded" class="ps-panel-frame" :src="entry.url" frameborder="0" allow="microphone"></iframe>
+      <iframe v-if="url" class="ps-panel-frame" :src="url" frameborder="0" allow="microphone"></iframe>
     </div>
   </div>
 </template>
@@ -22,14 +21,17 @@
     name: 'platformSupport',
     data () {
       return {
-        entry: { enabled: false, url: '' },
+        enabled: false,
+        url: '',
         hover: false,
-        opened: false,
-        loaded: false
+        opened: false
       }
     },
     created () {
-      this.getEntry()
+      //开页面只问「要不要显示这个入口」，地址等点开再取：接入签名有效期只有几分钟
+      platformSupportApi().then(res => {
+        this.enabled = !!(res.data && res.data.enabled)
+      }).catch(() => {})
       //会话页的关闭按钮在 iframe 里，只能靠它 postMessage 通知父窗口
       window.addEventListener('message', this.onFrameMessage)
     },
@@ -37,20 +39,25 @@
       window.removeEventListener('message', this.onFrameMessage)
     },
     methods: {
-      //平台自营租户拿到 enabled=false，整个入口不渲染
-      getEntry () {
-        platformSupportApi().then(res => {
-          this.entry = (res.data && res.data.enabled) ? res.data : { enabled: false, url: '' }
-        }).catch(() => {})
-      },
       onFrameMessage (e) {
         if (e.data && e.data.type === 'closeWindow') {
           this.opened = false
         }
       },
       open () {
-        this.loaded = true
-        this.opened = true
+        //已经连上的会话别重连，重连会丢掉窗口里的上下文
+        if (this.url) {
+          this.opened = true
+          return
+        }
+        platformSupportApi().then(res => {
+          if (res.data && res.data.enabled) {
+            this.url = res.data.url
+            this.opened = true
+          } else {
+            this.enabled = false
+          }
+        }).catch(res => this.$Message.error(res.msg || '客服入口暂时不可用'))
       }
     }
   }
@@ -59,37 +66,44 @@
 <style scoped>
   .ps-bubble {
     position: fixed;
-    right: -14px;
+    /* 常态大半个球藏在屏幕外，只在边缘留一道圆弧 */
+    right: -30px;
     top: 45%;
     z-index: 900;
     width: 56px;
     height: 56px;
     display: flex;
     align-items: center;
-    justify-content: flex-start;
-    padding-left: 12px;
-    gap: 8px;
+    justify-content: center;
+    padding-right: 26px;
     background: #2d8cf0;
     color: #fff;
-    border-radius: 28px;
+    border-radius: 50%;
     box-shadow: 0 2px 12px rgba(45, 140, 240, .4);
     cursor: pointer;
-    overflow: hidden;
-    white-space: nowrap;
-    /* 常态半个球缩在边缘外，悬停整体滚出来并让出文字的宽度 */
-    transition: width .25s ease, right .25s ease, background-color .25s ease;
+    transition: right .25s ease, padding-right .25s ease, box-shadow .25s ease;
   }
   .ps-bubble-hover {
-    right: 16px;
-    width: 132px;
-    background: #1c7ae0;
+    right: 18px;
+    padding-right: 0;
+    box-shadow: 0 4px 18px rgba(45, 140, 240, .55);
   }
-  .ps-bubble-text {
-    font-size: 13px;
+  /* 文字用气泡提示浮在左侧，按钮本身始终是正圆 */
+  .ps-tip {
+    position: absolute;
+    right: 68px;
+    padding: 5px 10px;
+    background: rgba(0, 0, 0, .75);
+    color: #fff;
+    font-size: 12px;
+    line-height: 1.4;
+    border-radius: 4px;
+    white-space: nowrap;
     opacity: 0;
+    pointer-events: none;
     transition: opacity .2s ease .05s;
   }
-  .ps-bubble-hover .ps-bubble-text {
+  .ps-bubble-hover .ps-tip {
     opacity: 1;
   }
   .ps-panel {

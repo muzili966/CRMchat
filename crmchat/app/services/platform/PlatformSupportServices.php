@@ -15,9 +15,12 @@ use think\facade\Db;
  * 平台客服入口
  *
  * 租户遇到订阅、开票、功能问题时，原先只能翻合同找销售的微信。平台自己就在
- * 卖客服系统，没道理不用自己的：把平台自营租户的会话窗口挂进租户后台，租户
- * 点开就是一次普通接待，平台侧在客服工作台照常回，历史记录、转接、质检全都
- * 复用现成的那一套，不必另造一个工单系统。
+ * 卖客服系统，官网早已用自营租户接待访客，这里把同一个会话窗口挂进租户后台，
+ * 接待、转接、历史记录复用现成那套，不必另造工单系统。
+ *
+ * 与官网嵌入的区别是身份：官网来的是匿名访客，这里的人已经登录过后台，
+ * 身份是确定的，所以按接入协议带 uid 与签名进去，直接落到该租户的固定档案上。
+ * 这样租户换台电脑打开还是同一个会话，平台客服也不必每次都问「您是哪家」。
  * Class PlatformSupportServices
  * @package app\services\platform
  */
@@ -27,6 +30,13 @@ class PlatformSupportServices extends BaseServices
      * 会话窗口的路由，与嵌入脚本 customerServer.js 保持一致
      */
     const CHAT_PATH = '/chat';
+
+    /**
+     * 租户在平台客服里的访客 uid 基数
+     *
+     * 与租户ID相加得到稳定 uid，避开官网访客的自增段，不会撞号。
+     */
+    const UID_BASE = 3000000;
 
     /**
      * 入口配置
@@ -40,29 +50,54 @@ class PlatformSupportServices extends BaseServices
         if ($tenantId <= Tenant::DEFAULT_TENANT_ID) {
             return $this->disabled();
         }
-        $tenantName = (string)TenantContext::withoutTenant(function () use ($tenantId) {
-            return Db::name('tenant')->where('id', $tenantId)->value('name');
+        $tenant = TenantContext::withoutTenant(function () use ($tenantId) {
+            return Db::name('tenant')->where('id', $tenantId)->field('name')->find();
         });
-        //与官网嵌入取同一个字段：token_md5 短、可公开，parseToken 按32位长度识别
-        $token = (string)TenantContext::withoutTenant(function () {
+        //平台自营租户的应用：会话窗口凭它定位到平台的客服组
+        $app = TenantContext::withoutTenant(function () {
             return Db::name('application')
                 ->where(['tenant_id' => Tenant::DEFAULT_TENANT_ID, 'is_delete' => 0])
-                ->order('id', 'asc')->value('token_md5');
+                ->order('id', 'asc')
+                ->field('appid,app_secret,token_md5')
+                ->find();
         });
         $origin = rtrim(SiteUrl::service(), '/');
-        if (!$token || !$origin) {
+        if (!$app || !$app['token_md5'] || !$origin) {
             //平台没建应用或未配置对外地址时，宁可不给入口，也不给一个点不开的按钮
             return $this->disabled();
         }
         return [
             'enabled' => true,
-            'url' => $origin . self::CHAT_PATH . '?' . http_build_query([
-                'token' => $token,
-                'deviceType' => 'pc',
-                //让平台客服一眼看出是哪家找来的，省掉每次都要问「您是哪个租户」
-                'nickname' => $tenantName ?: ('租户' . $tenantId),
-                'tenant_id' => $tenantId,
-            ]),
+            'url' => $origin . self::CHAT_PATH . '?' . http_build_query(
+                $this->identity($app, $tenantId, (string)($tenant['name'] ?? ''))
+            ),
+        ];
+    }
+
+    /**
+     * 会话窗口的接入参数：应用定位 + 已登录身份
+     *
+     * app_secret 只参与服务端算签，不出现在返回值里。
+     * @param array $app 平台应用
+     * @param int $tenantId
+     * @param string $tenantName
+     * @return array
+     */
+    protected function identity(array $app, int $tenantId, string $tenantName): array
+    {
+        $uid = self::UID_BASE + $tenantId;
+        $timestamp = time();
+        return [
+            //与官网嵌入取同一个字段：token_md5 短、可公开，parseToken 按32位长度识别
+            'token' => $app['token_md5'],
+            'deviceType' => 'pc',
+            'uid' => $uid,
+            //接入脚本示例用的是驼峰，服务端 user 事件读的是全小写，两个都给
+            'nickname' => $tenantName ?: ('租户' . $tenantId),
+            'nickName' => $tenantName ?: ('租户' . $tenantId),
+            //签名模式下缺它会被拒；兼容模式下服务端不校验，多带无副作用
+            'timestamp' => $timestamp,
+            'sign' => md5($app['appid'] . $uid . $timestamp . $app['app_secret']),
         ];
     }
 
