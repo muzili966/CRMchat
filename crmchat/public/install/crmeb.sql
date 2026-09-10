@@ -1112,8 +1112,8 @@ CREATE TABLE IF NOT EXISTS `eb_tenant_plan` (
 INSERT INTO `eb_tenant_plan` (`id`, `name`, `price`, `app_limit`, `seat_limit`, `daily_msg_limit`, `storage_limit_mb`, `record_keep_days`, `auto_reply`, `brand_custom`, `data_export`, `app_push`, `sort`, `status`, `create_time`, `update_time`) VALUES
 (1, '免费版', 0.00, 1, 2, 500, 200, 7, 0, 0, 0, 0, 1, 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
 (2, '体验版', 500.00, 2, 5, 5000, 2048, 30, 1, 0, 0, 1, 2, 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
-(3, '标准版', 1000.00, 5, 20, 20000, 10240, 180, 1, 1, 1, 1, 3, 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
-(4, '旗舰版', 2000.00, 0, 100, 0, 51200, 0, 1, 1, 1, 1, 4, 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP());
+(3, '标准版', 1500.00, 5, 20, 20000, 10240, 180, 1, 1, 1, 1, 3, 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
+(4, '旗舰版', 3000.00, 0, 100, 0, 51200, 0, 1, 1, 1, 1, 4, 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP());
 
 CREATE TABLE IF NOT EXISTS `eb_tenant_plan_order` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -1501,7 +1501,8 @@ INSERT INTO `eb_system_upgrade` (`version`,`name`,`create_time`) VALUES
 ('20260908_07','fix_faq_menu_conflict',UNIX_TIMESTAMP()),
 ('20260909_01','visitor_transcript',UNIX_TIMESTAMP()),
 ('20260910_01','record_exempt',UNIX_TIMESTAMP()),
-('20260910_02','platform_support',UNIX_TIMESTAMP());
+('20260910_02','platform_support',UNIX_TIMESTAMP()),
+('20260910_03','plan_repricing',UNIX_TIMESTAMP());
 
 CREATE TABLE IF NOT EXISTS `eb_platform_lead` (
   `id` int NOT NULL AUTO_INCREMENT,
