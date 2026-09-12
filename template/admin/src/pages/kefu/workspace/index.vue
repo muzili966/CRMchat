@@ -227,7 +227,7 @@
 //提示音统一走 notifySound：内部处理Chrome的自动播放限制
 import Setting from '@/setting';
 import { formatChatTime } from '@/libs/chatTime';
-import { captureChat } from '@/libs/chatShot';
+import { captureChat, MAX_SHOT_RECORDS } from '@/libs/chatShot';
 import { onAvatarError, DEFAULT_AVATAR } from '@/libs/avatar';
 import chatFileCard from '@/components/chatFileCard';
 import chatRateCard from '@/components/chatRateCard';
@@ -702,20 +702,55 @@ export default {
 
     },
     //把当前会话截成图，便于纠纷时直接发给对方看
-    shotChat() {
+    async shotChat() {
       if (this.shooting || !this.hasActiveSession) return
       this.shooting = true
-      captureChat(this.$refs.scrollBox, {
-        title: '与 ' + (this.userActive.nickname || '访客') + ' 的对话',
-        subtitle: '接待客服 ' + (this.kefuInfo.nickname || '') + '，本图仅含已加载的消息',
-        filename: 'chat_' + this.userActive.to_user_id + '_' + Date.now()
-      }).then(pages => {
+      try {
+        //举证要的是完整记录，先把更早的消息全部翻出来再截
+        const truncated = await this.loadAllChat()
+        await this.$nextTick()
+        const pages = await captureChat(this.$refs.scrollBox, {
+          title: '与 ' + (this.userActive.nickname || '访客') + ' 的对话',
+          subtitle: '接待客服 ' + (this.kefuInfo.nickname || '') + '，共 ' + this.chatList.length + ' 条'
+            + (truncated ? '（超出上限，仅含最近部分，完整记录请用导出）' : '，完整对话'),
+          filename: 'chat_' + this.userActive.to_user_id + '_' + Date.now()
+        })
         this.$Message.success(pages > 1 ? `内容较长，已分为 ${pages} 张图片` : '截图已保存')
-      }).catch(e => {
-        this.$Message.error(e.message || '截图失败')
-      }).then(() => {
-        this.shooting = false
-      })
+      } catch (e) {
+        this.$Message.error((e && e.message) || '截图失败')
+      }
+      this.shooting = false
+    },
+    //沿游标一路往前翻到最早一条
+    async loadAllChat() {
+      let upperId = this.upperId
+      //会话再长也有个头，别让循环失控
+      for (let i = 0; i < 50 && upperId; i++) {
+        const res = await serviceList({
+          limit: 100,
+          user_id: this.userActive.to_user_id,
+          upperId,
+          is_tourist: this.tourist
+        })
+        const list = res.data || []
+        if (!list.length) { upperId = 0; break }
+        list.forEach(el => {
+          if (el.msn_type == 1) {
+            el.msn = this.replace_em(el.msn)
+          } else if (el.msn_type == 2) {
+            el.msn = this.replace_em(`[${el.msn}]`)
+          }
+        })
+        this.chatList = [...list, ...this.chatList]
+        upperId = list[0].id
+        if (this.chatList.length >= MAX_SHOT_RECORDS) {
+          this.upperId = upperId
+          return true
+        }
+      }
+      this.upperId = upperId
+      this.isScroll = !!upperId
+      return false
     },
     // 打开AI会话弹窗
     openAiSession() {

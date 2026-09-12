@@ -168,7 +168,7 @@
     import { onAvatarError } from '@/libs/avatar'
     import chatFileCard from '@/components/chatFileCard'
     import chatFaqCard from '@/components/chatFaqCard'
-  import { captureChat } from '@/libs/chatShot'
+  import { captureChat, MAX_SHOT_RECORDS } from '@/libs/chatShot'
 
     const RECORD_LIMIT = 30
 
@@ -315,25 +315,41 @@
                     })
                 this.handleExport(request, 'exporting', format)
             },
-            //截图只截已加载的那部分，往前翻过多少就截多少
-            exportShot () {
+            //举证要的是完整记录，所以先把整段对话拉全再截，不能只截翻到的那部分
+            async exportShot () {
                 if (!this.current || this.shooting) return
+                if (this.recordTotal > MAX_SHOT_RECORDS) {
+                    this.$Message.warning(`本段共 ${this.recordTotal} 条，超过 ${MAX_SHOT_RECORDS} 条截图会卡死浏览器，请改用 Excel 导出`)
+                    return
+                }
                 this.shooting = true
-                const loaded = this.records.length
-                const total = this.recordTotal
-                captureChat(this.$refs.chatBox, {
-                    title: this.drawerTitle,
-                    subtitle: loaded < total
-                        ? `已加载 ${loaded} / ${total} 条，更早的消息请先加载后再截`
-                        : `共 ${total} 条`,
-                    filename: 'chat_' + (this.current.visitor_id || '') + '_' + Date.now()
-                }).then(pages => {
+                try {
+                    await this.loadAllRecords()
+                    //DOM 要等这批消息真正渲染完，否则截到的还是旧内容
+                    await this.$nextTick()
+                    const pages = await captureChat(this.$refs.chatBox, {
+                        title: this.drawerTitle,
+                        subtitle: `共 ${this.records.length} 条，完整对话`,
+                        filename: 'chat_' + (this.current.visitor_id || '') + '_' + Date.now()
+                    })
                     this.$Message.success(pages > 1 ? `内容较长，已分为 ${pages} 张图片` : '截图已保存')
-                }).catch(e => {
-                    this.$Message.error(e.message || '截图失败')
-                }).then(() => {
-                    this.shooting = false
-                })
+                } catch (e) {
+                    this.$Message.error((e && e.message) || '截图失败')
+                }
+                this.shooting = false
+            },
+            //从头整段取回：已加载的那部分是按 30 条一页翻的，接着追加会错页
+            async loadAllRecords () {
+                const limit = 100
+                let all = []
+                for (let page = 1; page <= 100; page++) {
+                    const { list, count } = await this.requestRecords(page, limit)
+                    all = all.concat(list)
+                    this.recordTotal = count
+                    if (list.length < limit || all.length >= count) break
+                }
+                this.records = all
+                this.recordPage = Math.ceil(all.length / RECORD_LIMIT) || 1
             },
             // 上一条由不同客服应答即为一次接力；首条也要标出接待方
             isHandover (index) {
@@ -356,18 +372,24 @@
                 this.recordPage += 1
                 this.fetchRecords(true)
             },
-            fetchRecords (append = false) {
-                if (!this.current) return
-                this.recordsLoading = true
-                const params = { visitor_user_id: this.current.visitor_id, page: this.recordPage, limit: RECORD_LIMIT }
+            //取一页对话，翻页与全量截图共用
+            requestRecords (page, limit) {
+                const params = { visitor_user_id: this.current.visitor_id, page, limit }
                 const request = this.current.merged
                     ? historyVisitorRecordsApi(params)
                     : historyRecordsApi({ ...params, agent_user_id: this.current.agent_user_id })
-                request.then(res => {
-                    const list = (res.data && res.data.list) || []
+                return request.then(res => ({
+                    list: (res.data && res.data.list) || [],
+                    count: (res.data && res.data.count) || 0
+                }))
+            },
+            fetchRecords (append = false) {
+                if (!this.current) return Promise.resolve()
+                this.recordsLoading = true
+                return this.requestRecords(this.recordPage, RECORD_LIMIT).then(({ list, count }) => {
                     //接口按时间正序返回，翻页取到的是更晚的消息，故追加在后
                     this.records = append ? [...this.records, ...list] : list
-                    this.recordTotal = (res.data && res.data.count) || 0
+                    this.recordTotal = count
                     this.recordsLoading = false
                 }).catch(res => {
                     this.recordsLoading = false

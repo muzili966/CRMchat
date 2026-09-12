@@ -11,6 +11,14 @@ import html2canvas from 'html2canvas'
 /** 画布高度上限：各浏览器不一，取保守值，超了整张图会变全白 */
 const MAX_CANVAS_HEIGHT = 12000
 
+/**
+ * 单次截图的消息条数上限
+ *
+ * 举证要的是完整记录，所以截图前会把整段对话拉全。但几千条消息同时渲染，
+ * html2canvas 会耗尽内存，浏览器直接卡死，到那一步不如让人走 Excel 导出。
+ */
+export const MAX_SHOT_RECORDS = 1000
+
 /** 截图倍率：2 倍在文字清晰与文件体积之间比较平衡 */
 const SCALE = 2
 

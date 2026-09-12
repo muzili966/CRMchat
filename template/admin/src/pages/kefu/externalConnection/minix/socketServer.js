@@ -3,7 +3,7 @@ import { userRecord, serviceUpload, serviceUploadFile } from '@/api/kefu';
 import { encodeFileMsg } from '@/libs/chatFile';
 import { setLoc, getLoc } from '@/libs/util'
 import Cookies from "js-cookie";
-import { captureChat } from '@/libs/chatShot';
+import { captureChat, MAX_SHOT_RECORDS } from '@/libs/chatShot';
 
 //提示音统一走 notifySound：内部处理Chrome的自动播放限制
 import { initNotifySound, playNotifySound } from '@/libs/notifySound';
@@ -195,21 +195,46 @@ export default {
       this.goPageBottom(); // 滑动到页面底部
     },
     //访客把对话存成图，便于自己留证或转给别人看
-    shotChat() {
+    async shotChat() {
       if (this.shooting) return;
       this.shooting = true;
-      const box = document.querySelector('#chat_scroll');
-      captureChat(box, {
-        title: '与 ' + (this.chatServerData.to_user_nickname || '客服') + ' 的对话',
-        subtitle: (this.chatServerData.site_name || '') + '，本图仅含已加载的消息',
-        filename: 'chat_' + Date.now()
-      }).then(pages => {
+      try {
+        //先把更早的消息全部翻出来：只截看得见的那几条，留证等于没留
+        const truncated = await this.loadAllRecord();
+        await this.$nextTick();
+        const count = this.chatServerData.serviceList.length;
+        const pages = await captureChat(document.querySelector('#chat_scroll'), {
+          title: '与 ' + (this.chatServerData.to_user_nickname || '客服') + ' 的对话',
+          subtitle: (this.chatServerData.site_name || '') + '，共 ' + count + ' 条'
+            + (truncated ? '（消息过多，仅含最近部分）' : '，完整对话'),
+          filename: 'chat_' + Date.now()
+        });
         this.$Message.success(pages > 1 ? '内容较长，已分为 ' + pages + ' 张图片' : '截图已保存');
-      }).catch(e => {
-        this.$Message.error(e.message || '截图失败');
-      }).then(() => {
-        this.shooting = false;
-      });
+      } catch (e) {
+        this.$Message.error((e && e.message) || '截图失败');
+      }
+      this.shooting = false;
+    },
+    //沿游标往前翻到最早一条；返回是否因超出上限而截断
+    async loadAllRecord() {
+      const list = this.chatServerData.serviceList;
+      //会话再长也有个头，别让循环失控
+      for (let i = 0; i < 50 && !this.noMoreRecord; i++) {
+        const res = await userRecord({
+          limit: 100,
+          uid: this.chatServerData.uid,
+          idTo: list.length ? list[0].id : '',
+          toUserId: this.chatServerData.to_user_id
+        });
+        const got = (res.status == 200 && res.data.serviceList) ? res.data.serviceList : [];
+        if (!got.length) {
+          this.noMoreRecord = true;
+          break;
+        }
+        got.reverse().forEach(item => list.unshift(item));
+        if (list.length >= MAX_SHOT_RECORDS) return true;
+      }
+      return false;
     },
     // 建立连接
     connentServer() {
