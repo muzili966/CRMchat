@@ -3,6 +3,7 @@ import { userRecord, serviceUpload, serviceUploadFile } from '@/api/kefu';
 import { encodeFileMsg } from '@/libs/chatFile';
 import { setLoc, getLoc } from '@/libs/util'
 import Cookies from "js-cookie";
+import { captureChat } from '@/libs/chatShot';
 
 //提示音统一走 notifySound：内部处理Chrome的自动播放限制
 import { initNotifySound, playNotifySound } from '@/libs/notifySound';
@@ -16,6 +17,8 @@ export default {
       holdScroll: false,
       //已翻到最早一条，再滑到顶也不必请求
       noMoreRecord: false,
+      //截图生成中，避免连点
+      shooting: false,
       inputConType: 1,
       userMessage: '',
       //访客账号面板：401时弹登录，用户主动点击时弹绑定
@@ -190,6 +193,23 @@ export default {
       //往上翻历史时不能跟着跳：历史里的图片陆续加载完，每张都会把用户拽回底部
       if (this.holdScroll) return;
       this.goPageBottom(); // 滑动到页面底部
+    },
+    //访客把对话存成图，便于自己留证或转给别人看
+    shotChat() {
+      if (this.shooting) return;
+      this.shooting = true;
+      const box = document.querySelector('#chat_scroll');
+      captureChat(box, {
+        title: '与 ' + (this.chatServerData.to_user_nickname || '客服') + ' 的对话',
+        subtitle: (this.chatServerData.site_name || '') + '，本图仅含已加载的消息',
+        filename: 'chat_' + Date.now()
+      }).then(pages => {
+        this.$Message.success(pages > 1 ? '内容较长，已分为 ' + pages + ' 张图片' : '截图已保存');
+      }).catch(e => {
+        this.$Message.error(e.message || '截图失败');
+      }).then(() => {
+        this.shooting = false;
+      });
     },
     // 建立连接
     connentServer() {

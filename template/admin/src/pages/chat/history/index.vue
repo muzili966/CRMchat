@@ -117,11 +117,15 @@
                         :disabled="!records.length" @click="exportChat('xlsx')">导出Excel</Button>
                 <Button size="small" icon="ios-download-outline" :loading="exporting === 'csv'"
                         :disabled="!records.length" @click="exportChat('csv')">导出CSV</Button>
+                <Tooltip content="所见即所得，便于举证时直接发给对方" placement="top">
+                    <Button size="small" icon="ios-image-outline" :loading="shooting"
+                            :disabled="!records.length" @click="exportShot">导出截图</Button>
+                </Tooltip>
             </div>
 
             <div v-if="recordsLoading" class="chat-empty">加载中…</div>
             <div v-else-if="!records.length" class="chat-empty">暂无对话内容</div>
-            <div v-else class="chat-box">
+            <div v-else ref="chatBox" class="chat-box">
                 <template v-for="(m, i) in records">
                 <!-- 合并视图里接待方会中途变化（AI转人工、换客服），插条分隔线才看得出接力 -->
                 <div v-if="isHandover(i)" :key="'hand-' + m.id" class="chat-handover">
@@ -164,6 +168,7 @@
     import { onAvatarError } from '@/libs/avatar'
     import chatFileCard from '@/components/chatFileCard'
     import chatFaqCard from '@/components/chatFaqCard'
+  import { captureChat } from '@/libs/chatShot'
 
     const RECORD_LIMIT = 30
 
@@ -189,6 +194,7 @@
                 recordPage: 1,
                 recordsLoading: false,
                 exporting: '',
+        shooting: false,
                 exportingAll: '',
                 sessionColumns: [
                     { title: '访客', slot: 'visitor', minWidth: 160 },
@@ -308,6 +314,26 @@
                         format
                     })
                 this.handleExport(request, 'exporting', format)
+            },
+            //截图只截已加载的那部分，往前翻过多少就截多少
+            exportShot () {
+                if (!this.current || this.shooting) return
+                this.shooting = true
+                const loaded = this.records.length
+                const total = this.recordTotal
+                captureChat(this.$refs.chatBox, {
+                    title: this.drawerTitle,
+                    subtitle: loaded < total
+                        ? `已加载 ${loaded} / ${total} 条，更早的消息请先加载后再截`
+                        : `共 ${total} 条`,
+                    filename: 'chat_' + (this.current.visitor_id || '') + '_' + Date.now()
+                }).then(pages => {
+                    this.$Message.success(pages > 1 ? `内容较长，已分为 ${pages} 张图片` : '截图已保存')
+                }).catch(e => {
+                    this.$Message.error(e.message || '截图失败')
+                }).then(() => {
+                    this.shooting = false
+                })
             },
             // 上一条由不同客服应答即为一次接力；首条也要标出接待方
             isHandover (index) {

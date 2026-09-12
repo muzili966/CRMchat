@@ -132,6 +132,11 @@
                   <Icon size="18" type="ios-star" />
                   <span>已评 {{ rateStatus.rate }} 分</span>
                 </div>
+                <!-- 截图受数据导出能力约束，与Excel/CSV导出同一档 -->
+                <div class="icon-item" v-if="hasActiveSession && kefuInfo.config_export_open" @click.stop="shotChat">
+                  <Icon size="18" type="ios-image-outline" />
+                  <span>{{ shooting ? '截图中' : '截图' }}</span>
+                </div>
                 <div class="icon-item" v-if="hasActiveSession" @click.stop="closeSession">
                   <Icon size="18" type="ios-log-out" />
                   <span>结束接待</span>
@@ -222,6 +227,7 @@
 //提示音统一走 notifySound：内部处理Chrome的自动播放限制
 import Setting from '@/setting';
 import { formatChatTime } from '@/libs/chatTime';
+import { captureChat } from '@/libs/chatShot';
 import { onAvatarError, DEFAULT_AVATAR } from '@/libs/avatar';
 import chatFileCard from '@/components/chatFileCard';
 import chatRateCard from '@/components/chatRateCard';
@@ -290,6 +296,7 @@ export default {
       userActive: {}, //左侧用户列表选中信息
       kefuInfo: {}, //客服信息
       isMsg: false,
+      shooting: false,
       isTransfer: false,
       activeMsg: '', // 选中的话术
       chatList: [],
@@ -693,6 +700,22 @@ export default {
       }
 
 
+    },
+    //把当前会话截成图，便于纠纷时直接发给对方看
+    shotChat() {
+      if (this.shooting || !this.hasActiveSession) return
+      this.shooting = true
+      captureChat(this.$refs.scrollBox, {
+        title: '与 ' + (this.userActive.nickname || '访客') + ' 的对话',
+        subtitle: '接待客服 ' + (this.kefuInfo.nickname || '') + '，本图仅含已加载的消息',
+        filename: 'chat_' + this.userActive.to_user_id + '_' + Date.now()
+      }).then(pages => {
+        this.$Message.success(pages > 1 ? `内容较长，已分为 ${pages} 张图片` : '截图已保存')
+      }).catch(e => {
+        this.$Message.error(e.message || '截图失败')
+      }).then(() => {
+        this.shooting = false
+      })
     },
     // 打开AI会话弹窗
     openAiSession() {

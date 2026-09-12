@@ -132,6 +132,9 @@
                   <chatIcon name="file" :size="22" />
                   <input type="file" :accept="fileAccept" class="type_file" @change="uploadChatFile">
                 </div>
+                <div v-if="chatServerData.chat_shot" class="shot_entry" title="保存对话截图" @click="shotChat">
+                  <chatIcon name="image" :size="22" />
+                </div>
                 <div class="faq_entry" title="常见问题" @click="requestFaq">
                   <chatIcon name="faq" :size="22" />
                 </div>
@@ -196,6 +199,7 @@ import { HappyScroll } from 'vue-happy-scroll'
 import { formatChatTime } from '@/libs/chatTime';
 import emojiList from "@/utils/emoji";
 import socketServer from './minix/socketServer';
+import { captureChat } from '@/libs/chatShot';
 import visitorAccount from './components/visitorAccount';
 import chatFileCard from '@/components/chatFileCard'
 import chatFaqCard from '@/components/chatFaqCard';

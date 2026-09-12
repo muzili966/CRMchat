@@ -251,6 +251,8 @@ class ChatServiceServices extends BaseServices
             'theme' => app()->make(ApplicationThemeServices::class)->getPublicTheme($appId),
             //文件收发是否可用，访客端据此显隐附件入口（服务端仍会二次校验）
             'file_send' => (int)app()->make(TenantPlanServices::class)->hasFeature(TenantContext::id(), 'file_send'),
+            //对话截图与数据导出同一档能力：访客留证与租户导出是一回事的两端
+            'chat_shot' => (int)app()->make(TenantPlanServices::class)->hasFeature(TenantContext::id(), 'data_export'),
         ];
         //查找聊天记录
         $serviceLogList = $logServices->getServiceChatList(['appid' => $appId, 'to_user_id' => $userId], $limit, $idTo);

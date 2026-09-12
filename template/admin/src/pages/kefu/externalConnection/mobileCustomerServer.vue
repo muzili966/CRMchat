@@ -131,6 +131,9 @@
           <chatIcon name="file" :size="22" />
           <input type="file" :accept="fileAccept" class="file_input" @change="uploadChatFile">
         </div>
+        <div v-if="chatServerData.chat_shot" class="mobel_customerServer_container_footer_uploag_image" @click="shotChat">
+          <chatIcon name="image" :size="22" />
+        </div>
         <div class="mobel_customerServer_container_footer_input">
           <div class="mobel_customerServer_container_footer_input_con">
             <textarea @keyup.enter="sendText" @focus="textareaInput" class="font" @input="textareaChange($event)" v-model='userMessage' placeholder="请输入内容"></textarea>
