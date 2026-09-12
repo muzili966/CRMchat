@@ -661,6 +661,10 @@ class ChatHistoryServices
             $titles = array_column(is_array($card['list'] ?? null) ? $card['list'] : [], 'title');
             return $titles ? '[常见问题] ' . implode('、', $titles) : '[常见问题]';
         }
+        if ($type === ChatServiceDialogueRecordServices::MSN_TYPE_IME) {
+            //只给一串路径，读表的人不知道那是图片；文件与卡片都有标识，图片不该例外
+            return '[图片] ' . trim($msn);
+        }
         if ($type === ChatServiceDialogueRecordServices::MSN_TYPE_FILE) {
             $json = base64_decode(trim($msn), true);
             $file = $json === false ? null : json_decode($json, true);

@@ -39,6 +39,36 @@ function sameOrigin (src) {
   }
 }
 
+/** 小于这个尺寸的按头像处理，画个灰块就够，不必写字 */
+const AVATAR_MAX = 80
+
+/**
+ * 取不到的图片换成占位
+ *
+ * 留一片空白会让人以为这里本来就没东西，对举证是有害的歧义；浏览器默认的
+ * 裂图又依赖系统图标、样式不可控。统一画成带说明的灰框，一眼看得出
+ * 「此处有图但没能渲染」。
+ * @param {Document} doc
+ * @param {HTMLImageElement} img
+ */
+function replaceWithPlaceholder (doc, img) {
+  //克隆体不在渲染树里，量不到尺寸，只能用截图前在原图上标好的值
+  const w = Number(img.dataset.shotW) || 120
+  const h = Number(img.dataset.shotH) || 90
+  const box = doc.createElement('div')
+
+  if (w <= AVATAR_MAX && h <= AVATAR_MAX) {
+    box.style.cssText = `width:${w}px;height:${h}px;border-radius:${img.style.borderRadius || '50%'};background:#dcdee2;display:inline-block`
+  } else {
+    box.style.cssText = `width:${w}px;height:${Math.max(h, 60)}px;border:1px dashed #c5c8ce;border-radius:4px;` +
+      'background:#f8f8f9;color:#808695;font-size:12px;display:flex;align-items:center;justify-content:center;text-align:center'
+    box.textContent = '图片未能加载'
+  }
+  if (img.parentNode) {
+    img.parentNode.replaceChild(box, img)
+  }
+}
+
 /**
  * 页眉：标明这张图出自哪里、是谁和谁的对话、什么时候导的
  *
@@ -96,6 +126,33 @@ function download (canvas, filename) {
 export async function captureChat (el, meta = {}) {
   if (!el) throw new Error('找不到对话内容')
 
+  //先在原图上量好尺寸、标好能不能渲染：克隆体里这两样都读不到
+  const marked = Array.from(el.querySelectorAll('img'))
+  marked.forEach(img => {
+    const rect = img.getBoundingClientRect()
+    img.dataset.shotW = String(Math.round(rect.width))
+    img.dataset.shotH = String(Math.round(rect.height))
+    img.dataset.shotOk = (sameOrigin(img.src) && img.complete && img.naturalWidth > 0) ? '1' : '0'
+  })
+
+  try {
+    return await render(el, meta)
+  } finally {
+    marked.forEach(img => {
+      delete img.dataset.shotW
+      delete img.dataset.shotH
+      delete img.dataset.shotOk
+    })
+  }
+}
+
+/**
+ * 实际渲染并落盘
+ * @param {HTMLElement} el
+ * @param {Object} meta
+ * @returns {Promise<Number>}
+ */
+async function render (el, meta) {
   const canvas = await html2canvas(el, {
     scale: SCALE,
     useCORS: true,
@@ -109,10 +166,8 @@ export async function captureChat (el, meta = {}) {
       cloned.style.overflow = 'visible'
       cloned.style.height = 'auto'
       cloned.querySelectorAll('img').forEach(img => {
-        if (!sameOrigin(img.src)) {
-          img.removeAttribute('src')
-          img.style.background = '#e8eaec'
-        }
+        if (img.dataset.shotOk === '1') return
+        replaceWithPlaceholder(doc, img)
       })
       cloned.insertBefore(buildHeader(meta), cloned.firstChild)
     }

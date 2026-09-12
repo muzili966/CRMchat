@@ -87,6 +87,15 @@ class ChatHistoryTest extends TestCase
     }
 
     /**
+     * 图片导出要带标识：只给一串路径，读表的人认不出那是图片
+     */
+    public function testPlainContentMarksImage()
+    {
+        $img = ChatServiceDialogueRecordServices::MSN_TYPE_IME;
+        $this->assertSame('[图片] /uploads/a.jpg', $this->invoke('plainContent', [$img, '/uploads/a.jpg']));
+    }
+
+    /**
      * 文件消息的 msn 是 base64(JSON)，导出要还原成「文件名 URL」
      */
     public function testPlainContentDecodesFileMessage()

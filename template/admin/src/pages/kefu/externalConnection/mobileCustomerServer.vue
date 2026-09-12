@@ -10,7 +10,10 @@
           <small><i></i>客服在线 · 为您服务</small>
         </div>
       </div>
-      <div class="pc_customerServer_container_header_account" @click="openAccountBind" title="绑定手机，换设备继续会话">
+      <div v-if="chatServerData.chat_shot" class="pc_customerServer_container_header_account" :style="{ opacity: shooting ? 0.5 : 1 }" :title="shooting ? '正在生成截图' : '保存对话截图'" @click="shotChat">
+          <chatIcon name="image" :size="20" />
+        </div>
+        <div class="pc_customerServer_container_header_account" @click="openAccountBind" title="绑定手机，换设备继续会话">
         <chatIcon name="user" :size="20" />
       </div>
       <div class="pc_customerServer_container_header_handle" @click="closeIframe" v-if="upperData.noCanClose != '1'">
@@ -130,9 +133,6 @@
         <div v-if="chatServerData.file_send" class="mobel_customerServer_container_footer_uploag_image file_entry">
           <chatIcon name="file" :size="22" />
           <input type="file" :accept="fileAccept" class="file_input" @change="uploadChatFile">
-        </div>
-        <div v-if="chatServerData.chat_shot" class="mobel_customerServer_container_footer_uploag_image" @click="shotChat">
-          <chatIcon name="image" :size="22" />
         </div>
         <div class="mobel_customerServer_container_footer_input">
           <div class="mobel_customerServer_container_footer_input_con">
