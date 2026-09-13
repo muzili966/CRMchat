@@ -51,7 +51,7 @@ final class RefundRequest
         $req->amount = Money::normalize($data['amount'] ?? '');
         $req->totalAmount = Money::normalize($data['total_amount'] ?? '');
         //退得比收的多是资金事故，必须在进渠道之前拦住
-        if (bccomp($req->amount, $req->totalAmount, Money::SCALE) > 0) {
+        if (Money::compare($req->amount, $req->totalAmount) > 0) {
             throw new PaymentException('退款金额不能超过原支付金额');
         }
         $req->reason = mb_substr(trim((string)($data['reason'] ?? '')), 0, self::REASON_MAX_CHARS);

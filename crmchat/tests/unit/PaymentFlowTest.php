@@ -10,6 +10,7 @@ use app\services\platform\PlatformSupportServices;
 use crmeb\services\payment\CashierLink;
 use crmeb\services\payment\dto\PaymentNotice;
 use crmeb\services\payment\dto\PaymentOrder;
+use crmeb\services\payment\Money;
 use crmeb\services\payment\PaymentException;
 use crmeb\services\payment\PaymentScene;
 use crmeb\services\payment\PaymentSettlement;
@@ -189,6 +190,36 @@ class PaymentFlowTest extends TestCase
         $payNo = PaymentServices::buildPayNo(self::EXPIRE);
         $this->assertMatchesRegularExpression('/^PY\d{22}$/', $payNo);
         $this->assertNotSame($payNo, PaymentServices::buildPayNo(self::EXPIRE));
+    }
+
+    public function testMoneyCentsArithmetic()
+    {
+        $this->assertSame('4500.00', Money::multiply('1500.00', 3));
+        $this->assertSame('0.30', Money::fromCents(30));
+        $this->assertSame('-1.05', Money::fromCents(-105));
+        $this->assertSame(5, Money::toCents('0.05'));
+        $this->assertSame(50, Money::toCents('0.5'));
+        $this->assertSame(1, Money::compare('100.01', '100'));
+        $this->assertSame(0, Money::compare('100', '100.00'));
+    }
+
+    /**
+     * CI 单测容器是裸 php:7.4-cli，没有 bcmath：本地装了扩展照样通过，流水线却恒挂。
+     * 构建 #67 就是这么挂的，扫一遍源码把这类调用钉死
+     */
+    public function testPaymentCodeDoesNotNeedBcmath()
+    {
+        $root = dirname(__DIR__, 2);
+        $offenders = [];
+        foreach (['crmeb/services/payment', 'app/services/payment'] as $dir) {
+            $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root . '/' . $dir, \FilesystemIterator::SKIP_DOTS));
+            foreach ($files as $file) {
+                if ($file->getExtension() === 'php' && preg_match('/\bbc[a-z]+\s*\(/', (string)file_get_contents($file->getPathname()))) {
+                    $offenders[] = $dir . '/' . $file->getFilename();
+                }
+            }
+        }
+        $this->assertSame([], $offenders, '支付模块不得调用 bcmath 函数');
     }
 
     /**

@@ -61,7 +61,7 @@ class TenantPlanPayable implements PayableInterface
         self::checkQuote($plan, $months);
         return new PaymentQuote(
             sprintf('「%s」套餐 %d个月', $plan['name'], $months),
-            bcmul((string)$plan['price'], (string)$months, Money::SCALE),
+            Money::multiply((string)$plan['price'], $months),
             [
                 'plan_id' => (int)$plan['id'],
                 'plan_name' => (string)$plan['name'],
@@ -89,7 +89,7 @@ class TenantPlanPayable implements PayableInterface
         if ((int)($plan['status'] ?? 0) !== TenantPlan::STATUS_ON) {
             throw new PaymentException('套餐已停售');
         }
-        if (bccomp((string)($plan['price'] ?? '0'), '0', Money::SCALE) <= 0) {
+        if (Money::toCents((string)($plan['price'] ?? '0')) <= 0) {
             throw new PaymentException('免费套餐无需付款');
         }
     }
