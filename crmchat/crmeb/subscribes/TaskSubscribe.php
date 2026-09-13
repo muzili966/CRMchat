@@ -55,11 +55,17 @@ class TaskSubscribe
     }
 
     /**
-     * 60秒钟执行的方法
+     * 60秒钟执行的方法：过期支付单关单
      */
     public function onTask_60()
     {
-
+        try {
+            /** @var \app\services\payment\PaymentSettleServices $settleServices */
+            $settleServices = app()->make(\app\services\payment\PaymentSettleServices::class);
+            $settleServices->closeExpired(time());
+        } catch (\Throwable $e) {
+            Log::error('过期支付单关单失败：' . $e->getMessage());
+        }
     }
 
     /**

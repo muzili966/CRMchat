@@ -40,6 +40,20 @@ class PlatformSupportServices extends BaseServices
     const UID_BASE = 3000000;
 
     /**
+     * 访客 uid 反推租户ID
+     *
+     * 平台客服给租户发续费卡片时要知道对面是哪个租户。平台自营租户不会从这里进来，
+     * 超出一个基数跨度的 uid 属于别的号段，一律不认。
+     * @param int $uid
+     * @return int 不在租户号段内返回 0
+     */
+    public static function tenantIdOf(int $uid): int
+    {
+        $tenantId = $uid - self::UID_BASE;
+        return $tenantId > Tenant::DEFAULT_TENANT_ID && $tenantId < self::UID_BASE ? $tenantId : 0;
+    }
+
+    /**
      * 入口配置
      *
      * 平台自营租户不展示：它是被联系的一方，给它挂个联系自己的按钮没有意义。

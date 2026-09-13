@@ -101,7 +101,7 @@
                             <span>￥{{ row.amount }}</span>
                         </template>
                         <template slot-scope="{ row }" slot="pay_type">
-                            <Tag :color="row.pay_type === 1 ? 'blue' : 'orange'">{{ row.pay_type === 1 ? '后台开通' : '线下转账' }}</Tag>
+                            <Tag :color="payType(row.pay_type).color">{{ payType(row.pay_type).label }}</Tag>
                         </template>
                         <template slot-scope="{ row }" slot="status">
                             <Tag :color="row.status === 1 ? 'green' : 'default'">{{ row.status === 1 ? '已生效' : '已作废' }}</Tag>
@@ -205,6 +205,7 @@
 <script>
     import { mySubscriptionApi, orderListApi, orderExportApi, planFeatureApi, invoiceListApi, invoiceApplyApi, tenantPlansApi } from '@/api/tenant'
     import { PLAN_FEATURE_FIELDS, PLAN_QUOTA_FIELDS, getPlanFeatureText } from '@/config/planFeatures'
+    import { payTypeOf } from '@/libs/payType'
 
     const INVOICE_STATUS_TEXT = { 0: '待开具', 1: '已开具', 2: '已驳回' }
     const INVOICE_STATUS_COLOR = { 0: 'orange', 1: 'green', 2: 'red' }
@@ -286,6 +287,9 @@
             this.loadGate()
         },
         methods: {
+            payType (value) {
+                return payTypeOf(value)
+            },
             featureText (field) {
                 return getPlanFeatureText(field)
             },

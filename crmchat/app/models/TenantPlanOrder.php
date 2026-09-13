@@ -36,6 +36,11 @@ class TenantPlanOrder extends BaseModel
     const PAY_TYPE_OFFLINE = 2;
 
     /**
+     * 支付方式：在线支付，经支付单到账后自动开通
+     */
+    const PAY_TYPE_ONLINE = 3;
+
+    /**
      * 订单状态：已生效
      */
     const STATUS_EFFECTIVE = 1;

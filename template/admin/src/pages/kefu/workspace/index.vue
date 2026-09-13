@@ -58,6 +58,10 @@
                       <template v-if="item.msn_type==8">
                         <chatRateCard :msn="item.msn" :rated="rateStatus.rate"/>
                       </template>
+                      <!-- 续费支付卡片：客服侧只读 -->
+                      <template v-if="item.msn_type==10">
+                        <chatPayCard :msn="item.msn" readonly/>
+                      </template>
                       <!-- 商品 -->
 
                       <template v-if="item.msn_type==5">
@@ -137,6 +141,11 @@
                   <Icon size="18" type="ios-image-outline" />
                   <span>{{ shooting ? '截图中' : '截图' }}</span>
                 </div>
+                <!-- 续费卡片：只在平台客服接待经租户后台进来的访客时出现 -->
+                <div class="icon-item" v-if="hasActiveSession && payTarget.tenant_id" @click.stop="payCardShow = true">
+                  <Icon size="18" type="ios-card-outline" />
+                  <span>续费卡片</span>
+                </div>
                 <div class="icon-item" v-if="hasActiveSession" @click.stop="closeSession">
                   <Icon size="18" type="ios-log-out" />
                   <span>结束接待</span>
@@ -148,6 +157,7 @@
                 <div class="transfer-box" v-if="isTransfer && hasActiveSession">
                   <transfer ref="transfer" @transferSuccess="transferSuccess" @close="msgClose" @transferPeople="transferPeople" :userUid="userActive.to_user_id"></transfer>
                 </div>
+                <payCard v-model="payCardShow" :target="payTarget" :user-id="userActive.to_user_id" @sent="onPayCardSent"/>
                 <div class="transfer-bg" v-if="isTransfer" @click.stop="isTransfer = false"></div>
               </div>
               <!-- 表情 -->
@@ -232,10 +242,14 @@ import { onAvatarError, DEFAULT_AVATAR } from '@/libs/avatar';
 import chatFileCard from '@/components/chatFileCard';
 import chatRateCard from '@/components/chatRateCard';
 import chatFaqCard from '@/components/chatFaqCard';
+import chatPayCard from '@/components/chatPayCard';
+import payCard from './components/payCard';
 import { encodeFileMsg } from '@/libs/chatFile';
 import { HappyScroll } from 'vue-happy-scroll'
 import baseHeader from './components/baseHeader';
 const NARROW_WIDTH = 1100
+// 非租户访客：隐藏续费卡片入口
+const emptyPayTarget = () => ({ tenant_id: 0, plans: [] })
 
 import chatList from './components/chatList'
 import rightMenu from "./components/rightMenu";
@@ -245,7 +259,7 @@ import { initNotifySound, playNotifySound } from '@/libs/notifySound';
 import msgWindow from "./components/msgWindow";
 import authReply from "./components/authReply";
 import transfer from './components/transfer'
-import { serviceList, aiSessionListApi, aiTakeOverApi, inviteRateApi, rateStatusApi, closeSessionApi } from '@/api/kefu'
+import { serviceList, aiSessionListApi, aiTakeOverApi, inviteRateApi, rateStatusApi, closeSessionApi, payTargetApi } from '@/api/kefu'
 // import goodsDetail from "./components/goods_detail";
 // import orderDetail from "./components/order_detail";
 import { mapState } from 'vuex'
@@ -279,7 +293,9 @@ export default {
     authReply,
     chatFileCard,
     chatRateCard,
-    chatFaqCard
+    chatFaqCard,
+    chatPayCard,
+    payCard
     // goodsDetail,
     // orderDetail
   },
@@ -326,6 +342,9 @@ export default {
       transferId: '', //转接id
       //当前接待的评价状态，切换会话时重新拉取
       rateStatus: { session_id: 0, rate: 0, invited: 0, can_invite: 0 },
+      //当前访客对应的付款租户，切换会话时重新拉取
+      payTarget: emptyPayTarget(),
+      payCardShow: false,
       bodyClose: false,
       tourist: 0,
       isShow:false,
@@ -385,6 +404,7 @@ export default {
     'userActive.to_user_id': {
       handler(val) {
         this.getRateStatus(val)
+        this.getPayTarget(val)
       },
       immediate: true
     },
@@ -469,6 +489,30 @@ export default {
       }).catch(() => {
         //拿不到状态时按不可邀请处理，不影响接待本身
         this.rateStatus = { session_id: 0, rate: 0, invited: 0, can_invite: 0 }
+      })
+    },
+    // 拉取当前访客对应的付款租户，决定是否展示续费卡片入口
+    getPayTarget(userId) {
+      this.payTarget = emptyPayTarget()
+      if (!userId) return
+      payTargetApi({ user_id: userId }).then(res => {
+        //快速切换会话时旧请求可能晚到，不能把上一个访客的租户挂到当前会话上
+        if (this.userActive && this.userActive.to_user_id === userId) {
+          this.payTarget = res.data || emptyPayTarget()
+        }
+      }).catch(res => {
+        //拿不到时隐藏入口即可，不影响接待本身
+        console.warn('[workspace] 获取付款租户失败', res)
+      })
+    },
+    // 卡片由服务端入库并推给访客，客服这边没有回显，直接追加到当前对话
+    onPayCardSent(data) {
+      this.$Message.success('续费卡片已发送')
+      if (!data || !data.record) return
+      this.chatList.push(data.record)
+      this.$nextTick(() => {
+        const box = document.querySelector('#chat_scroll')
+        if (box) this.scrollTop = box.offsetHeight
       })
     },
     // 邀请访客评价

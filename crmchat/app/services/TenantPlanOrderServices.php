@@ -55,7 +55,7 @@ class TenantPlanOrderServices extends BaseServices
 
     /**
      * 订购/续费套餐：生成对账单并更新租户套餐与到期时间
-     * @param array $data tenant_id/plan_id/months/pay_type/remark/admin_id
+     * @param array $data tenant_id/plan_id/months/pay_type/remark/admin_id；在线支付开通另带 pay_no/amount
      * @return array 生成的对账单信息
      */
     public function subscribe(array $data)
@@ -67,7 +67,10 @@ class TenantPlanOrderServices extends BaseServices
 
         /** @var TenantPlanDao $planDao */
         $planDao = app()->make(TenantPlanDao::class);
-        $plan = $planDao->get(['id' => (int)$data['plan_id'], 'is_delete' => 0, 'status' => TenantPlan::STATUS_ON]);
+        //在线支付在下单时已锁定套餐与金额：付款期间套餐被停售或调价，已付的钱照下单时的内容开通
+        $online = !empty($data['pay_no']);
+        $planWhere = ['id' => (int)$data['plan_id'], 'is_delete' => 0];
+        $plan = $planDao->get($online ? $planWhere : $planWhere + ['status' => TenantPlan::STATUS_ON]);
         if (!$plan) {
             throw new AdminException('套餐不存在或已停售');
         }
@@ -84,11 +87,12 @@ class TenantPlanOrderServices extends BaseServices
         $order = [
             'tenant_id' => $tenantId,
             'order_no' => $this->buildOrderNo($tenantId),
+            'pay_no' => (string)($data['pay_no'] ?? ''),
             'plan_id' => (int)$plan->id,
             'plan_name' => $plan->name,
             'plan_snapshot' => json_encode($plan->toArray(), JSON_UNESCAPED_UNICODE),
             'months' => $months,
-            'amount' => bcmul((string)$plan->price, (string)$months, 2),
+            'amount' => $online && isset($data['amount']) ? (string)$data['amount'] : bcmul((string)$plan->price, (string)$months, 2),
             'pay_type' => (int)($data['pay_type'] ?? TenantPlanOrder::PAY_TYPE_BACKEND),
             'status' => TenantPlanOrder::STATUS_EFFECTIVE,
             'expire_before' => $expireBefore,

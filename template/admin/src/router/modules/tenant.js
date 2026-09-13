@@ -52,6 +52,16 @@ export default {
       component: () => import('@/pages/tenant/orders/index')
     },
     {
+      //支付单：平台向租户收款，仅平台端可见
+      path: 'payment',
+      name: `${pre}payment`,
+      meta: {
+        auth: ['tenant-payment'],
+        title: '支付单'
+      },
+      component: () => import('@/pages/tenant/payment/index')
+    },
+    {
       path: 'invoice',
       name: `${pre}invoice`,
       meta: {

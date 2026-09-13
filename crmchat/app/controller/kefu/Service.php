@@ -346,6 +346,35 @@ class Service extends AuthController
     }
 
     /**
+     * 访客对应的付款租户与可选套餐，决定是否展示「发送续费卡片」
+     * @return mixed
+     */
+    public function payTarget()
+    {
+        [$userId] = $this->request->getMore([['user_id', 0]], true);
+        /** @var \app\services\payment\KefuPaymentServices $payServices */
+        $payServices = app()->make(\app\services\payment\KefuPaymentServices::class);
+        return $this->success($payServices->target((int)$userId, (string)$this->kefuInfo['appid']));
+    }
+
+    /**
+     * 向租户发送续费支付卡片
+     * @return mixed
+     */
+    public function sendPayCard()
+    {
+        $data = $this->request->postMore([['user_id', 0], ['plan_id', 0], ['months', 1], ['remark', '']]);
+        /** @var \app\services\payment\KefuPaymentServices $payServices */
+        $payServices = app()->make(\app\services\payment\KefuPaymentServices::class);
+        try {
+            $result = $payServices->sendCard($data, $this->kefuInfo);
+        } catch (\crmeb\services\payment\PaymentException $e) {
+            return $this->fail($e->getMessage());
+        }
+        return $this->success('续费卡片已发送', $result);
+    }
+
+    /**
      * 当前接待的评价状态，供客服端显隐邀请入口
      * @return mixed
      */

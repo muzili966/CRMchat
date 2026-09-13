@@ -82,6 +82,8 @@ Route::group('api', function () {
                 Route::post('ai_take_over', 'Service/takeOverAiSession')->name('takeOverAiSession');//接管AI会话
                 Route::post('rate/invite', 'Service/inviteRate')->name('inviteRate');//邀请评价
                 Route::get('rate/status', 'Service/rateStatus')->name('rateStatus');//当前接待的评价状态
+                Route::get('pay/target', 'Service/payTarget')->name('payTarget');//访客对应的付款租户
+                Route::post('pay/card', 'Service/sendPayCard')->name('sendPayCard');//发送续费支付卡片
                 Route::post('session/close', 'Service/closeSession')->name('closeSession');//结束本次接待
                 Route::get('cate', 'Service/getCateList')->name('getCateList');//分类列表
                 Route::post('cate', 'Service/saveCate')->name('saveCate');//保存分类

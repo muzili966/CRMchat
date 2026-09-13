@@ -145,6 +145,9 @@
                         <template v-else-if="m.msn_type === 9">
                             <chatFaqCard :msn="m.msn" readonly/>
                         </template>
+                        <template v-else-if="m.msn_type === 10">
+                            <chatPayCard :msn="m.msn" readonly/>
+                        </template>
                         <template v-else>
                             <span v-html="m.msn"></span>
                         </template>
@@ -168,13 +171,14 @@
     import { onAvatarError } from '@/libs/avatar'
     import chatFileCard from '@/components/chatFileCard'
     import chatFaqCard from '@/components/chatFaqCard'
+    import chatPayCard from '@/components/chatPayCard'
   import { captureChat, MAX_SHOT_RECORDS } from '@/libs/chatShot'
 
     const RECORD_LIMIT = 30
 
     export default {
         name: 'chatHistory',
-        components: { chatFileCard, chatFaqCard },
+        components: { chatFileCard, chatFaqCard, chatPayCard },
         data () {
             return {
                 mode: 'session',

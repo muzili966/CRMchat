@@ -438,6 +438,15 @@ Route::group('api', function () {
             Route::get('tenant/orders', 'system.TenantPlanOrder/index')->option(['real_name' => '订购对账列表']);
             //对账CSV导出
             Route::get('tenant/orders/export', 'system.TenantPlanOrder/export')->option(['real_name' => '对账导出']);
+            //支付单（平台专属）
+            Route::get('tenant/payment', 'platform.Payment/index')->option(['real_name' => '支付单列表']);
+            Route::get('tenant/payment/options', 'platform.Payment/options')->option(['real_name' => '支付单选项']);
+            Route::post('tenant/payment', 'platform.Payment/save')->option(['real_name' => '创建支付单']);
+            Route::get('tenant/payment/deliver/:id', 'platform.Payment/deliver')->option(['real_name' => '获取支付链接']);
+            Route::post('tenant/payment/confirm/:id', 'platform.Payment/confirm')->option(['real_name' => '确认到账']);
+            Route::post('tenant/payment/close/:id', 'platform.Payment/close')->option(['real_name' => '关闭支付单']);
+            Route::post('tenant/payment/sync/:id', 'platform.Payment/sync')->option(['real_name' => '同步支付状态']);
+            Route::post('tenant/payment/fulfill/:id', 'platform.Payment/fulfill')->option(['real_name' => '补开通']);
             //发票列表
             Route::get('tenant/invoice', 'system.TenantInvoice/index')->option(['real_name' => '发票列表']);
             //申请开票

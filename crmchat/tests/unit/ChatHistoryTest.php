@@ -108,6 +108,17 @@ class ChatHistoryTest extends TestCase
     }
 
     /**
+     * 支付卡片导出要看得出哪张单、多少钱，而不是一串 base64
+     */
+    public function testPlainContentDecodesPayCard()
+    {
+        $pay = ChatServiceDialogueRecordServices::MSN_TYPE_PAY;
+        $msn = base64_encode(json_encode(['pay_no' => 'PY1', 'subject' => '「标准版」套餐 1个月', 'amount' => '1500.00', 'url' => 'x']));
+        $this->assertSame('[支付卡片] 「标准版」套餐 1个月 ￥1500.00 单号 PY1', $this->invoke('plainContent', [$pay, $msn]));
+        $this->assertSame('[支付卡片]', $this->invoke('plainContent', [$pay, '坏数据']));
+    }
+
+    /**
      * 表头必须在首行，且与每行列数一致，否则 Excel 打开错位
      */
     public function testExportRowsShapeIsConsistent()

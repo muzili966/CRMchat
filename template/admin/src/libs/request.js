@@ -31,6 +31,9 @@ service.interceptors.request.use(
         } else if(config.mobile) {
             baseUrl = Setting.apiBaseURL.replace(/admin/, "mobile");
             config.baseURL = baseUrl
+        } else if(config.pay) {
+            //收银台面向未登录的付款人，只替换末尾的 admin，避免域名里恰好含 admin 被误替换
+            config.baseURL = Setting.apiBaseURL.replace(/admin$/, "pay")
         } else {
             config.baseURL = Setting.apiBaseURL
         }
@@ -38,13 +41,14 @@ service.interceptors.request.use(
         const kefuToken = getCookies('kefu_token');
         const mobileToken = getLoc('mobile_token');
 
-        if(token || kefuToken || mobileToken) {
+        //收银台不带任何登录态：同一浏览器里登着后台的人打开付款链接，不该把后台令牌发出去
+        if(!config.pay && (token || kefuToken || mobileToken)) {
             config.headers['Authori-zation'] = config.mobile ? 'Bearer ' + mobileToken : config.kefu ? 'Bearer ' + kefuToken : 'Bearer ' + token;
         }
         //平台账号处于租户视角时，后台请求统一带上 tenant_id；
         //后端只读query参数，故放在params而非body，避免与业务字段冲突
         const viewTenant = getViewTenant()
-        if(viewTenant && !config.kefu && !config.mobile) {
+        if(viewTenant && !config.kefu && !config.mobile && !config.pay) {
             config.params = Object.assign({}, config.params, { tenant_id: viewTenant.id })
         }
         return config

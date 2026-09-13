@@ -37,6 +37,20 @@ services:
       SERVICE_URL: "${SERVICE_URL:-}"
       CONSOLE_URL: "${CONSOLE_URL:-}"
       WEBSITE_URL: "${WEBSITE_URL:-}"
+      # 支付渠道凭据：留空即该渠道不上收银台，prod 的值只放服务器上的 .env.prod
+      PAY_ALIPAY_APP_ID: "${PAY_ALIPAY_APP_ID:-}"
+      PAY_ALIPAY_PRIVATE_KEY: "${PAY_ALIPAY_PRIVATE_KEY:-}"
+      PAY_ALIPAY_PUBLIC_KEY: "${PAY_ALIPAY_PUBLIC_KEY:-}"
+      PAY_ALIPAY_GATEWAY: "${PAY_ALIPAY_GATEWAY:-}"
+      PAY_WECHAT_APPID: "${PAY_WECHAT_APPID:-}"
+      PAY_WECHAT_MCHID: "${PAY_WECHAT_MCHID:-}"
+      PAY_WECHAT_SERIAL_NO: "${PAY_WECHAT_SERIAL_NO:-}"
+      PAY_WECHAT_PRIVATE_KEY: "${PAY_WECHAT_PRIVATE_KEY:-}"
+      PAY_WECHAT_API_V3_KEY: "${PAY_WECHAT_API_V3_KEY:-}"
+      PAY_WECHAT_PLATFORM_PUBLIC_KEY: "${PAY_WECHAT_PLATFORM_PUBLIC_KEY:-}"
+      PAY_WECHAT_PLATFORM_SERIAL: "${PAY_WECHAT_PLATFORM_SERIAL:-}"
+      PAY_MANUAL_ACCOUNT: "${PAY_MANUAL_ACCOUNT:-}"
+      PAY_MANUAL_QRCODES: "${PAY_MANUAL_QRCODES:-}"
     volumes:
       - crmchat-uploads:/var/www/crmchat/public/uploads
       - crmchat-runtime:/var/www/crmchat/runtime

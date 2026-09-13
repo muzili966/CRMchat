@@ -827,6 +827,30 @@ export function rateStatusApi (params) {
 }
 
 /**
+ * 当前访客对应的付款租户与可选套餐；非租户访客时 tenant_id 为 0
+ * @param {Object} params user_id
+ */
+export function payTargetApi (params) {
+  return request({
+    url: 'service/pay/target',
+    method: 'get',
+    params
+  })
+}
+
+/**
+ * 发送续费支付卡片
+ * @param {Object} data user_id/plan_id/months/remark
+ */
+export function sendPayCardApi (data) {
+  return request({
+    url: 'service/pay/card',
+    method: 'post',
+    data
+  })
+}
+
+/**
  * 结束本次接待
  * @param {Object} data user_id
  */

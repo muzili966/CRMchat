@@ -48,7 +48,7 @@
                     <span>￥{{ row.amount }}</span>
                 </template>
                 <template slot-scope="{ row }" slot="pay_type">
-                    <Tag :color="row.pay_type === 1 ? 'blue' : 'orange'">{{ row.pay_type === 1 ? '后台开通' : '线下转账' }}</Tag>
+                    <Tag :color="payType(row.pay_type).color">{{ payType(row.pay_type).label }}</Tag>
                 </template>
                 <template slot-scope="{ row }" slot="status">
                     <Tag :color="row.status === 1 ? 'green' : 'default'">{{ row.status === 1 ? '已生效' : '已作废' }}</Tag>
@@ -64,6 +64,7 @@
 <script>
     import { mapState } from 'vuex'
     import { orderListApi, orderExportApi, planAllApi } from '@/api/tenant'
+    import { payTypeOf } from '@/libs/payType'
 
     export default {
         name: 'tenant_orders',
@@ -132,6 +133,9 @@
                     this.loading = false
                     this.$Message.error(res.msg)
                 })
+            },
+            payType (value) {
+                return payTypeOf(value)
             },
             pageChange (index) {
                 this.searchWhere.page = index

@@ -82,6 +82,10 @@
                   <chatRateCard :msn="item.msn" :theme-color="themeColor"
                                 @submit="submitRate" @error="msg => $Message.error(msg)"/>
                 </div>
+                <!-- 续费支付卡片 -->
+                <div class="chart_list_item_pay" v-if="item.msn_type == 10">
+                  <chatPayCard :msn="item.msn" :theme-color="themeColor"/>
+                </div>
                 <div class="chart_list_item_file" v-if="item.msn_type == 7">
                   <chatFileCard :msn="item.msn" />
                 </div>
@@ -176,6 +180,7 @@ import socketServer from './minix/socketServer';
 import chatFileCard from '@/components/chatFileCard';
 import chatFaqCard from '@/components/chatFaqCard';
 import chatRateCard from '@/components/chatRateCard';
+import chatPayCard from '@/components/chatPayCard';
 import chatIcon from '@/components/chatIcon';
 import { FILE_ACCEPT } from '@/libs/chatFile';
 import visitorAccount from './components/visitorAccount';
@@ -192,6 +197,7 @@ export default {
     chatFileCard,
     chatFaqCard,
     chatRateCard,
+    chatPayCard,
     chatIcon
   },
   mixins: [socketServer, appTheme],

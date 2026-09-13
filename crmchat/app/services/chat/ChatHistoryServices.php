@@ -108,6 +108,7 @@ class ChatHistoryServices
         ChatServiceDialogueRecordServices::MSN_TYPE_FILE => '文件',
         ChatServiceDialogueRecordServices::MSN_TYPE_RATE => '评价邀请',
         ChatServiceDialogueRecordServices::MSN_TYPE_FAQ => '常见问题',
+        ChatServiceDialogueRecordServices::MSN_TYPE_PAY => '支付卡片',
     ];
 
     /**
@@ -661,6 +662,9 @@ class ChatHistoryServices
             $titles = array_column(is_array($card['list'] ?? null) ? $card['list'] : [], 'title');
             return $titles ? '[常见问题] ' . implode('、', $titles) : '[常见问题]';
         }
+        if ($type === ChatServiceDialogueRecordServices::MSN_TYPE_PAY) {
+            return $this->payCardText($msn);
+        }
         if ($type === ChatServiceDialogueRecordServices::MSN_TYPE_IME) {
             //只给一串路径，读表的人不知道那是图片；文件与卡片都有标识，图片不该例外
             return '[图片] ' . trim($msn);
@@ -675,6 +679,21 @@ class ChatHistoryServices
         }
         $text = html_entity_decode(strip_tags($msn), ENT_QUOTES, 'UTF-8');
         return trim(preg_replace('/\s+/u', ' ', $text));
+    }
+
+    /**
+     * 支付卡片导出成一行：留作凭证时要看得出发的是哪张单、多少钱，凭单号能回查到账情况
+     * @param string $msn
+     * @return string
+     */
+    protected function payCardText(string $msn): string
+    {
+        $json = base64_decode(trim($msn), true);
+        $card = $json === false ? null : json_decode($json, true);
+        if (!is_array($card)) {
+            return '[支付卡片]';
+        }
+        return sprintf('[支付卡片] %s ￥%s 单号 %s', $card['subject'] ?? '', $card['amount'] ?? '', $card['pay_no'] ?? '');
     }
 
     /**

@@ -107,6 +107,15 @@ export default [
 			title: '提交成功'
 		},
 		component: () => import('@/pages/kefu/externalConnection/finishSubmitOutLine')
-	}
+	},
 	// 外部连接，跳转联系客服模块结束
+	// 收银台：付款人不登录，凭链接上的签名访问
+	{
+		path: '/pay/cashier',
+		name: 'payCashier',
+		meta: {
+			title: '支付账单'
+		},
+		component: () => import('@/pages/pay/cashier/index')
+	}
 ]

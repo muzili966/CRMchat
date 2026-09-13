@@ -65,6 +65,14 @@ class ChatServiceDialogueRecordServices extends BaseServices
     const MSN_TYPE_FAQ = 9;
 
     /**
+     * 支付卡片
+     *
+     * 同样不列入 MSN_TYPE，只由服务端插入：放进白名单，任何人都能在聊天里
+     * 伪造一张指向钓鱼收款页的「续费卡片」。
+     */
+    const MSN_TYPE_PAY = 10;
+
+    /**
      * 文件消息允许的扩展名白名单
      *
      * 这是核心安全控制：静态目录按扩展名决定如何被浏览器处理，
