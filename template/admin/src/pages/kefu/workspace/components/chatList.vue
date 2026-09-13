@@ -272,6 +272,13 @@ export default {
         this.selectUser(this.userList[0],0)
       }
     },
+    // 推来的会话是否属于当前页签
+    // 页签按「接待范围 + 是否游客」划分，key 只是页签编号；拿 key 当 is_tourist 比，
+    // 「我的接待」「全部会话」永远对不上，新消息就只弹提醒、不进列表
+    belongsToTab(recored) {
+      const isTourist = this.currentTab.isTourist
+      return isTourist === '' || Number(recored.is_tourist) === isTourist
+    },
     updateUserList(data,op){
       let ids = [];
       this.userList.map(item=>{
@@ -281,7 +288,7 @@ export default {
           item._update_time = data._update_time
         }
       })
-      if(ids.indexOf(data.id) === -1 && op) {
+      if(ids.indexOf(data.id) === -1 && op && this.belongsToTab(data)) {
         this.userList.unshift(data);
       }
     },
@@ -308,8 +315,8 @@ export default {
               });
             }
           })
-          if(!status) {
-            if(data.recored.is_tourist == this.hdTabCur) { this.userList.unshift(data.recored) }
+          if(!status && this.belongsToTab(data.recored)) {
+            this.userList.unshift(data.recored)
           }
         })
         //已被转接走
@@ -339,15 +346,15 @@ export default {
                 arr.unshift(oldVal)
               }
             })
-            if(!status) {
-              if(data.recored.is_tourist == this.hdTabCur) { this.userList.unshift(data.recored) }
+            if(!status && this.belongsToTab(data.recored)) {
+              this.userList.unshift(data.recored)
             }
           }
 
-
-          if(data.recored.is_tourist != this.hdTabCur && data.recored.id) {
+          //只有当前页签看不到这条会话时才弹提醒，否则列表置顶与未读角标已经足够
+          if(data.recored.id && !this.belongsToTab(data.recored)) {
             this.$Notice.info({
-              title: this.hdTabCur ? '用户发来消息啦！' : '游客发来消息啦！'
+              title: Number(data.recored.is_tourist) ? '游客发来消息啦！' : '用户发来消息啦！'
             });
           }
 
